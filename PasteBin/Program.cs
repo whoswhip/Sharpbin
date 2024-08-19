@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using Newtonsoft.Json.Linq;
 using System.Data;
 using System.Runtime.InteropServices;
+using System.Globalization;
 
 class Program
 {
@@ -120,6 +121,14 @@ class Program
                     context.Response.StatusCode = 404;
                     return;
                 }
+                if (paste.Title == "" || string.IsNullOrEmpty(paste.Title))
+                {
+                    paste.Title = $"Untitled {reader.GetString(0)}";
+                }
+                if (paste.Title.Length > 40)
+                {
+                    paste.Title = paste.Title.Substring(0, 50) + "...";
+                }
                 var html = File.ReadAllText("assets\\paste.html");
                 html = html.Replace("{pastetitle}", paste.Title);
                 html = html.Replace("{content}", content);
@@ -170,7 +179,15 @@ class Program
                     {
                         paste.Title = $"Untitled {reader.GetString(0)}";
                     }
-                    pastes += $"<a href=\"/{paste.Id}\"><li>{paste.Title} {paste.Date} {ConvertToBytes(paste.Size)}</li></a>";
+                    if (paste.Title.Length > 40)
+                    {
+                        paste.Title = paste.Title.Substring(0, 50) + "...";
+                    }
+                    DateTime date = DateTime.ParseExact(paste.Date, "dd/MM/yyyy-HH:mm:ss", CultureInfo.InvariantCulture);
+                    DateTime now = DateTime.Now;
+                    var difference = GetDifference(date, now);
+                    
+                    pastes += $"<a href=\"/{paste.Id}\"><li>{paste.Title} {difference} {ConvertToBytes(paste.Size)}</li></a>";
                 }
                 if(string.IsNullOrEmpty(pastes))
                 {
@@ -181,7 +198,7 @@ class Program
                 await context.Response.WriteAsync(html);
                 return;
             }
-        }).RequireRateLimiting("fixed");
+        }).RequireRateLimiting("fixed-bigger");
         app.MapGet("/archive", async (HttpContext context) =>
         {
             var html = File.ReadAllText("assets\\archives.html");
@@ -220,7 +237,14 @@ class Program
                     {
                         paste.Title = $"Untitled {reader.GetString(0)}";
                     }
-                    pastes += $"<a href=\"/{paste.Id}\"><li>{paste.Title} {paste.Date} {ConvertToBytes(paste.Size)}</li></a>";
+                    if (paste.Title.Length > 40)
+                    {
+                        paste.Title = paste.Title.Substring(0, 50) + "...";
+                    }
+                    DateTime date = DateTime.ParseExact(paste.Date, "dd/MM/yyyy-HH:mm:ss", CultureInfo.InvariantCulture);
+                    DateTime now = DateTime.Now;
+                    var difference = GetDifference(date, now);
+                    pastes += $"<a href=\"/{paste.Id}\"><li>{paste.Title} {difference} {ConvertToBytes(paste.Size)}</li></a>";
                 }
                 var findCountCommand = connection.CreateCommand();
                 findCountCommand.CommandText = "SELECT COUNT(*) FROM pastes WHERE Visibility != 'Private'";
@@ -259,17 +283,25 @@ class Program
         app.MapPost("/api/create", async (HttpContext context) =>
         {
             string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
-            if (requestBody.Length > 500_000 || string.IsNullOrEmpty(requestBody))
+            if (string.IsNullOrEmpty(requestBody))
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No content uploaded" }.ToString());
                 return;
             }
             var data = JObject.Parse(requestBody);
             var title = SanitizeInput(data["title"]?.ToString() ?? "Untitled");
             var content = SanitizeInput(data["content"]?.ToString() ?? "");
             var visibility = SanitizeInput(data["visibility"]?.ToString() ?? "Public");
+
+            if(content.Length > 500_000 || title.Length > 500)
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Content or Title is too long" }.ToString());
+                return;
+            }
 
             if (visibility != "Public" && visibility != "Unlisted" && visibility != "Private")
             {
@@ -355,10 +387,10 @@ class Program
             double.Parse(length);
         }
         catch
-        { 
-            return "0 B"; 
+        {
+            return "0 B";
         }
-        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        string[] sizes = { "Bytes", "KB", "MB", "GB", "TB" };
         double len = double.Parse(length);
         int order = 0;
         while (len >= 1024 && order < sizes.Length - 1)
@@ -366,8 +398,37 @@ class Program
             order++;
             len = len / 1024;
         }
-        return $"{len:0.##} {sizes[order]}";
+        if (sizes[order] == "Bytes")
+        {
+            return $"{len:0.##} {sizes[order]}";
+        }
+        else
+        {
+            return $"{len:0.##}{sizes[order]}";
+        }
     }
+    public static string GetDifference(DateTime startDate, DateTime endDate)
+    {
+        TimeSpan span = endDate.Subtract(startDate);
+
+        if (span.TotalSeconds < 60)
+        {
+            return $"{Math.Round(span.TotalSeconds, 0)} sec ago";
+        }
+        else if (span.TotalMinutes < 60)
+        {
+            return $"{Math.Round(span.TotalMinutes, 0)} min";
+        }
+        else if (span.TotalHours < 24)
+        {
+            return $"{Math.Round(span.TotalHours,1)} hrs ago";
+        }
+        else
+        {
+            return $"{Math.Round(span.TotalDays,1)} days ago";
+        }
+    }
+
     public static string GenerateRandomString(int length)
     {
         var random = new Random();
