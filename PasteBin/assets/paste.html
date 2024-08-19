@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@100..900&display=swap" rel="stylesheet">
+    <title>{pastetitle}</title>
+</head>
+<body>
+    <div class="container-wrapper"> 
+        <div class="paste-container">
+            <h1>{pastetitle}</h1>
+            <div class="paste-wrapper">
+                <p>{content}</p>
+            </div>
+            <div class="buttons-wrapper">
+                <a href="/raw/{pasteid}">
+                    <button id="view-raw-button" class="button">View Raw</button>
+                </a>
+                <button id="copy-button" class="button">Copy</button>
+                <button id="download-button" class="button">Download</button>
+            </div>
+        </div>
+    </div>
+</body>
+<script>
+    document.getElementById("copy-button").addEventListener("click", function(){
+        navigator.clipboard.writeText(document.querySelector(".paste-wrapper").innerText);
+    });
+    document.getElementById("download-button").addEventListener("click", function(){
+        var element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(document.querySelector(".paste-wrapper").innerText));
+        element.setAttribute('download', '{pasteid}.txt');
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+    });
+</script>
+<style>
+body{
+    font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+    font-weight: bold;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: #0d0d0d;
+}
+.container-wrapper{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100vh;
+}
+.paste-container{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 80%;
+    padding: 20px;
+    background-color: #181818;
+    color: white;
+    border-radius: 5px;
+    height: fit-content;
+    max-height: 80vh;
+    min-height: 20%;
+    overflow-y: auto;
+}
+.paste-wrapper{
+    width: 95%;
+    height: fit-content;
+    padding-left: 10px;
+    padding-right: 10px;
+    background-color: #1d1d1d;
+    color: white;
+    border-radius: 5px;
+    margin-top: 10px;
+    text-wrap: wrap;
+    font-weight: 500;
+    max-height: 80%;
+    overflow-y: auto;
+}
+.buttons-wrapper{
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    width: fit-content;
+    margin-top: 10px;
+}
+.buttons-wrapper a{
+    text-decoration: none;
+}
+.button{
+    transition: 300ms;
+    background-color: #1d1d1d;
+    color: white;
+    border: 1px solid #1d1d1d;
+    border-radius: 5px;
+    padding: 5px;
+    margin: 5px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 1.05rem;
+    padding: 10px;
+}
+.button:hover{
+    transition: 300ms;
+    background-color: #2d2d2d;
+    border: 1px solid #2d2d2d;
+}
+</style>
+</html>

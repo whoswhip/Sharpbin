@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@100..900&display=swap" rel="stylesheet">
+    <title>create paste</title>
+</head>
+<body>
+    <div class="container-wrapper"> 
+        <div class="creation-container">
+            <h1>create paste</h1>
+            <form id="createForm">
+                <label for="pasteTitle" class="label">Title</label>
+                <input type="text" id="pasteTitle" class="textinput" name="pasteTitle">
+                <label for="pasteContent" class="label">Content</label>
+                <textarea id="pasteContent" class="textarea" name="pasteContent" required ></textarea>
+                <button type="submit" class="button">Create</button>
+            </form>
+        </div>
+    </div>
+</body>
+<script>
+    document.getElementById("createForm").addEventListener("submit", function (event) {
+        event.preventDefault();
+
+        var textAreaContent = document.getElementById("pasteContent").value;
+        var textTitleContent = document.getElementById("pasteTitle").value;
+
+        var requestUrl = "/api/create";
+        fetch(requestUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                title: textTitleContent,
+                content: textAreaContent
+            })
+        })
+            .then(response => response.json())
+            .then(obj => {
+                const result = JSON.parse(obj);
+                if (result.pasteId != null) {
+                    window.location.href = `/${result.pasteId}`;
+                }
+            })
+    });
+</script>
+<style>
+body{
+    font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+    font-weight: bold;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: #0d0d0d;
+}
+.container-wrapper{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100vh;
+}
+.creation-container{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 80%;
+    padding: 20px;
+    background-color: #181818;
+    color: white;
+    border-radius: 5px;
+    height: fit-content;
+    max-height: 80vh;
+    min-height: 20%;
+    overflow-y: auto;
+    border: #222222 2px solid;
+}
+#createForm{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+.label{
+    font-size: 1.5em;
+}
+.textinput{
+    transition: 300ms;
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+    border: none;
+    background-color: #282828;
+    color: white;
+    border: #2a2a2a 2px solid;
+    box-sizing: border-box;
+    font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+    font-size: 1.1em;
+}
+.textinput:focus{
+    transition: 300ms;
+    border: #383838 2px solid;
+    outline: none;
+}
+.textarea{
+    transition: border 300ms;
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    min-height: auto;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+    border: none;
+    background-color: #282828;
+    color: white;
+    border: #2a2a2a 2px solid;
+    box-sizing: border-box;
+    font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+    font-size: 1.08em;
+}
+.textarea:focus{
+    transition: border 300ms;
+    border: #383838 2px solid;
+    outline: none;
+}
+.button{
+    transition: 300ms;
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+    border: none;
+    background-color: #282828;
+    color: white;
+    border: #2a2a2a 2px solid;
+    cursor: pointer;
+    font-size: 1.2em;
+}
+.button:hover{
+    transition: 300ms;
+    background-color: #383838;
+}
+</style>
+</html>
