@@ -1,13 +1,8 @@
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Data.Sqlite;
 using System.Threading.RateLimiting;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Microsoft.AspNetCore.Components.Web;
 using System.Data;
-using System.Net.WebSockets;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using System.Drawing;
 
 class Program
 {
