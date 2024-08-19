@@ -168,6 +168,55 @@ class Program
                 return;
             }
         }).RequireRateLimiting("fixed");
+        app.MapGet("/archive", async (HttpContext context) =>
+        {
+            var html = File.ReadAllText("assets\\archives.html");
+            var page = context.Request?.Query["page"].ToString();
+
+            int pageNumber;
+            if (!int.TryParse(page, out pageNumber) || pageNumber <= 0)
+            {
+                pageNumber = 1;
+            }
+            int pastesPerPage = 50;
+            int skipCount = (pageNumber - 1) * pastesPerPage;
+
+            using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+            {
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = $"SELECT * FROM pastes WHERE Visibility != 'Private' ORDER BY UID DESC LIMIT {pastesPerPage} OFFSET {skipCount}";
+                var reader = await command.ExecuteReaderAsync();
+                string pastes = string.Empty;
+                while (await reader.ReadAsync())
+                {
+                    var paste = new Paste
+                    {
+                        Title = reader.GetString(1),
+                        Date = reader.GetString(2),
+                        Size = reader.GetString(3),
+                        Visibility = reader.GetString(4),
+                        Id = reader.GetString(5),
+                    };
+                    if(paste.Visibility == "Private" || paste.Visibility == "Unlisted")
+                    {
+                        continue;
+                    }
+                    pastes += $"<a href=\"/{paste.Id}\"><li>{paste.Title} {paste.Date} {ConvertToBytes(paste.Size)}</li></a>";
+                }
+                if (string.IsNullOrEmpty(pastes))
+                {
+                    pastes = "<h2>No pastes found</h1>";
+                }
+                html = html.Replace("{pastes}", pastes);
+                html = html.Replace("{backpagenum}", $"{pageNumber - 1}");
+                html = html.Replace("{pagenum}", $"{pageNumber + 1}");
+                context.Response.ContentType = "text/html";
+                await context.Response.WriteAsync(html);
+                return;
+            }
+        });
+
 
         #endregion
 
@@ -188,14 +237,14 @@ class Program
             var content = SanitizeInput(data["content"]?.ToString() ?? "");
             var visibility = SanitizeInput(data["visibility"]?.ToString() ?? "Public");
 
-            if(visibility != "Public" && visibility != "Unlisted" && visibility != "Private")
+            if (visibility != "Public" && visibility != "Unlisted" && visibility != "Private")
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid visibility" }.ToString());
                 return;
             }
-            if(string.IsNullOrEmpty(content) || string.IsNullOrWhiteSpace(content))
+            if (string.IsNullOrEmpty(content) || string.IsNullOrWhiteSpace(content))
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
