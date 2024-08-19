@@ -371,3 +371,4 @@ PasteBin/raw/2d48a001-383d-44fd-8553-4806c9de100d.txt
 PasteBin/p/2d48a001-383d-44fd-8553-4806c9de100d.html
 /PasteBin/pastes
 /PasteBin/pastes.sqlite
+*.sqlite-journal
