@@ -7,6 +7,11 @@
     <title>archive</title>
 </head>
 <body>
+    <div class="nav-div">
+        <a href="/">home</a>
+        <a href="/pastes">recent pastes</a>
+        <a href="/archive">archive</a>
+    </div>
     <div class="container-wrapper"> 
         <div class="pastes-container">
             <h1>paste archive</h1>
@@ -14,10 +19,9 @@
                 {pastes}
             </div>
             <div class="buttons-wrapper">
-                <a href="/archive?page={backpagenum}">back a page</a>
-                <a href="/">create paste</a>
-                <a href="/pastes">recent pastes</a>
-                <a href="/archive?page={pagenum}">next page</a>
+                <a class="arrow-button" href="/archive?page={backpagenum}"><</a>
+                <p>{currentpagenum}/{totalpages}</p>
+                <a class="arrow-button" href="/archive?page={pagenum}">></a>
             </div>
         </div>
     </div>
@@ -119,5 +123,44 @@ li:hover{
     background-color: #333333;
     border: 2px solid #3a3a3a;
 }
+.nav-div{
+    top: 0;
+    margin-top: 10px;
+    position: absolute;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    width: fit-content;
+    background-color: #181818;
+    padding-left: 10px;
+    padding-right: 10px;
+    color: white;
+    border-radius: 5px;
+    height: fit-content;
+    overflow-y: auto;
+    border: #222222 2px solid;
+}
+.nav-div a{
+    text-decoration: none;
+    color: white;
+    padding: 10px;
+    margin: 10px;
+    border-radius: 5px;
+    background-color: #222222;
+    transition: 300ms;
+    border: #2a2a2a00 2px solid;
+}
+.nav-div a:hover{
+    transition: 300ms;
+    background-color: #333333;
+    border: #3a3a3a 2px solid;
+}
+.arrow-button{
+    min-width: fit-content !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+}
+
 </style>
 </html>

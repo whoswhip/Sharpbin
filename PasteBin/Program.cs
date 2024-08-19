@@ -3,6 +3,7 @@ using Microsoft.Data.Sqlite;
 using System.Threading.RateLimiting;
 using Newtonsoft.Json.Linq;
 using System.Data;
+using System.Runtime.InteropServices;
 
 class Program
 {
@@ -33,6 +34,15 @@ class Program
             options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
             options.QueueLimit = 2;
         }));
+        builder.Services.AddRateLimiter(_ => _
+        .AddFixedWindowLimiter(policyName: "fixed-bigger", options =>
+        {
+            options.PermitLimit = 8;
+            options.Window = TimeSpan.FromSeconds(6);
+            options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            options.QueueLimit = 4;
+        }));
+
         var app = builder.Build();
 
         // Configure the HTTP request pipeline.
@@ -156,6 +166,10 @@ class Program
                     {
                         continue;
                     }
+                    if(paste.Title == "" || string.IsNullOrEmpty(paste.Title))
+                    {
+                        paste.Title = $"Untitled {reader.GetString(0)}";
+                    }
                     pastes += $"<a href=\"/{paste.Id}\"><li>{paste.Title} {paste.Date} {ConvertToBytes(paste.Size)}</li></a>";
                 }
                 if(string.IsNullOrEmpty(pastes))
@@ -202,20 +216,40 @@ class Program
                     {
                         continue;
                     }
+                    if (paste.Title == "" || string.IsNullOrEmpty(paste.Title))
+                    {
+                        paste.Title = $"Untitled {reader.GetString(0)}";
+                    }
                     pastes += $"<a href=\"/{paste.Id}\"><li>{paste.Title} {paste.Date} {ConvertToBytes(paste.Size)}</li></a>";
+                }
+                var findCountCommand = connection.CreateCommand();
+                findCountCommand.CommandText = "SELECT COUNT(*) FROM pastes WHERE Visibility != 'Private'";
+                int totalPastes = Convert.ToInt32(await findCountCommand.ExecuteScalarAsync() );
+                int totalPages = (int)Math.Ceiling((double)totalPastes / pastesPerPage);
+
+                if (pageNumber > totalPages && totalPages != 0)
+                {
+                    context.Response.Redirect($"/archive?page={totalPages}");
+                    return;
                 }
                 if (string.IsNullOrEmpty(pastes))
                 {
                     pastes = "<h2>No pastes found</h1>";
+                    html = html.Replace("</style>", "");
+                    html = html.Replace("</html>", "");
+                    html += ".buttons-wrapper{\r\n    display: none !important;\r\n}";
+                    html += "</style>\n</html>";
                 }
                 html = html.Replace("{pastes}", pastes);
                 html = html.Replace("{backpagenum}", $"{pageNumber - 1}");
                 html = html.Replace("{pagenum}", $"{pageNumber + 1}");
+                html = html.Replace("{currentpagenum}", $"{pageNumber}");
+                html = html.Replace("{totalpages}", $"{totalPages}");
                 context.Response.ContentType = "text/html";
                 await context.Response.WriteAsync(html);
                 return;
             }
-        });
+        }).RequireRateLimiting("fixed-bigger");
 
 
         #endregion
@@ -270,6 +304,8 @@ class Program
             responseJson["pasteSize"] = ConvertToBytes(paste.Size ?? string.Empty);
             responseJson["pasteDate"] = paste.Date;
             responseJson["pasteVisibility"] = paste.Visibility;
+
+            Console.WriteLine($"Created a {ConvertToBytes(paste.Size ?? string.Empty)} sized paste with the id of {paste.Id} at {paste.Date}");
 
             await context.Response.WriteAsJsonAsync(responseJson.ToString());
             return;
