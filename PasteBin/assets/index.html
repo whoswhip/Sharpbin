@@ -102,14 +102,16 @@ body{
     box-sizing: border-box;
     font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
     font-size: 1.1em;
+    outline: none;
 }
 .textinput:focus{
     transition: 300ms;
-    border: #383838 2px solid;
+    background-color: #333333;
+    border: 2px solid #3a3a3a;
     outline: none;
 }
 .textarea{
-    transition: border 300ms;
+    transition: 300ms;
     width: 100%;
     min-width: 100%;
     max-width: 100%;
@@ -124,10 +126,12 @@ body{
     box-sizing: border-box;
     font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
     font-size: 1.08em;
+    outline: none;
 }
 .textarea:focus{
-    transition: border 300ms;
-    border: #383838 2px solid;
+    transition: 300ms;
+    background-color: #333333;
+    border: 2px solid #3a3a3a;
     outline: none;
 }
 .button{
@@ -137,15 +141,16 @@ body{
     margin: 10px 0;
     border-radius: 5px;
     border: none;
-    background-color: #282828;
+    background-color: #222222;
     color: white;
-    border: #2a2a2a 2px solid;
+    border: #2a2a2a00 2px solid;
     cursor: pointer;
     font-size: 1.2em;
 }
 .button:hover{
     transition: 300ms;
-    background-color: #383838;
+    background-color: #333333;
+    border: 2px solid #3a3a3a;
 }
 </style>
 </html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@100..900&display=swap" rel="stylesheet">
+    <title>recent pastes</title>
+</head>
+<body>
+    <div class="container-wrapper"> 
+        <div class="pastes-container">
+            <h1>recent pastes</h1>
+            <div class="pastes-wrapper">
+                {pastes}
+            </div>
+            <div class="buttons-wrapper">
+                <a href="/">create paste</a>
+                <a href="/archives">paste archives</a>
+            </div>
+        </div>
+    </div>
+</body>
+<style>
+body{
+    font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+    font-weight: bold;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: #0d0d0d;
+    overflow-y: hidden;
+}
+.container-wrapper{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100vh;
+}
+.pastes-container{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 80%;
+    padding: 20px;
+    background-color: #181818;
+    color: white;
+    border-radius: 5px;
+    height: fit-content;
+    max-height: 80vh;
+    min-height: 20%;
+    border: #222222 2px solid;
+}
+.pastes-wrapper{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 95%;
+    padding: 20px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 70vh;
+}
+.pastes-wrapper a{
+    text-decoration: none;
+    color: white;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+li{
+    transition: 300ms;
+    list-style: none;
+    padding: 10px;
+    margin: 10px;
+    background-color: #222222;
+    border-radius: 5px;
+    width: 90%;
+    text-align: center;
+    cursor: pointer;
+    border: #22222200 2px solid;
+}
+li:hover{
+    transition: 300ms;
+    background-color: #333333;
+    border: #3a3a3a 2px solid;
+}
+.buttons-wrapper{
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    padding: 20px;
+}
+.buttons-wrapper a{
+    transition: 300ms;
+    text-decoration: none;
+    color: white;
+    width: fit-content;
+    margin-left: 10px;
+    margin-right: 10px;
+    min-width: 20%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #222222;
+    border-radius: 5px;
+    padding: 10px;
+    border: #22222200 2px solid;
+}
+.buttons-wrapper a:hover{
+    transition: 300ms;
+    background-color: #333333;
+    border: 2px solid #3a3a3a;
+}
+</style>
+</html>
