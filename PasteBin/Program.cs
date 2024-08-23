@@ -3,23 +3,19 @@ using Microsoft.Data.Sqlite;
 using System.Threading.RateLimiting;
 using Newtonsoft.Json.Linq;
 using System.Data;
-using System.Runtime.InteropServices;
+using System.Text;
 using System.Globalization;
+using Sharpbin;
 
 class Program
 {
+    private static string salt = string.Empty;
+
     public static async Task Main(string[] args)
     {
-        if(!File.Exists("pastes.sqlite"))
-        {
-            using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
-            {
-                await connection.OpenAsync();
-                var command = connection.CreateCommand();
-                command.CommandText = "CREATE TABLE pastes (UID INTEGER,Title TEXT, Date TEXT, Size TEXT, Visibility TEXT, ID TEXT, PRIMARY KEY(UID AUTOINCREMENT))";
-                await command.ExecuteNonQueryAsync();
-            }
-        }
+        await InitializeAsync();
+
+
         var builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container.
@@ -185,7 +181,7 @@ class Program
                     }
                     DateTime date = DateTime.ParseExact(paste.Date, "dd/MM/yyyy-HH:mm:ss", CultureInfo.InvariantCulture);
                     DateTime now = DateTime.Now;
-                    var difference = GetDifference(date, now);
+                    var difference = GetTimeDifference(date, now);
                     
                     pastes += $"<a href=\"/{paste.Id}\"><li>{paste.Title} {difference} {ConvertToBytes(paste.Size)}</li></a>";
                 }
@@ -243,7 +239,7 @@ class Program
                     }
                     DateTime date = DateTime.ParseExact(paste.Date, "dd/MM/yyyy-HH:mm:ss", CultureInfo.InvariantCulture);
                     DateTime now = DateTime.Now;
-                    var difference = GetDifference(date, now);
+                    var difference = GetTimeDifference(date, now);
                     pastes += $"<a href=\"/{paste.Id}\"><li>{paste.Title} {difference} {ConvertToBytes(paste.Size)}</li></a>";
                 }
                 var findCountCommand = connection.CreateCommand();
@@ -280,9 +276,10 @@ class Program
 
         #region API
 
-        app.MapPost("/api/create", async (HttpContext context) =>
+        app.MapPost("/api/pastes/create", async (HttpContext context) =>
         {
             string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
+            string ip = context.Request.Headers["X-Forwarded-For"].ToString() ?? context.Connection.RemoteIpAddress.ToString();
             if (string.IsNullOrEmpty(requestBody))
             {
                 context.Response.StatusCode = 400;
@@ -337,10 +334,121 @@ class Program
             responseJson["pasteDate"] = paste.Date;
             responseJson["pasteVisibility"] = paste.Visibility;
 
-            Console.WriteLine($"Created a {ConvertToBytes(paste.Size ?? string.Empty)} sized paste with the id of {paste.Id} at {paste.Date}");
+            Log log = await Logging.LogRequestAsync(context);
+
+            Console.WriteLine($"[{paste.Date}] Paste created, {ConvertToBytes(paste.Size ?? string.Empty)}, {paste.Id}");
+            await File.AppendAllTextAsync("logs.log", $"[{paste.Date}] {paste.Id} {log.IP} {log.Method} {log.Path} {log.UserAgent} {log.Referer} {log.Body}\n");
 
             await context.Response.WriteAsJsonAsync(responseJson.ToString());
             return;
+
+        }).RequireRateLimiting("fixed");
+        app.MapPost("/api/accounts/create", async (HttpContext context) =>
+        {
+            string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
+            string ip = context.Request.Headers["X-Forwarded-For"].ToString() ?? context.Connection.RemoteIpAddress.ToString();
+            Log log = await Logging.LogRequestAsync(context);
+
+            char[] disallowed = { ' ', '\'', '\"', '\\', '/', '(', ')', '[', ']', '{', '}', '<', '>', ';', ':', ',', '.', '!', '?', '@', '#', '$', '%', '^', '&', '*', '-', '+', '=', '~', '`' };
+
+            if (IsLoggedInAsync(context.Request.Cookies["token"]).Result)
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Already logged in" }.ToString());
+                return;
+            }
+            if (string.IsNullOrEmpty(requestBody))
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                return;
+            }
+            if (!requestBody.Contains("username") || !requestBody.Contains("password") || context.Request.ContentType != "application/json")
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                return;
+            }
+
+            var data = JObject.Parse(requestBody);
+            var username = SanitizeInput(data["username"]?.ToString() ?? "");
+            var password = SanitizeInput(data["password"]?.ToString() ?? "");
+
+            if (username.Length > 20 || username.Length < 3 || password.Length > 50 || password.Length < 8)
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid username or password length" }.ToString());
+                return;
+            }
+            if (username.IndexOfAny(disallowed) != -1)
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid characters in username" }.ToString());
+                return;
+            }
+            string token = Convert.ToBase64String(Encoding.UTF8.GetBytes(BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString())));
+            string passwordHash = BCrypt.Net.BCrypt.HashPassword(password, salt);
+            DateTime expirationDate = DateTime.Now.AddYears(1);
+
+            using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+            {
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT * FROM users WHERE Username = @Username";
+                command.Parameters.AddWithValue("@Username", username);
+                var reader = await command.ExecuteReaderAsync();
+                await reader.ReadAsync();
+                if (reader.HasRows)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Username already exists" }.ToString());
+                    return;
+                }
+                else if (!reader.HasRows && !reader.IsClosed)
+                {
+                    reader.Close();
+                }
+                var insertCommand = connection.CreateCommand();
+                insertCommand.CommandText = "INSERT INTO users (UUID, Username, PasswordHash, CreationDate, LastLoginDate, Type) VALUES (@UUID, @Username, @PasswordHash, @CreationDate, @LastLoginDate, @Type)";
+                insertCommand.Parameters.AddWithValue("@UUID", Guid.NewGuid().ToString());
+                insertCommand.Parameters.AddWithValue("@Username", username);
+                insertCommand.Parameters.AddWithValue("@PasswordHash", passwordHash);
+                insertCommand.Parameters.AddWithValue("@CreationDate", DateTime.Now.ToString("dd/MM/yyyy-HH:mm:ss"));
+                insertCommand.Parameters.AddWithValue("@LastLoginDate", DateTime.Now.ToString("dd/MM/yyyy-HH:mm:ss"));
+                insertCommand.Parameters.AddWithValue("@Type", 0);
+                await insertCommand.ExecuteNonQueryAsync();
+
+                var loginCommand = connection.CreateCommand();
+                loginCommand.CommandText = "INSERT INTO logins (UUID,UserAgent, IP, LoginTime,ExpireTime, Token) VALUES (@UUID,@UserAgent, @IP, @LoginTime,@ExpireTime, @Token)";
+                loginCommand.Parameters.AddWithValue("@UserAgent", context.Request.Headers["User-Agent"].ToString());
+                loginCommand.Parameters.AddWithValue("@UUID", insertCommand.Parameters["@UUID"].Value);
+                loginCommand.Parameters.AddWithValue("@IP", ip);
+                loginCommand.Parameters.AddWithValue("@LoginTime", DateTime.Now.ToString("dd/MM/yyyy-HH:mm:ss"));
+                loginCommand.Parameters.AddWithValue("@ExpireTime", expirationDate.ToString("dd/MM/yyyy-HH:mm:ss"));
+                loginCommand.Parameters.AddWithValue("@Token", token);
+                await loginCommand.ExecuteNonQueryAsync();
+            }
+            var cookie = new CookieOptions
+            {
+                Expires = expirationDate,
+                Secure = true,
+                HttpOnly = true,
+                SameSite = SameSiteMode.Strict
+            };
+            
+            context.Response.Cookies.Append("token", token, cookie);
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/json";
+            Console.WriteLine($"[{DateTime.Now}] Account {username} has been created");
+            File.AppendAllText("logs.log", $"[{DateTime.Now}] Account {username} has been created by {log.IP}\n");
+            await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "Account created" }.ToString());
+
 
         }).RequireRateLimiting("fixed");
 
@@ -375,7 +483,6 @@ class Program
         }
         return paste;
     }
-
     public static string SanitizeInput(string input)
     {
         return input?.Replace("<", "&lt;").Replace(">", "&gt;") ?? string.Empty + input;
@@ -407,7 +514,7 @@ class Program
             return $"{len:0.##}{sizes[order]}";
         }
     }
-    public static string GetDifference(DateTime startDate, DateTime endDate)
+    public static string GetTimeDifference(DateTime startDate, DateTime endDate)
     {
         TimeSpan span = endDate.Subtract(startDate);
 
@@ -427,6 +534,59 @@ class Program
         {
             return $"{Math.Round(span.TotalDays,1)} days ago";
         }
+    }
+    public static async Task<bool> IsLoggedInAsync(string token)
+    {
+        if(string.IsNullOrEmpty(token) || string.IsNullOrWhiteSpace(token))
+        {
+            return false;
+        }
+        using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+        {
+            await connection.OpenAsync();
+            var command = connection.CreateCommand();
+            command.CommandText = "SELECT * FROM logins WHERE Token = @Token";
+            command.Parameters.AddWithValue("@Token", token);
+            var reader = await command.ExecuteReaderAsync();
+            await reader.ReadAsync();
+            return reader.HasRows;
+        }
+    }
+    public static async Task InitializeAsync()
+    {
+        if (!File.Exists("pastes.sqlite"))
+        {
+            using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+            {
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = "CREATE TABLE pastes (UID INTEGER,Title TEXT, Date TEXT, Size TEXT, Visibility TEXT, ID TEXT, PRIMARY KEY(UID AUTOINCREMENT))";
+                await command.ExecuteNonQueryAsync();
+
+                var usersTableCommand = connection.CreateCommand();
+                usersTableCommand.CommandText = "CREATE TABLE users (UID INTEGER,UUID TEXT,Username TEXT,PasswordHash TEXT,CreationDate TEXT,LastLoginDate TEXT,Type INTEGER, PRIMARY KEY(UID AUTOINCREMENT))";
+                await usersTableCommand.ExecuteNonQueryAsync();
+
+                var loginsTableCommand = connection.CreateCommand();
+                loginsTableCommand.CommandText = "CREATE TABLE logins (UUID TEXT,UserAgent TEXT,IP TEXT,LoginTime TEXT,ExpireTime TEXT, Token TEXT)";
+                await loginsTableCommand.ExecuteNonQueryAsync();
+            }
+        }
+        if (File.Exists("config.json"))
+        {
+            var config = JObject.Parse(File.ReadAllText("config.json"));
+            salt = config["Salt"]?.ToString() ?? BCrypt.Net.BCrypt.GenerateSalt(13);
+            Logging.Api_CreateMessage = config["API_CreateMessage"]?.ToString() ?? "";
+        }
+        else
+        {
+            var config = new JObject();
+            config["Salt"] = BCrypt.Net.BCrypt.GenerateSalt(13);
+            salt = config["Salt"]?.ToString() ?? BCrypt.Net.BCrypt.GenerateSalt(13);
+            File.WriteAllText("config.json", config.ToString());
+        }
+        if (!Directory.Exists("pastes"))
+            Directory.CreateDirectory("pastes");
     }
 
     public static string GenerateRandomString(int length)

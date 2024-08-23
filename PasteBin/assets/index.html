@@ -32,7 +32,7 @@
         var textAreaContent = document.getElementById("pasteContent").value;
         var textTitleContent = document.getElementById("pasteTitle").value;
 
-        var requestUrl = "/api/create";
+        var requestUrl = "/api/pastes/create";
         fetch(requestUrl, {
             method: "POST",
             headers: {
