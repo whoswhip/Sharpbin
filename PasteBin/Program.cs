@@ -65,6 +65,41 @@ class Program
         app.MapGet("/", async (HttpContext context) =>
         {
             var html = File.ReadAllText("assets\\index.html");
+            bool loggedIn = await IsLoggedInAsync(context.Request.Cookies["token"]);
+            if (loggedIn)
+            {
+                html = html.Replace("{html}", "<a href=\"/dash\">Dashboard</a>");
+            }
+            else
+            {
+                html = html.Replace("{html}", "<a href=\"/login\">Login</a> <a href=\"/sign-up\">Sign up</a> ");
+            }
+            context.Response.ContentType = "text/html";
+            await context.Response.WriteAsync(html);
+            return;
+        });
+        app.MapGet("/login", async (HttpContext context) =>
+        {
+            if (await IsLoggedInAsync(context.Request.Cookies["token"]))
+            {
+                context.Response.Redirect("/");
+                return;
+            }
+            var html = File.ReadAllText("assets\\login.html");
+            html = html.Replace("{html}", "<a href=\"/sign-up\">Sign up</a>");
+            context.Response.ContentType = "text/html";
+            await context.Response.WriteAsync(html);
+            return;
+        });
+        app.MapGet("/sign-up", async (HttpContext context) =>
+        {
+            if (await IsLoggedInAsync(context.Request.Cookies["token"]))
+            {
+                context.Response.Redirect("/");
+                return;
+            }
+            var html = File.ReadAllText("assets\\signup.html");
+            html = html.Replace("{html}", "<a href=\"/login\">Login</a>");
             context.Response.ContentType = "text/html";
             await context.Response.WriteAsync(html);
             return;
@@ -75,6 +110,15 @@ class Program
             var error_html = File.ReadAllText("assets\\error.html");
             error_html = error_html.Replace("{code}", "404");
             error_html = error_html.Replace("{message}", "Paste not found");
+            bool loggedIn = await IsLoggedInAsync(context.Request.Cookies["token"]);
+            if (loggedIn)
+            {
+                error_html = error_html.Replace("{html}", "<a href=\"/dash\">Dashboard</a>");
+            }
+            else
+            {
+                error_html = error_html.Replace("{html}", "<a href=\"/login\">Login</a> <a href=\"/sign-up\">Sign up</a>");
+            }
             context.Response.ContentType = "text/html";
             await context.Response.WriteAsync(error_html);
             return;
@@ -129,6 +173,15 @@ class Program
                 html = html.Replace("{pastetitle}", paste.Title);
                 html = html.Replace("{content}", content);
                 html = html.Replace("{pasteid}", paste.Id);
+                bool loggedIn = await IsLoggedInAsync(context.Request.Cookies["token"]);
+                if (loggedIn)
+                {
+                    html = html.Replace("{html}", "<a href=\"/dash\">Dashboard</a>");
+                }
+                else
+                {
+                    html = html.Replace("{html}", "<a href=\"/login\">Login</a> <a href=\"/sign-up\">Sign up</a>");
+                }
                 context.Response.ContentType = "text/html";
                 await context.Response.WriteAsync(html);
                 return;
@@ -150,6 +203,15 @@ class Program
         app.MapGet("/pastes", async (HttpContext context) =>
         {
             var html = File.ReadAllText("assets\\recent_pastes.html");
+            bool loggedIn = await IsLoggedInAsync(context.Request.Cookies["token"]);
+            if (loggedIn)
+            {
+                html = html.Replace("{html}", "<a href=\"/dash\">Dashboard</a>");
+            }
+            else
+            {
+                html = html.Replace("{html}", "<a href=\"/login\">Login</a> <a href=\"/sign-up\">Sign up</a>");
+            }
             using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
             {
                 await connection.OpenAsync();
@@ -199,6 +261,16 @@ class Program
         {
             var html = File.ReadAllText("assets\\archives.html");
             var page = context.Request?.Query["page"].ToString();
+
+            bool loggedIn = await IsLoggedInAsync(context.Request.Cookies["token"]);
+            if (loggedIn)
+            {
+                html = html.Replace("{html}", "<a href=\"/dash\">Dashboard</a>");
+            }
+            else
+            {
+                html = html.Replace("{html}", "<a href=\"/login\">Login</a> <a href=\"/sign-up\">Sign up</a>");
+            }
 
             int pageNumber;
             if (!int.TryParse(page, out pageNumber) || pageNumber <= 0)
@@ -346,7 +418,6 @@ class Program
         app.MapPost("/api/accounts/create", async (HttpContext context) =>
         {
             string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
-            string ip = context.Request.Headers["X-Forwarded-For"].ToString() ?? context.Connection.RemoteIpAddress.ToString();
             Log log = await Logging.LogRequestAsync(context);
 
             char[] disallowed = { ' ', '\'', '\"', '\\', '/', '(', ')', '[', ']', '{', '}', '<', '>', ';', ':', ',', '.', '!', '?', '@', '#', '$', '%', '^', '&', '*', '-', '+', '=', '~', '`' };
@@ -428,7 +499,7 @@ class Program
                 loginCommand.CommandText = "INSERT INTO logins (UUID,UserAgent, IP, LoginTime,ExpireTime, Token) VALUES (@UUID,@UserAgent, @IP, @LoginTime,@ExpireTime, @Token)";
                 loginCommand.Parameters.AddWithValue("@UserAgent", context.Request.Headers["User-Agent"].ToString());
                 loginCommand.Parameters.AddWithValue("@UUID", insertCommand.Parameters["@UUID"].Value);
-                loginCommand.Parameters.AddWithValue("@IP", ip);
+                loginCommand.Parameters.AddWithValue("@IP", log.IP);
                 loginCommand.Parameters.AddWithValue("@LoginTime", DateTime.Now.ToString("dd/MM/yyyy-HH:mm:ss"));
                 loginCommand.Parameters.AddWithValue("@ExpireTime", expirationDate.ToString("dd/MM/yyyy-HH:mm:ss"));
                 loginCommand.Parameters.AddWithValue("@Token", token);
@@ -451,6 +522,101 @@ class Program
 
 
         }).RequireRateLimiting("fixed");
+        app.MapPost("/api/accounts/login", async (HttpContext Context) =>
+        {
+            string requestBody = await new StreamReader(Context.Request.Body).ReadToEndAsync();
+            Log log = await Logging.LogRequestAsync(Context);
+
+            if (IsLoggedInAsync(Context.Request.Cookies["token"]).Result)
+            {
+                Context.Response.StatusCode = 400;
+                Context.Response.ContentType = "application/json";
+                await Context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Already logged in" }.ToString());
+                return;
+            }
+            if (string.IsNullOrEmpty(requestBody))
+            {
+                Context.Response.StatusCode = 400;
+                Context.Response.ContentType = "application/json";
+                await Context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                return;
+            }
+            if (!requestBody.Contains("username") || !requestBody.Contains("password") || Context.Request.ContentType != "application/json")
+            {
+                Context.Response.StatusCode = 400;
+                Context.Response.ContentType = "application/json";
+                await Context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                return;
+            }
+
+            var data = JObject.Parse(requestBody);
+            var username = SanitizeInput(data["username"]?.ToString() ?? "");
+            var password = SanitizeInput(data["password"]?.ToString() ?? "");
+
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            {
+                Context.Response.StatusCode = 400;
+                Context.Response.ContentType = "application/json";
+                await Context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid username or password" }.ToString());
+                return;
+            }
+
+            string passwordHash = BCrypt.Net.BCrypt.HashPassword(password, salt);
+
+            using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+            {
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT * FROM users WHERE Username = @Username";
+                command.Parameters.AddWithValue("@Username", username);
+                var reader = await command.ExecuteReaderAsync();
+                await reader.ReadAsync();
+                if (!reader.HasRows)
+                {
+                    Context.Response.StatusCode = 400;
+                    Context.Response.ContentType = "application/json";
+                    await Context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid username or password" }.ToString());
+                    return;
+                }
+                if (BCrypt.Net.BCrypt.Verify(password, reader.GetString(3)))
+                {
+                    string token = Convert.ToBase64String(Encoding.UTF8.GetBytes(BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString())));
+                    DateTime expirationDate = DateTime.Now.AddYears(1);
+
+                    var loginCommand = connection.CreateCommand();
+                    loginCommand.CommandText = "INSERT INTO logins (UUID,UserAgent, IP, LoginTime,ExpireTime, Token) VALUES (@UUID,@UserAgent, @IP, @LoginTime,@ExpireTime, @Token)";
+                    loginCommand.Parameters.AddWithValue("@UserAgent", log.UserAgent);
+                    loginCommand.Parameters.AddWithValue("@UUID", reader.GetString(1));
+                    loginCommand.Parameters.AddWithValue("@IP", log.IP);
+                    loginCommand.Parameters.AddWithValue("@LoginTime", DateTime.Now.ToString("dd/MM/yyyy-HH:mm:ss"));
+                    loginCommand.Parameters.AddWithValue("@ExpireTime", expirationDate.ToString("dd/MM/yyyy-HH:mm:ss"));
+                    loginCommand.Parameters.AddWithValue("@Token", token);
+                    await loginCommand.ExecuteNonQueryAsync();
+
+                    var cookie = new CookieOptions
+                    {
+                        Expires = expirationDate,
+                        Secure = true,
+                        HttpOnly = true,
+                        SameSite = SameSiteMode.Strict
+                    };
+
+                    Context.Response.Cookies.Append("token", token, cookie);
+                    Context.Response.StatusCode = 200;
+                    Context.Response.ContentType = "application/json";
+                    Console.WriteLine($"[{DateTime.Now}] Account {username} has logged in");
+                    File.AppendAllText("logs.log", $"[{DateTime.Now}] Account {username} has logged in from {log.IP}\n");
+                    await Context.Response.WriteAsJsonAsync(new JObject { ["message"] = "Logged in" }.ToString());
+                    return;
+                }
+                else
+                {
+                    Context.Response.StatusCode = 400;
+                    Context.Response.ContentType = "application/json";
+                    await Context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid username or password" }.ToString());
+                }
+            }
+        });
 
         #endregion
 

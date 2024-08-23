@@ -15,40 +15,40 @@
     </div>
     <div class="container-wrapper"> 
         <div class="creation-container">
-            <h1>create paste</h1>
-            <form id="createForm">
-                <label for="pasteTitle" class="label">Title</label>
-                <input type="text" id="pasteTitle" class="textinput" name="pasteTitle" maxlength="500">
-                <label for="pasteContent" class="label">Content</label>
-                <textarea id="pasteContent" class="textarea" name="pasteContent" required maxlength="500000"></textarea>
-                <button type="submit" class="button">Create</button>
+            <h1>login</h1>
+            <form id="loginForm">
+                <label for="usernameTitle" class="label">Username</label>
+                <input type="text" id="usernameInput" class="textinput" name="pasteTitle" required maxlength="20">
+                <label for="passwordTitle" class="label">Password</label>
+                <input type="password" id="passwordInput" class="textinput" name="pasteTitle" required maxlength="50">
+                <button type="submit" class="button">Login</button>
             </form>
         </div>
     </div>
 </body>
 <script>
-    document.getElementById("createForm").addEventListener("submit", function (event) {
+    document.getElementById("loginForm").addEventListener("submit", function (event) {
         event.preventDefault();
 
-        var textAreaContent = document.getElementById("pasteContent").value;
-        var textTitleContent = document.getElementById("pasteTitle").value;
+        var usernameContent = document.getElementById("usernameInput").value;
+        var passwordContent = document.getElementById("passwordInput").value;
 
-        var requestUrl = "/api/pastes/create";
+        var requestUrl = "/api/accounts/login";
         fetch(requestUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                title: textTitleContent,
-                content: textAreaContent
+                username: usernameContent,
+                password: passwordContent
             })
         })
             .then(response => response.json())
             .then(obj => {
                 const result = JSON.parse(obj);
-                if (result.pasteId != null) {
-                    window.location.href = `/${result.pasteId}`;
+                if (result.message != null) {
+                    window.location.href = "/";
                 }
             })
     });
@@ -86,7 +86,7 @@ body{
     overflow-y: auto;
     border: #222222 2px solid;
 }
-#createForm{
+#loginForm{
     display: flex;
     flex-direction: column;
     align-items: center;
