@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@100..900&display=swap" rel="stylesheet">
     <title>{pastetitle}</title>
 </head>
+
 <body>
     <div class="nav-div">
         <a href="/">home</a>
@@ -13,27 +14,41 @@
         <a href="/archive">archive</a>
         {html}
     </div>
-    <div class="container-wrapper"> 
+    <div class="container-wrapper">
         <div class="paste-container">
-            <h1>{pastetitle}</h1>
+            <h1 id="paste-title" title="{pastetitle}">{pastetitle}</h1>
+            <h3 class="uploader-text">{username} <a id="creationdate">{creationdate}</a> {pastesize}</h3>
             <div class="paste-wrapper">
                 <p>{content}</p>
             </div>
             <div class="buttons-wrapper">
                 <a href="/raw/{pasteid}">
-                    <button id="view-raw-button" class="button">View Raw</button>
+                    <button id="view-raw-button" class="button">view raw</button>
                 </a>
-                <button id="copy-button" class="button">Copy</button>
-                <button id="download-button" class="button">Download</button>
+                <button id="copy-button" class="button">copy</button>
+                <button id="download-button" class="button">download</button>
+                {deletebutton}
             </div>
         </div>
     </div>
 </body>
 <script>
-    document.getElementById("copy-button").addEventListener("click", function(){
+    function localizeDateTime(unixTimestamp) {
+        const date = new Date(unixTimestamp * 1000);
+        return date.toLocaleString();
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const creationdateElement = document.getElementById('creationdate');
+        const creationdateText = creationdateElement.innerText.trim();
+        
+        creationdateElement.innerText = localizeDateTime(parseInt(creationdateText));
+    });
+
+    document.getElementById("copy-button").addEventListener("click", function () {
         navigator.clipboard.writeText(document.querySelector(".paste-wrapper").innerText);
     });
-    document.getElementById("download-button").addEventListener("click", function(){
+    document.getElementById("download-button").addEventListener("click", function () {
         var element = document.createElement('a');
         element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(document.querySelector(".paste-wrapper").innerText));
         element.setAttribute('download', '{pasteid}.txt');
@@ -42,117 +57,145 @@
         element.click();
         document.body.removeChild(element);
     });
+    {deletescript}
+    
 </script>
-<style>
-body{
-    font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
-    font-weight: bold;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    background-color: #0d0d0d;
-}
-.container-wrapper{
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    height: 98.7vh;
-}
-.paste-container{
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    width: 80%;
-    padding: 20px;
-    background-color: #181818;
-    color: white;
-    border-radius: 5px;
-    height: fit-content;
-    max-height: 80vh;
-    min-height: 20%;
-    overflow-y: auto;
-    border: #222222 2px solid;
-}
-.paste-wrapper{
-    width: 95%;
-    height: fit-content;
-    padding-left: 10px;
-    padding-right: 10px;
-    background-color: #1d1d1d;
-    color: white;
-    border-radius: 5px;
-    margin-top: 10px;
-    text-wrap: wrap;
-    font-weight: 500;
-    max-height: 80%;
-    overflow-y: auto;
-    border: #222222 2px solid;
-}
-.buttons-wrapper{
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    width: fit-content;
-    margin-top: 10px;
-}
-.buttons-wrapper a{
-    text-decoration: none;
-}
-.button{
-    transition: 300ms;
-    background-color: #222222;
-    color: white;
-    border: 2px solid #33333300;
-    border-radius: 5px;
-    padding: 5px;
-    margin: 5px;
-    cursor: pointer;
-    font-weight: 500;
-    font-size: 1.05rem;
-    padding: 10px;
-}
-.button:hover{
-    transition: 300ms;
-    background-color: #333333;
-    border: 2px solid #3a3a3a;
-}
-.nav-div{
-    top: 0;
-    margin-top: 10px;
-    position: absolute;
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    width: fit-content;
-    background-color: #181818;
-    padding-left: 10px;
-    padding-right: 10px;
-    color: white;
-    border-radius: 5px;
-    height: fit-content;
-    overflow-y: auto;
-    border: #222222 2px solid;
-}
-.nav-div a{
-    text-decoration: none;
-    color: white;
-    padding: 10px;
-    margin: 10px;
-    border-radius: 5px;
-    background-color: #222222;
-    transition: 300ms;
-    border: #2a2a2a00 2px solid;
-}
-.nav-div a:hover{
-    transition: 300ms;
-    background-color: #333333;
-    border: #3a3a3a 2px solid;
-}
-</style>
+
+
 </html>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@100..900&display=swap');
+    body {
+        font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+        font-weight: bold;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background-color: #0d0d0d;
+    }
+
+    .container-wrapper {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 98.7vh;
+    }
+
+    .paste-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 80%;
+        padding: 20px;
+        background-color: #181818;
+        color: white;
+        border-radius: 5px;
+        height: fit-content;
+        max-height: 80vh;
+        min-height: 20%;
+        overflow-y: auto;
+        border: #222222 2px solid;
+    }
+
+    .paste-wrapper {
+        width: 95%;
+        height: fit-content;
+        padding-left: 10px;
+        padding-right: 10px;
+        background-color: #1d1d1d;
+        color: white;
+        border-radius: 5px;
+        margin-top: 10px;
+        text-wrap: wrap;
+        font-weight: 500;
+        max-height: 80%;
+        overflow-y: auto;
+        border: #222222 2px solid;
+    }
+
+    .buttons-wrapper {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        width: fit-content;
+        margin-top: 10px;
+    }
+
+    .buttons-wrapper a {
+        text-decoration: none;
+    }
+
+    .button {
+        transition: 300ms;
+        background-color: #222222;
+        color: white;
+        border: 2px solid #33333300;
+        border-radius: 5px;
+        padding: 5px;
+        margin: 5px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 1.05rem;
+        padding: 10px;
+        font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+        font-weight: 625;
+    }
+
+    .button:hover {
+        transition: 300ms;
+        background-color: #333333;
+        border: 2px solid #3a3a3a;
+    }
+
+    .uploader-text {
+        margin-top: -1.2rem;
+        font-weight: 600;
+    }
+
+    .user-a {
+        color: rgb(190, 190, 190);
+        text-decoration: none;
+        text-decoration: underline;
+    }
+
+    .nav-div {
+        top: 0;
+        margin-top: 10px;
+        position: absolute;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        width: fit-content;
+        background-color: #181818;
+        padding-left: 10px;
+        padding-right: 10px;
+        color: white;
+        border-radius: 5px;
+        height: fit-content;
+        overflow-y: auto;
+        border: #222222 2px solid;
+    }
+
+    .nav-div a {
+        text-decoration: none;
+        color: white;
+        padding: 10px;
+        margin: 10px;
+        border-radius: 5px;
+        background-color: #222222;
+        transition: 300ms;
+        border: #2a2a2a00 2px solid;
+    }
+
+    .nav-div a:hover {
+        transition: 300ms;
+        background-color: #333333;
+        border: #3a3a3a 2px solid;
+    }
+</style>
