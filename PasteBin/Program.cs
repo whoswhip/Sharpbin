@@ -596,6 +596,192 @@ class Program
                 return;
             }
         }).RequireRateLimiting("fixed-bigger");
+        app.MapGet("/u/{username}", async (HttpContext context) =>
+        {
+            string username = context.Request?.RouteValues?["username"]?.ToString();
+            var html = File.ReadAllText(@"assets\user.html");
+            using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+            {
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT * FROM users WHERE Username LIKE @Username";
+                command.Parameters.AddWithValue("@Username", username);
+                var reader = await command.ExecuteReaderAsync();
+                await reader.ReadAsync();
+                if (!reader.HasRows)
+                {
+                    html = File.ReadAllText(@"assets\error.html");
+                    html = html.Replace("{code}", "404");
+                    html = html.Replace("{message}", "User not found");
+                    context.Response.ContentType = "text/html";
+                    await context.Response.WriteAsync(html);
+                    return;
+                }
+                else
+                {
+                    var user = new User
+                    {
+                        UID = reader.GetString(0),
+                        UUID = reader.GetString(1),
+                        Username = reader.GetString(2),
+                        PasswordHash = reader.GetString(3),
+                        CreationDate = reader.GetString(4),
+                        LastLoginDate = reader.GetString(5),
+                        Type = reader.GetInt32(6),
+                        State = reader.GetInt32(7),
+                    };
+                    List<Paste> pastes = new List<Paste>();
+                    var pastesCommand = connection.CreateCommand();
+                    pastesCommand.CommandText = "SELECT * FROM pastes WHERE Uploader LIKE @Uploader ORDER BY UID DESC";
+                    pastesCommand.Parameters.AddWithValue("@Uploader", user.UUID);
+                    var pastesReader = await pastesCommand.ExecuteReaderAsync();
+                    while (await pastesReader.ReadAsync())
+                    {
+                        var paste = new Paste
+                        {
+                            Title = pastesReader.GetString(1),
+                            UnixDate = long.Parse(pastesReader.GetString(2)),
+                            Size = pastesReader.GetString(3),
+                            Visibility = pastesReader.GetString(4),
+                            Id = pastesReader.GetString(5),
+                        };
+                        pastes.Add(paste);
+                    }
+                    string pasteList = string.Empty;
+                    long totalSize = 0;
+                    foreach (var paste in pastes)
+                    {
+                        totalSize += long.Parse(paste.Size);
+                        var difference = GetTimeDifference(DateTimeOffset.FromUnixTimeSeconds(paste.UnixDate ?? 0), DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.Now.ToUnixTimeSeconds()));
+                        string title = paste.Title;
+                        if (title.Length > 20)
+                        {
+                            title = title.Substring(0, 20) + "...";
+                        }
+                        pasteList += $"<a class=\"list-a\" href=\"/{paste.Id}\"><li class=\"list-item \">{paste.Title} {difference} {ConvertToBytes(paste.Size)}</li></a>";
+                    }
+                    html = html.Replace("{username}", user.Username);
+                    html = html.Replace("{uid}", user.UID);
+                    html = html.Replace("{creationdate}", user.CreationDate);
+                    html = html.Replace("{type}", accountType[user.Type]);
+                    html = html.Replace("{totalpastes}", pastes.Count.ToString());
+                    html = html.Replace("{totalsize}", ConvertToBytes(totalSize.ToString()));
+                    html = html.Replace("{pastes}", pasteList);
+                    if (await IsLoggedInAsync(context.Request.Cookies["token"]))
+                    {
+                        var loggedInUser = await GetLoggedInUserAsync(context.Request.Cookies["token"]);
+                        if (loggedInUser.UUID == user.UUID)
+                        {
+                            html = html.Replace("{html}", "<a href=\"/dash\">dashboard</a>");
+                        }
+                        else
+                        {
+                            html = html.Replace("{html}", "<a href=\"/dash\">dashboard</a>");
+                        }
+                    }
+                    else
+                    {
+                        html = html.Replace("{html}", "<a href=\"/login\">login</a> <a href=\"/sign-up\">sign up</a>");
+                    }
+                    context.Response.ContentType = "text/html";
+                    await context.Response.WriteAsync(html);
+                    return;
+                }
+            }
+        });
+        app.MapGet("/uid/{uid}", async (HttpContext context) =>
+        {
+            string username = context.Request?.RouteValues?["uid"]?.ToString();
+            var html = File.ReadAllText(@"assets\user.html");
+            using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+            {
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT * FROM users WHERE UID = @Username";
+                command.Parameters.AddWithValue("@Username", username);
+                var reader = await command.ExecuteReaderAsync();
+                await reader.ReadAsync();
+                if (!reader.HasRows)
+                {
+                    html = File.ReadAllText(@"assets\error.html");
+                    html = html.Replace("{code}", "404");
+                    html = html.Replace("{message}", "User not found");
+                    context.Response.ContentType = "text/html";
+                    await context.Response.WriteAsync(html);
+                    return;
+                }
+                else
+                {
+                    var user = new User
+                    {
+                        UID = reader.GetString(0),
+                        UUID = reader.GetString(1),
+                        Username = reader.GetString(2),
+                        PasswordHash = reader.GetString(3),
+                        CreationDate = reader.GetString(4),
+                        LastLoginDate = reader.GetString(5),
+                        Type = reader.GetInt32(6),
+                        State = reader.GetInt32(7),
+                    };
+                    List<Paste> pastes = new List<Paste>();
+                    var pastesCommand = connection.CreateCommand();
+                    pastesCommand.CommandText = "SELECT * FROM pastes WHERE Uploader LIKE @Uploader ORDER BY UID DESC";
+                    pastesCommand.Parameters.AddWithValue("@Uploader", user.UUID);
+                    var pastesReader = await pastesCommand.ExecuteReaderAsync();
+                    while (await pastesReader.ReadAsync())
+                    {
+                        var paste = new Paste
+                        {
+                            Title = pastesReader.GetString(1),
+                            UnixDate = long.Parse(pastesReader.GetString(2)),
+                            Size = pastesReader.GetString(3),
+                            Visibility = pastesReader.GetString(4),
+                            Id = pastesReader.GetString(5),
+                        };
+                        pastes.Add(paste);
+                    }
+                    string pasteList = string.Empty;
+                    long totalSize = 0;
+                    foreach (var paste in pastes)
+                    {
+                        totalSize += long.Parse(paste.Size);
+                        var difference = GetTimeDifference(DateTimeOffset.FromUnixTimeSeconds(paste.UnixDate ?? 0), DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.Now.ToUnixTimeSeconds()));
+                        string title = paste.Title;
+                        if (title.Length > 20)
+                        {
+                            title = title.Substring(0, 20) + "...";
+                        }
+                        pasteList += $"<a class=\"list-a\" href=\"/{paste.Id}\"><li class=\"list-item \">{paste.Title} {difference} {ConvertToBytes(paste.Size)}</li></a>";
+                    }
+                    html = html.Replace("{username}", user.Username);
+                    html = html.Replace("{uid}", user.UID);
+                    html = html.Replace("{creationdate}", user.CreationDate);
+                    html = html.Replace("{type}", accountType[user.Type]);
+                    html = html.Replace("{totalpastes}", pastes.Count.ToString());
+                    html = html.Replace("{totalsize}", ConvertToBytes(totalSize.ToString()));
+                    html = html.Replace("{pastes}", pasteList);
+                    if (await IsLoggedInAsync(context.Request.Cookies["token"]))
+                    {
+                        var loggedInUser = await GetLoggedInUserAsync(context.Request.Cookies["token"]);
+                        if (loggedInUser.UUID == user.UUID)
+                        {
+                            html = html.Replace("{html}", "<a href=\"/dash\">dashboard</a>");
+                        }
+                        else
+                        {
+                            html = html.Replace("{html}", "<a href=\"/dash\">dashboard</a>");
+                        }
+                    }
+                    else
+                    {
+                        html = html.Replace("{html}", "<a href=\"/login\">login</a> <a href=\"/sign-up\">sign up</a>");
+                    }
+                    context.Response.ContentType = "text/html";
+                    await context.Response.WriteAsync(html);
+                    return;
+                }
+            }
+        });
 
         #region ADMIN PANEL
 

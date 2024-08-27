@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@100..900&display=swap" rel="stylesheet">
+    <title>{username}</title>
+</head>
+
+<body>
+    <div class="nav-div">
+        <a href="/">home</a>
+        <a href="/pastes">recent pastes</a>
+        <a href="/archive">archive</a>
+        {html}
+    </div>
+    <div class="container-wrapper">
+        <div class="account-container">
+            <div class="account-info">
+                <h2>{username}</h2>
+                <h3>UID: {uid}</h3>
+                <h3 id="creationdate">{creationdate}</h3>
+                <h3>Account Type: {type}</h3>
+                <h3>Total Pastes: {totalpastes}</h3>
+                <h3>Total Pastes Size: {totalsize}</h3>
+            </div>
+            <div class="collumn-2">
+                <div class="pastes-wrapper">
+                    <h2 style="text-align: center;">Pastes</h2>
+                    <div class="pastes-container">
+                        {pastes}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</body>
+<script>
+    function localizeDateTime(unixTimestamp) {
+        const date = new Date(unixTimestamp * 1000);
+        return date.toLocaleString();
+    }
+
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const creationdateElement = document.getElementById('creationdate');
+
+        const creationdateText = creationdateElement.innerText.trim();
+
+        creationdateElement.innerText = "Creation Date: " + localizeDateTime(parseInt(creationdateText));
+    });
+</script>
+<style>
+    body {
+        font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+        font-weight: bold;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background-color: #0d0d0d;
+    }
+
+    .container-wrapper {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 98.7vh;
+    }
+
+    .account-container {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        width: 80%;
+        padding: 20px;
+        background-color: #181818;
+        color: white;
+        border-radius: 5px;
+        height: fit-content;
+        max-height: 80vh;
+        overflow-y: auto;
+        border: #222222 2px solid;
+    }
+
+    .account-info {
+        display: flex;
+        flex-direction: column;
+        background-color: #222222;
+        padding: 20px;
+        border-radius: 5px;
+        width: fit-content;
+        width: 48%;
+        max-width: 48%;
+        margin-right: 10px;
+    }
+
+    h3 {
+        word-break: keep-all;
+        margin-top: -5px;
+    }
+
+    .list-a {
+        transition: background-color 300ms;
+        text-decoration: none;
+        color: white;
+        width: 90%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 10px;
+        border-radius: 5px;
+        background-color: #2a2a2a;
+        margin-top: 5px;
+        margin-bottom: 5px;
+        border: #3a3a3a00 2px solid;
+    }
+
+    .list-a:hover {
+        transition: background-color 300ms;
+        background-color: #333333;
+        border: #3a3a3a 2px solid;
+    }
+
+    .list-item {
+        list-style: none;
+    }
+
+    .collumn-2 {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 48%;
+        max-width: 48%;
+    }
+
+    .pastes-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: fit-content;
+        width: 85%;
+        max-width: 100%;
+        background-color: #222222;
+        border-radius: 5px;
+        padding: 20px;
+        height: fit-content;
+        height: 100%;
+        max-height: 100%;
+    }
+
+    .pastes-container {
+
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 100%;
+        height: 100%;
+        max-height: 100%;
+        overflow-y: auto;
+    }
+
+    .nav-div {
+        top: 0;
+        margin-top: 10px;
+        position: absolute;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        width: fit-content;
+        background-color: #181818;
+        padding-left: 10px;
+        padding-right: 10px;
+        color: white;
+        border-radius: 5px;
+        height: fit-content;
+        overflow-y: auto;
+        border: #222222 2px solid;
+    }
+
+    .nav-div a {
+        text-decoration: none;
+        color: white;
+        padding: 10px;
+        margin: 10px;
+        border-radius: 5px;
+        background-color: #222222;
+        transition: 300ms;
+        border: #2a2a2a00 2px solid;
+    }
+
+    .nav-div a:hover {
+        transition: 300ms;
+        background-color: #333333;
+        border: #3a3a3a 2px solid;
+    }
+</style>
+
+</html>
