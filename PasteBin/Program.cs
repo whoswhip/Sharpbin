@@ -375,6 +375,8 @@ class Program
                 var userReader = await userCommand.ExecuteReaderAsync();
                 await userReader.ReadAsync();
 
+                string title = paste.Title;
+
                 var user = new User();
                 if (userReader.HasRows)
                 {
@@ -402,15 +404,17 @@ class Program
                 if (paste.Title == "" || string.IsNullOrEmpty(paste.Title))
                 {
                     paste.Title = $"Untitled {reader.GetString(0)}";
+                    title = $"Untitled {reader.GetString(0)}";
                 }
                 if (paste.Title.Length > 40)
                 {
-                    paste.Title = paste.Title.Substring(0, 50) + "...";
+                    title = paste.Title.Substring(0, 40) + "...";
                 }
 
 
                 var html = File.ReadAllText("assets\\paste.html");
-                html = html.Replace("{pastetitle}", paste.Title);
+                html = html.Replace("{pastetitleattribute}", paste.Title);
+                html = html.Replace("{pastetitle}", title);
                 html = html.Replace("{content}", content);
                 html = html.Replace("{pasteid}", paste.Id);
                 html = html.Replace("{username}", user.Username);
@@ -496,7 +500,7 @@ class Program
                     }
                     if (paste.Title.Length > 40)
                     {
-                        title = paste.Title.Substring(0, 50) + "...";
+                        title = paste.Title.Substring(0, 40) + "...";
                     }
                     var difference = GetTimeDifference(DateTimeOffset.FromUnixTimeSeconds(paste.UnixDate ?? 0), DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.Now.ToUnixTimeSeconds()));
 
@@ -563,7 +567,7 @@ class Program
                     }
                     if (paste.Title.Length > 40)
                     {
-                        title = paste.Title.Substring(0, 50) + "...";
+                        title = paste.Title.Substring(0, 40) + "...";
                     }
                     var difference = GetTimeDifference(DateTimeOffset.FromUnixTimeSeconds(paste.UnixDate ?? 0), DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.Now.ToUnixTimeSeconds()));
                     pastes += $"<a title=\"{paste.Title}\" href=\"/{paste.Id}\"><li>{title} {difference} {ConvertToBytes(paste.Size)}</li></a>";
@@ -1001,6 +1005,9 @@ class Program
             string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
             string ip = context.Request.Headers["X-Forwarded-For"].ToString() ?? context.Connection.RemoteIpAddress.ToString();
             string uploaderUUID = string.Empty;
+            string token = context.Request.Cookies["token"] ?? context.Request.Headers["Authorization"];
+
+
             if (string.IsNullOrEmpty(requestBody))
             {
                 context.Response.StatusCode = 400;
@@ -1008,18 +1015,18 @@ class Program
                 await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No content uploaded" }.ToString());
                 return;
             }
-            if (await IsLoggedInAsync(context.Request.Cookies["token"]))
+            if (await IsLoggedInAsync(token))
             {
                 using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
                 {
                     await connection.OpenAsync();
                     var command = connection.CreateCommand();
                     command.CommandText = "SELECT * FROM logins WHERE Token = @Token";
-                    command.Parameters.AddWithValue("@Token", context.Request.Cookies["token"]);
+                    command.Parameters.AddWithValue("@Token", token);
                     var reader = await command.ExecuteReaderAsync();
                     await reader.ReadAsync();
                     uploaderUUID = reader.GetString(0);
-                    var user = await GetLoggedInUserAsync(context.Request.Cookies["token"]);
+                    var user = await GetLoggedInUserAsync(token);
                     if (user.State != 0)
                     {
                         context.Response.StatusCode = 401;
@@ -1095,6 +1102,7 @@ class Program
         app.MapPost("/api/pastes/delete", async (HttpContext context) =>
         {
             string token = context.Request.Cookies["token"] ?? context.Request.Headers["Authorization"];
+            var log = await Logging.LogRequestAsync(context);
             string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
             if (!await IsLoggedInAsync(token))
             {
@@ -1147,9 +1155,8 @@ class Program
                     user = await GetLoggedInUserAsync(token);
                 }
 
-                if (verifyReader.GetString(0) != UUID || user.Type != 255)
+                if (user.Type != 255 && verifyReader.GetString(0) != UUID )
                 {
-                    Console.WriteLine(verifyReader.GetString(1) + "  " + UUID);
                     context.Response.StatusCode = 401;
                     context.Response.ContentType = "application/json";
                     await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
@@ -1162,6 +1169,9 @@ class Program
                 deleteCommand.Parameters.AddWithValue("@ID", id);
                 await deleteCommand.ExecuteNonQueryAsync();
                 File.Delete($"pastes/{id}.txt");
+                Console.WriteLine($"[{log.Now}] Paste {id} deleted by {user.Username}({user.UUID})");
+                await File.AppendAllTextAsync("logs.log", $"[{log.Now}] PASTE DELETED {id} {log.IP} {log.Method} {log.Path} {log.UserAgent} {log.Referer} {log.Body} {user.UUID}\n");
+                context.Response.StatusCode = 200;
                 await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "Paste deleted" }.ToString());
             }
 
