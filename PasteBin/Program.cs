@@ -1176,6 +1176,83 @@ class Program
             }
 
         }).RequireRateLimiting("fixed");
+        app.MapPost("/api/pastes/search", async (HttpContext context) =>
+        {
+            var log = await Logging.LogRequestAsync(context);
+            var parameters = context.Request.Query;
+            string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
+            if (string.IsNullOrEmpty(requestBody))
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                return;
+            }
+            var data = JObject.Parse(requestBody);
+            var query = SanitizeInput(data["query"]?.ToString() ?? "");
+            Console.WriteLine($"erm: {query}");
+            if (string.IsNullOrEmpty(query) || string.IsNullOrWhiteSpace(query))
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                return;
+            }
+
+            using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+            {
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT * FROM pastes WHERE Title LIKE @Query";
+                command.Parameters.AddWithValue("@Query", $"%{query}%");
+                var reader = await command.ExecuteReaderAsync();
+                JArray pastes = new JArray();
+                string pastesHTML = string.Empty;
+                while (await reader.ReadAsync())
+                {
+                    var paste = new Paste
+                    {
+                        Title = reader.GetString(1),
+                        UnixDate = long.Parse(reader.GetString(2)),
+                        Size = reader.GetString(3),
+                        Visibility = reader.GetString(4),
+                        Id = reader.GetString(5),
+                    };
+                    var difference = GetTimeDifference(DateTimeOffset.FromUnixTimeSeconds(paste.UnixDate ?? 0), DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.Now.ToUnixTimeSeconds()));
+                    if (paste.Visibility == "Private" || paste.Visibility == "Unlisted")
+                    {
+                        continue;
+                    }
+                    if (string.IsNullOrEmpty(parameters["html"]))
+                    {
+                        JObject pasteJson = new JObject();
+                        pasteJson["title"] = paste.Title;
+                        pasteJson["id"] = paste.Id;
+                        pasteJson["size"] = ConvertToBytes(paste.Size);
+                        pasteJson["date"] = difference;
+                        pasteJson["visibility"] = paste.Visibility;
+                        pastes.Add(pasteJson);
+                    }
+                    else
+                    {
+                        pastesHTML += $"<a title=\"{paste.Title}\" href=\"/{paste.Id}\"><li>{paste.Title} {difference}</li></a>";
+                    }
+
+                }
+                context.Response.StatusCode = 200;
+                if (string.IsNullOrEmpty(parameters["html"]))
+                {
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(pastes.ToString());
+                }
+                else
+                {
+                    context.Response.ContentType = "text/html";
+                    await context.Response.WriteAsync(pastesHTML);
+                }
+            }
+
+        }).RequireRateLimiting("fixed");
         app.MapPost("/api/accounts/create", async (HttpContext context) =>
         {
             string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();

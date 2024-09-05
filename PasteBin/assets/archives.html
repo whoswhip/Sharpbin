@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@100..900&display=swap" rel="stylesheet">
     <title>archive</title>
 </head>
+
 <body>
     <div class="nav-div">
         <a href="/">home</a>
@@ -13,155 +15,219 @@
         <a href="/archive">archive</a>
         {html}
     </div>
-    <div class="container-wrapper"> 
+    <div class="container-wrapper">
         <div class="pastes-container">
             <h1>paste archive</h1>
+            <input type="text" placeholder="search" class="text-input" oninput="search()">
             <div class="pastes-wrapper">
                 {pastes}
             </div>
             <div class="buttons-wrapper">
-                <a class="arrow-button" href="/archive?page={backpagenum}"><</a>
+                <a class="arrow-button" href="/archive?page={backpagenum}">&lt;</a>
                 <p>{currentpagenum}/{totalpages}</p>
                 <a class="arrow-button" href="/archive?page={pagenum}">></a>
             </div>
         </div>
     </div>
 </body>
+<script>
+    let searchTimeout;
+        
+        function search() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(searchPastes, 200);
+        }
+        
+        function searchPastes() {
+        const searchInput = document.querySelector('.text-input');
+        if (searchInput.value.length < 3) return;
+        fetch(`/api/pastes/search?html=true`, {
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+            query: searchInput.value
+            })
+        })
+        .then(response => response.text())
+        .then(data => {
+            const pastesWrapper = document.querySelector('.pastes-wrapper');
+            if (data === '') {
+            pastesWrapper.innerHTML = '<h1>no pastes found</h1>';
+            return;
+            }
+            pastesWrapper.innerHTML = data;
+        });
+        }
+</script>
 <style>
-body{
-    font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
-    font-weight: bold;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    background-color: #0d0d0d;
-    overflow-y: hidden;
-}
-.container-wrapper{
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    height: 100vh;
-}
-.pastes-container{
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 80%;
-    padding: 20px;
-    background-color: #181818;
-    color: white;
-    border-radius: 5px;
-    height: fit-content;
-    max-height: 80vh;
-    min-height: 20%;
-    border: #222222 2px solid;
-}
-.pastes-wrapper{
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 95%;
-    padding: 20px;
-    overflow-x: hidden;
-    overflow-y: auto;
-    max-height: 70vh;
-}
-.pastes-wrapper a{
-    text-decoration: none;
-    color: white;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-li{
-    transition: 300ms;
-    list-style: none;
-    padding: 10px;
-    margin: 10px;
-    background-color: #222222;
-    border-radius: 5px;
-    width: 90%;
-    text-align: center;
-    cursor: pointer;
-    border: #22222200 2px solid;
-}
-li:hover{
-    transition: 300ms;
-    background-color: #333333;
-    border: #3a3a3a 2px solid;
-}
-.buttons-wrapper{
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    padding: 20px;
-}
-.buttons-wrapper a{
-    transition: 300ms;
-    text-decoration: none;
-    color: white;
-    width: fit-content;
-    margin-left: 10px;
-    margin-right: 10px;
-    min-width: 20%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: #222222;
-    border-radius: 5px;
-    padding: 10px;
-    border: #22222200 2px solid;
-}
-.buttons-wrapper a:hover{
-    transition: 300ms;
-    background-color: #333333;
-    border: 2px solid #3a3a3a;
-}
-.nav-div{
-    top: 0;
-    margin-top: 10px;
-    position: absolute;
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    width: fit-content;
-    background-color: #181818;
-    padding-left: 10px;
-    padding-right: 10px;
-    color: white;
-    border-radius: 5px;
-    height: fit-content;
-    overflow-y: auto;
-    border: #222222 2px solid;
-}
-.nav-div a{
-    text-decoration: none;
-    color: white;
-    padding: 10px;
-    margin: 10px;
-    border-radius: 5px;
-    background-color: #222222;
-    transition: 300ms;
-    border: #2a2a2a00 2px solid;
-}
-.nav-div a:hover{
-    transition: 300ms;
-    background-color: #333333;
-    border: #3a3a3a 2px solid;
-}
-.arrow-button{
-    min-width: fit-content !important;
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
-}
+    .text-input {
+        transition: border 300ms;
+        width: 90.62%;
+        height: 1.2rem;
+        padding: 10px;
+        margin: 10px;
+        border-radius: 5px;
+        border: #222222 2px solid;
+        background-color: #222222;
+        color: white;
+        font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+    }
+    .text-input:focus {
+        transition: border 300ms;
+        outline: none;
+        border: #3a3a3a 2px solid;
+    }
 
+    body {
+        font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+        font-weight: bold;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background-color: #0d0d0d;
+        overflow-y: hidden;
+    }
+
+    .container-wrapper {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 100vh;
+    }
+
+    .pastes-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 80%;
+        padding: 20px;
+        background-color: #181818;
+        color: white;
+        border-radius: 5px;
+        height: fit-content;
+        max-height: 80vh;
+        min-height: 20%;
+        border: #222222 2px solid;
+        transition: height 300ms;
+    }
+
+    .pastes-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 95%;
+        padding: 20px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        max-height: 70vh;
+    }
+
+    .pastes-wrapper a {
+        text-decoration: none;
+        color: white;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    li {
+        transition: 300ms;
+        list-style: none;
+        padding: 10px;
+        margin: 10px;
+        background-color: #222222;
+        border-radius: 5px;
+        width: 100%;
+        text-align: center;
+        cursor: pointer;
+        border: #22222200 2px solid;
+    }
+
+    li:hover {
+        transition: 300ms;
+        background-color: #333333;
+        border: #3a3a3a 2px solid;
+    }
+
+    .buttons-wrapper {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        padding: 20px;
+    }
+
+    .buttons-wrapper a {
+        transition: 300ms;
+        text-decoration: none;
+        color: white;
+        width: fit-content;
+        margin-left: 10px;
+        margin-right: 10px;
+        min-width: 20%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #222222;
+        border-radius: 5px;
+        padding: 10px;
+        border: #22222200 2px solid;
+    }
+
+    .buttons-wrapper a:hover {
+        transition: 300ms;
+        background-color: #333333;
+        border: 2px solid #3a3a3a;
+    }
+
+    .nav-div {
+        top: 0;
+        margin-top: 10px;
+        position: absolute;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        width: fit-content;
+        background-color: #181818;
+        padding-left: 10px;
+        padding-right: 10px;
+        color: white;
+        border-radius: 5px;
+        height: fit-content;
+        overflow-y: auto;
+        border: #222222 2px solid;
+    }
+
+    .nav-div a {
+        text-decoration: none;
+        color: white;
+        padding: 10px;
+        margin: 10px;
+        border-radius: 5px;
+        background-color: #222222;
+        transition: 300ms;
+        border: #2a2a2a00 2px solid;
+    }
+
+    .nav-div a:hover {
+        transition: 300ms;
+        background-color: #333333;
+        border: #3a3a3a 2px solid;
+    }
+
+    .arrow-button {
+        min-width: fit-content !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
 </style>
+
 </html>
