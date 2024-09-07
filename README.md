@@ -5,4 +5,9 @@ Sharpbin can be used for sharing large amounts of text.
 - Account System
 - Standalone
 - Raw Text Serving
-... More to come!
+- Admin Panel that includes banning users
+- Search feature for pastes
+- Recent Pastes and Paste Archives
+- Pastes can be deleted by an admin or the creator
+- User profile pages
+... And more to come!
