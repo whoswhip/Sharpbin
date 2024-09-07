@@ -5,11 +5,12 @@ using Newtonsoft.Json.Linq;
 using System.Data;
 using System.Text;
 using Sharpbin;
-using System.Security.Cryptography;
 
 class Program
 {
     private static string salt = string.Empty;
+    private static string smallerSalt = string.Empty;
+
     public static Dictionary<int, string> accountType = new Dictionary<int, string>
     {
         { 0, "User" },
@@ -76,7 +77,7 @@ class Program
 
         app.MapGet("/", async (HttpContext context) =>
         {
-            var html = File.ReadAllText("assets\\index.html");
+            var html = File.ReadAllText("assets/index.html");
             bool loggedIn = await IsLoggedInAsync(context.Request.Cookies["token"]);
             if (loggedIn)
             {
@@ -96,6 +97,17 @@ class Program
             await context.Response.WriteAsync(html);
             return;
         });
+        app.MapGet("/favicon.ico", async (HttpContext context) =>
+        {
+            context.Response.ContentType = "image/x-icon";
+            if (!File.Exists("assets/favicon.ico"))
+            {
+                context.Response.StatusCode = 404;
+                return;
+            }
+            await context.Response.SendFileAsync("assets/favicon.ico");
+            return;
+        });
         app.MapGet("/login", async (HttpContext context) =>
         {
             if (await IsLoggedInAsync(context.Request.Cookies["token"]))
@@ -103,7 +115,7 @@ class Program
                 context.Response.Redirect("/");
                 return;
             }
-            var html = File.ReadAllText("assets\\login.html");
+            var html = File.ReadAllText("assets/login.html");
             html = html.Replace("{html}", "<a href=\"/sign-up\">sign up</a>");
             context.Response.ContentType = "text/html";
             await context.Response.WriteAsync(html);
@@ -116,7 +128,7 @@ class Program
                 context.Response.Redirect("/");
                 return;
             }
-            var html = File.ReadAllText("assets\\signup.html");
+            var html = File.ReadAllText("assets/signup.html");
             html = html.Replace("{html}", "<a href=\"/login\">login</a>");
             context.Response.ContentType = "text/html";
             await context.Response.WriteAsync(html);
@@ -197,15 +209,15 @@ class Program
             }
             string totalSizeString = ConvertToBytes(totalSize.ToString());
 
-            var html = File.ReadAllText("assets\\dash.html");
+            var html = File.ReadAllText("assets/dash.html");
             if (user.Type == 255)
             {
-                html = File.ReadAllText("assets\\admin.html");
+                html = File.ReadAllText("assets/admin.html");
                 using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
                 {
                     await connection.OpenAsync();
                     var usersCommand = connection.CreateCommand();
-                    usersCommand.CommandText = "SELECT * FROM users";
+                    usersCommand.CommandText = "SELECT * FROM users LIMIT 10";
                     var usersReader = await usersCommand.ExecuteReaderAsync();
                     List<User> users = new List<User>();
                     while (await usersReader.ReadAsync())
@@ -266,7 +278,7 @@ class Program
         app.MapGet("/paste-not-found", async (HttpContext context) =>
         {
             context.Response.StatusCode = 404;
-            var error_html = File.ReadAllText("assets\\error.html");
+            var error_html = File.ReadAllText("assets/error.html");
             error_html = error_html.Replace("{code}", "404");
             error_html = error_html.Replace("{message}", "Paste not found");
             bool loggedIn = await IsLoggedInAsync(context.Request.Cookies["token"]);
@@ -285,7 +297,7 @@ class Program
         app.MapGet("/unauthorized", async (HttpContext context) =>
         {
             context.Response.StatusCode = 404;
-            var error_html = File.ReadAllText("assets\\error.html");
+            var error_html = File.ReadAllText("assets/error.html");
             error_html = error_html.Replace("{code}", "401");
             error_html = error_html.Replace("{message}", "Unauthorized");
             bool loggedIn = await IsLoggedInAsync(context.Request.Cookies["token"]);
@@ -304,7 +316,7 @@ class Program
         app.MapGet("/banned", async (HttpContext context) =>
         {
             context.Response.StatusCode = 404;
-            var error_html = File.ReadAllText("assets\\error.html");
+            var error_html = File.ReadAllText("assets/error.html");
             bool loggedIn = await IsLoggedInAsync(context.Request.Cookies["token"]);
             if (loggedIn)
             {
@@ -412,7 +424,7 @@ class Program
                 }
 
 
-                var html = File.ReadAllText("assets\\paste.html");
+                var html = File.ReadAllText("assets/paste.html");
                 html = html.Replace("{pastetitleattribute}", paste.Title);
                 html = html.Replace("{pastetitle}", title);
                 html = html.Replace("{content}", content);
@@ -445,7 +457,7 @@ class Program
                 await context.Response.WriteAsync(html);
                 return;
             }
-        });
+        }).RequireRateLimiting("fixed-bigger");
         app.MapGet("/raw/{id}", async (HttpContext context) =>
         {
             var id = context.Request?.RouteValues?["id"]?.ToString();
@@ -458,10 +470,10 @@ class Program
             context.Response.ContentType = "text/plain";
             await context.Response.WriteAsync(content);
             return;
-        });
+        }).RequireRateLimiting("fixed-bigger");
         app.MapGet("/pastes", async (HttpContext context) =>
         {
-            var html = File.ReadAllText("assets\\recent_pastes.html");
+            var html = File.ReadAllText("assets/recent_pastes.html");
             bool loggedIn = await IsLoggedInAsync(context.Request.Cookies["token"]);
             if (loggedIn)
             {
@@ -518,7 +530,7 @@ class Program
         }).RequireRateLimiting("fixed-bigger");
         app.MapGet("/archive", async (HttpContext context) =>
         {
-            var html = File.ReadAllText("assets\\archives.html");
+            var html = File.ReadAllText("assets/archives.html");
             var page = context.Request?.Query["page"].ToString();
 
             bool loggedIn = await IsLoggedInAsync(context.Request.Cookies["token"]);
@@ -603,7 +615,7 @@ class Program
         app.MapGet("/u/{username}", async (HttpContext context) =>
         {
             string username = context.Request?.RouteValues?["username"]?.ToString();
-            var html = File.ReadAllText(@"assets\user.html");
+            var html = File.ReadAllText(@"assets/user.html");
             using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
             {
                 await connection.OpenAsync();
@@ -614,7 +626,7 @@ class Program
                 await reader.ReadAsync();
                 if (!reader.HasRows)
                 {
-                    html = File.ReadAllText(@"assets\error.html");
+                    html = File.ReadAllText(@"assets/error.html");
                     html = html.Replace("{code}", "404");
                     html = html.Replace("{message}", "User not found");
                     context.Response.ContentType = "text/html";
@@ -696,7 +708,7 @@ class Program
         app.MapGet("/uid/{uid}", async (HttpContext context) =>
         {
             string username = context.Request?.RouteValues?["uid"]?.ToString();
-            var html = File.ReadAllText(@"assets\user.html");
+            var html = File.ReadAllText(@"assets/user.html");
             using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
             {
                 await connection.OpenAsync();
@@ -707,7 +719,7 @@ class Program
                 await reader.ReadAsync();
                 if (!reader.HasRows)
                 {
-                    html = File.ReadAllText(@"assets\error.html");
+                    html = File.ReadAllText(@"assets/error.html");
                     html = html.Replace("{code}", "404");
                     html = html.Replace("{message}", "User not found");
                     context.Response.ContentType = "text/html";
@@ -806,7 +818,7 @@ class Program
                 }
             }
 
-            var html = File.ReadAllText(@"assets\admin\user.html");
+            var html = File.ReadAllText(@"assets/admin/user.html");
             using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
             {
                 await connection.OpenAsync();
@@ -817,7 +829,7 @@ class Program
                 await reader.ReadAsync();
                 if (!reader.HasRows)
                 {
-                    html = File.ReadAllText(@"assets\error.html");
+                    html = File.ReadAllText(@"assets/error.html");
                     html = html.Replace("{code}", "404");
                     html = html.Replace("{message}", "User not found");
                     context.Response.ContentType = "text/html";
@@ -1004,6 +1016,399 @@ class Program
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "User banned" }.ToString());
             return;
+        }).RequireRateLimiting("fixed");
+        app.MapPost("/api/accounts/admin/unban", async (HttpContext context) =>
+        {
+            var loggedInUser = await GetLoggedInUserAsync(context.Request.Cookies["token"]);
+            if (!await IsLoggedInAsync(context.Request.Cookies["token"]))
+            {
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                return;
+            }
+            else if (await IsLoggedInAsync(context.Request.Cookies["token"]))
+            {
+
+                if (loggedInUser.Type != 255)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                    return;
+                }
+            }
+            string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
+            try
+            {
+                JObject.Parse(requestBody);
+            }
+            catch
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                return;
+            }
+            if (string.IsNullOrEmpty(requestBody))
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                return;
+            }
+            var data = JObject.Parse(requestBody);
+            var uuid = SanitizeInput(data["uuid"]?.ToString() ?? "");
+            var reason = SanitizeInput(data["reason"]?.ToString() ?? "No reason provided");
+            if (string.IsNullOrEmpty(uuid) || string.IsNullOrWhiteSpace(uuid))
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                return;
+            }
+            var user = new User();
+            using (var connection = new SqliteConnection("Data Source = pastes.sqlite"))
+            {
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT * FROM users WHERE UUID = @UUID";
+                command.Parameters.AddWithValue("@UUID", uuid);
+                var reader = await command.ExecuteReaderAsync();
+                await reader.ReadAsync();
+                if (!reader.HasRows)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "User not found" }.ToString());
+                    return;
+                }
+                user = new User
+                {
+                    UID = reader.GetString(0),
+                    UUID = reader.GetString(1),
+                    Username = reader.GetString(2),
+                    PasswordHash = reader.GetString(3),
+                    CreationDate = reader.GetString(4),
+                    LastLoginDate = reader.GetString(5),
+                    Type = reader.GetInt32(6),
+                    State = reader.GetInt32(7),
+                };
+                if (user.State == 0)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "User is already unbanned" }.ToString());
+                    return;
+                }
+                var banUserCommand = connection.CreateCommand();
+                banUserCommand.CommandText = "UPDATE users SET State = 0 WHERE UUID = @UUID";
+                banUserCommand.Parameters.AddWithValue("@UUID", uuid);
+                await banUserCommand.ExecuteNonQueryAsync();
+
+                var punishedUsersCommand = connection.CreateCommand();
+                punishedUsersCommand.CommandText = "DELETE FROM punishedUsers WHERE UUID = @UUID";
+                punishedUsersCommand.Parameters.AddWithValue("@UUID", uuid);
+                await punishedUsersCommand.ExecuteNonQueryAsync();
+            }
+            Console.WriteLine($"[{DateTime.Now}] Account {user.Username}({user.UUID}) has been banned by {loggedInUser.Username}({loggedInUser.UUID}) for {reason}");
+            await File.AppendAllTextAsync("logs.log", $"[{DateTime.Now}] Account {user.Username}({user.UUID}) has been banned by {loggedInUser.Username}({loggedInUser.UUID}) for {reason}\n");
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "User unbanned" }.ToString());
+        }).RequireRateLimiting("fixed");
+        app.MapPost("/api/accounts/admin/change-password", async (HttpContext context) =>
+        {
+            var loggedInUser = await GetLoggedInUserAsync(context.Request.Cookies["token"]);
+            if (!await IsLoggedInAsync(context.Request.Cookies["token"]))
+            {
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                return;
+            }
+            else if (await IsLoggedInAsync(context.Request.Cookies["token"]))
+            {
+
+                if (loggedInUser.Type != 255)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                    return;
+                }
+            }
+            string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
+            try
+            {
+                JObject.Parse(requestBody);
+            }
+            catch
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                return;
+            }
+            if (string.IsNullOrEmpty(requestBody))
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                return;
+            }
+            var data = JObject.Parse(requestBody);
+            var uuid = SanitizeInput(data["uuid"]?.ToString() ?? "");
+            var newPassword = SanitizeInput(data["password"]?.ToString() ?? GenerateRandomPassword(50));
+            if (string.IsNullOrEmpty(newPassword) || string.IsNullOrWhiteSpace(newPassword))
+            {
+                newPassword = GenerateRandomPassword(50);
+            }
+            Console.WriteLine(newPassword);
+            if (string.IsNullOrEmpty(uuid) || string.IsNullOrWhiteSpace(uuid))
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                return;
+            }
+            var user = new User();
+            using (var connection = new SqliteConnection("Data Source = pastes.sqlite"))
+            {
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT * FROM users WHERE UUID = @UUID";
+                command.Parameters.AddWithValue("@UUID", uuid);
+                var reader = await command.ExecuteReaderAsync();
+                await reader.ReadAsync();
+                if (!reader.HasRows)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "User not found" }.ToString());
+                    return;
+                }
+                user = new User
+                {
+                    UID = reader.GetString(0),
+                    UUID = reader.GetString(1),
+                    Username = reader.GetString(2),
+                    PasswordHash = reader.GetString(3),
+                    CreationDate = reader.GetString(4),
+                    LastLoginDate = reader.GetString(5),
+                    Type = reader.GetInt32(6),
+                    State = reader.GetInt32(7),
+                };
+                var changePasswordCommand = connection.CreateCommand();
+                changePasswordCommand.CommandText = "UPDATE users SET PasswordHash = @Password WHERE UUID = @UUID";
+                changePasswordCommand.Parameters.AddWithValue("@Password", BCrypt.Net.BCrypt.HashPassword(newPassword));
+                changePasswordCommand.Parameters.AddWithValue("@UUID", uuid);
+                await changePasswordCommand.ExecuteNonQueryAsync();
+                var deleteLoginsCommand = connection.CreateCommand();
+                deleteLoginsCommand.CommandText = "DELETE FROM logins WHERE UUID = @UUID";
+                deleteLoginsCommand.Parameters.AddWithValue("@UUID", uuid);
+                await deleteLoginsCommand.ExecuteNonQueryAsync();
+            }
+            Console.WriteLine($"[{DateTime.Now}] Account {user.Username}({user.UUID}) has had their password changed by {loggedInUser.Username}({loggedInUser.UUID})");
+            await File.AppendAllTextAsync("logs.log", $"[{DateTime.Now}] Account {user.Username}({user.UUID}) has had their password changed by {loggedInUser.Username}({loggedInUser.UUID})\n");
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "Password changed", ["password"] = newPassword }.ToString());
+        }).RequireRateLimiting("fixed");
+        app.MapPost("/api/accounts/admin/get", async (HttpContext context) =>
+        {
+            var loggedInUser = await GetLoggedInUserAsync(context.Request.Cookies["token"]);
+            var htmlQuery = context.Request.Query["html"].ToString();
+            if (!await IsLoggedInAsync(context.Request.Cookies["token"]))
+            {
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                return;
+            }
+            else if (await IsLoggedInAsync(context.Request.Cookies["token"]))
+            {
+
+                if (loggedInUser.Type != 255)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                    return;
+                }
+            }
+            string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
+            try
+            {
+                JObject.Parse(requestBody);
+            }
+            catch
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                return;
+            }
+            if (string.IsNullOrEmpty(requestBody))
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                return;
+            }
+            var data = JObject.Parse(requestBody);
+            List<User> users = new List<User>();
+            JArray usersJson = new JArray();
+            string html = string.Empty;
+            long offset = data["offset"]?.ToObject<long>() ?? 0;
+            string searhc = data["search"]?.ToString() ?? "";
+            using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+            {
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT * FROM users ORDER BY UID LIMIT 10 OFFSET @Offset";
+                command.Parameters.AddWithValue("@Offset", offset);
+                var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    var user = new User
+                    {
+                        UID = reader.GetString(0),
+                        UUID = reader.GetString(1),
+                        Username = reader.GetString(2),
+                        PasswordHash = reader.GetString(3),
+                        CreationDate = reader.GetString(4),
+                        LastLoginDate = reader.GetString(5),
+                        Type = reader.GetInt32(6),
+                        State = reader.GetInt32(7),
+                    };
+                    users.Add(user);
+                    if (htmlQuery.ToLower() == "true")
+                    {
+                        html += $"<a class=\"list-a\" href=\"/admin/u/{user.Username}\"><li class=\"list-item \">{user.Username}</li></a>";
+                    }
+                    else
+                    {
+                        JObject userJson = new JObject();
+                        userJson["uid"] = user.UID;
+                        userJson["uuid"] = user.UUID;
+                        userJson["username"] = user.Username;
+                        userJson["creationdate"] = user.CreationDate;
+                        userJson["lastlogindate"] = user.LastLoginDate;
+                        userJson["type"] = accountType[user.Type];
+                        userJson["state"] = user.State;
+                        usersJson.Add(userJson);
+                    
+                    }
+                }
+            }
+            if (htmlQuery.ToLower() == "true")
+            {
+                context.Response.ContentType = "text/html";
+                await context.Response.WriteAsync(html);
+            }
+            else
+            {
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(usersJson.ToString());
+            }
+        }).RequireRateLimiting("fixed-bigger");
+        app.MapPost("/api/accounts/admin/search", async (HttpContext context) =>
+        {
+            var loggedInUser = await GetLoggedInUserAsync(context.Request.Cookies["token"]);
+            var htmlQuery = context.Request.Query["html"].ToString();
+            if (!await IsLoggedInAsync(context.Request.Cookies["token"]))
+            {
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                return;
+            }
+            else if (await IsLoggedInAsync(context.Request.Cookies["token"]))
+            {
+
+                if (loggedInUser.Type != 255)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                    return;
+                }
+            }
+            string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
+            try
+            {
+                JObject.Parse(requestBody);
+            }
+            catch
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                return;
+            }
+            if (string.IsNullOrEmpty(requestBody))
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                return;
+            }
+            var data = JObject.Parse(requestBody);
+            List<User> users = new List<User>();
+            JArray usersJson = new JArray();
+            string html = string.Empty;
+            string search = data["search"]?.ToString() ?? "";
+            using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+            {
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT * FROM users WHERE Username LIKE @Search ORDER BY UID";
+                command.Parameters.AddWithValue("@Search", $"%{search}%");
+                var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    var user = new User
+                    {
+                        UID = reader.GetString(0),
+                        UUID = reader.GetString(1),
+                        Username = reader.GetString(2),
+                        PasswordHash = reader.GetString(3),
+                        CreationDate = reader.GetString(4),
+                        LastLoginDate = reader.GetString(5),
+                        Type = reader.GetInt32(6),
+                        State = reader.GetInt32(7),
+                    };
+                    users.Add(user);
+                    if (htmlQuery.ToLower() == "true")
+                    {
+                        html += $"<a class=\"list-a\" href=\"/admin/u/{user.Username}\"><li class=\"list-item \">{user.Username}</li></a>";
+                    }
+                    else
+                    {
+                        JObject userJson = new JObject();
+                        userJson["uid"] = user.UID;
+                        userJson["uuid"] = user.UUID;
+                        userJson["username"] = user.Username;
+                        userJson["creationdate"] = user.CreationDate;
+                        userJson["lastlogindate"] = user.LastLoginDate;
+                        userJson["type"] = accountType[user.Type];
+                        userJson["state"] = user.State;
+                        usersJson.Add(userJson);
+
+                    }
+                }
+            }
+            if (htmlQuery.ToLower() == "true")
+            {
+                context.Response.ContentType = "text/html";
+                await context.Response.WriteAsync(html);
+            }
+            else
+            {
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(usersJson.ToString());
+            }
         });
 
         #endregion
@@ -1447,8 +1852,8 @@ class Program
                     reader.Close();
                 }
 
-                ip = Convert.ToBase64String(SHA1.HashData(Encoding.UTF8.GetBytes(log.IP)));
-                token = Convert.ToBase64String(Encoding.UTF8.GetBytes(BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString())));
+                ip = Convert.ToBase64String(Encoding.UTF8.GetBytes(BCrypt.Net.BCrypt.HashPassword(log.IP, smallerSalt)));
+                token = Convert.ToBase64String(Encoding.UTF8.GetBytes(BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString(), smallerSalt)));
                 passwordHash = BCrypt.Net.BCrypt.HashPassword(password, salt);
                 var insertCommand = connection.CreateCommand();
                 insertCommand.CommandText = "INSERT INTO users (UUID, Username, PasswordHash, CreationDate, LastLoginDate, Type, State) VALUES (@UUID, @Username, @PasswordHash, @CreationDate, @LastLoginDate, @Type, @State)";
@@ -1538,7 +1943,7 @@ class Program
                 return;
             }
 
-            string ip = Convert.ToBase64String(SHA1.HashData(Encoding.UTF8.GetBytes(log.IP)));
+            string ip = Convert.ToBase64String(Encoding.UTF8.GetBytes(BCrypt.Net.BCrypt.HashPassword(log.IP, smallerSalt)));
             string passwordHash = BCrypt.Net.BCrypt.HashPassword(password, salt);
 
             using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
@@ -1558,7 +1963,7 @@ class Program
                 }
                 if (BCrypt.Net.BCrypt.Verify(password, reader.GetString(3)))
                 {
-                    string token = Convert.ToBase64String(Encoding.UTF8.GetBytes(BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString())));
+                    string token = Convert.ToBase64String(Encoding.UTF8.GetBytes(BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString(), smallerSalt)));
                     DateTime expirationDate = DateTime.Now.AddYears(1);
 
                     var loginCommand = connection.CreateCommand();
@@ -1776,13 +2181,17 @@ class Program
         {
             var config = JObject.Parse(File.ReadAllText("config.json"));
             salt = config["Salt"]?.ToString() ?? BCrypt.Net.BCrypt.GenerateSalt(13);
+            smallerSalt = config["SmallerSalt"]?.ToString() ?? BCrypt.Net.BCrypt.GenerateSalt(8);
+
             Logging.Api_CreateMessage = config["API_CreateMessage"]?.ToString() ?? "";
         }
         else
         {
             var config = new JObject();
             config["Salt"] = BCrypt.Net.BCrypt.GenerateSalt(13);
+            config["SmallerSalt"] = BCrypt.Net.BCrypt.GenerateSalt(8);
             salt = config["Salt"]?.ToString() ?? BCrypt.Net.BCrypt.GenerateSalt(13);
+            smallerSalt = config["SmallerSalt"]?.ToString() ?? BCrypt.Net.BCrypt.GenerateSalt(8);
             File.WriteAllText("config.json", config.ToString());
         }
         if (!Directory.Exists("pastes"))
@@ -1792,6 +2201,13 @@ class Program
     {
         var random = new Random();
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        return new string(Enumerable.Repeat(chars, length)
+          .Select(s => s[random.Next(s.Length)]).ToArray());
+    }
+    public static string GenerateRandomPassword(int length)
+    {
+       var random = new Random();
+        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=";
         return new string(Enumerable.Repeat(chars, length)
           .Select(s => s[random.Next(s.Length)]).ToArray());
     }

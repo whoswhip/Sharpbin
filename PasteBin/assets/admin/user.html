@@ -32,7 +32,7 @@
                     <h2 style="text-align: center;">Actions</h2>
                     <div class="button-wrapper">
                         <a onclick="banAccount()" class="button">{typeban}</a>
-                        <a href="/dash" class="button">back</a>
+                        <a onclick="changePassword()" class="button">change password</a>
                     </div>
                 </div>
                 <div class="pastes-wrapper">
@@ -44,6 +44,9 @@
             </div>
 
         </div>
+    </div>
+    <div class="notification-div" id="notification">
+        <h2 id="notification-text"></h2>
     </div>
 </body>
 <script>
@@ -79,17 +82,104 @@
             .then(obj => {
                 const result = JSON.parse(obj);
                 if (result.message != null) {
-                    alert(result.message);
+                    notification(`${result.message} for ${reason}`);
                 } else {
-                    alert(`Failed to {typeban} account for ${result.error}`);
+                    notification(`Failed to {typeban} ${result.error}`);
                 }
             })
 
     }
+    function changePassword() {
+        let password = prompt('Enter the new password');
+        fetch('/api/accounts/admin/change-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                uuid: '{uuid}',
+                password: `${password}`
+            })
+
+        }).then(response => response.json())
+            .then(obj => {
+                const result = JSON.parse(obj);
+                if (result.message != null) {
+                    notification(`${result.message} to ${password}`);
+                } else {
+                    notification(`Failed to change password for ${result.error}`);
+                }
+            })
+
+    }
+    function notification(message) {
+        const notification = document.getElementById('notification');
+        const notificationText = document.getElementById('notification-text');
+        notificationText.innerText = message;
+        notification.style.animation = 'none';
+        notification.style.display = 'none';
+        notification.style.display = 'flex';
+        notification.style.animation = 'hoverup 1s';
+        setTimeout(() => {
+
+            notification.style.animation = 'hoverdown 1s';
+        }, 4000);
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 4900);
+
+    }
 </script>
 <style>
+    @keyframes hoverup {
+        0% {
+            transform: translateY(100%);
+        }
 
-    h3{
+        50% {
+            transform: translateY(-10px);
+        }
+
+        100% {
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes hoverdown {
+        0% {
+            transform: translateY(0);
+        }
+
+        50% {
+            transform: translateY(-10px);
+        }
+
+        100% {
+            transform: translateY(200%);
+        }
+
+    }
+
+    .notification-div {
+        position: fixed;
+        display: none;
+        right: 0;
+        bottom: 0;
+        width: fit-content;
+        height: fit-content;
+        color: white;
+        background-color: #181818;
+        border-radius: 5px;
+        border: #222222 2px solid;
+        padding-left: 10px;
+        padding-right: 10px;
+        margin-right: 10px;
+        margin-bottom: 10px;
+        justify-content: center;
+        align-items: center;
+    }
+
+    h3 {
         word-break: keep-all;
         margin-top: -5px;
     }
@@ -164,6 +254,7 @@
         justify-content: center;
         align-items: center;
         background-color: #0d0d0d;
+        position: relative;
     }
 
     .container-wrapper {

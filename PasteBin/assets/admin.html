@@ -40,7 +40,7 @@
                     <div class="accounts-wrapper">
                         <h3>Accounts</h3>
                         <input type="text" placeholder="search" class="text-input" oninput="search()">
-                        <div class="list-container">
+                        <div class="list-container" onscroll="getUsers()">
                             {accounts}
                         </div>
                     </div>
@@ -51,6 +51,7 @@
     </div>
 </body>
 <script>
+    let searchTimeout;
     function localizeDateTime(unixTimestamp) {
         const date = new Date(unixTimestamp * 1000);
         return date.toLocaleString();
@@ -66,24 +67,92 @@
         creationdateElement.innerText = "Creation Date: " + localizeDateTime(parseInt(creationdateText));
         lastlogindateElement.innerText = "Last Login Date: " + localizeDateTime(parseInt(lastlogindateText));
     });
+    function waitSearch() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(search, 200);
+    }
     function search() {
         const input = document.querySelector('.text-input').value;
         const accountWrapper = document.querySelector('.accounts-wrapper');
         const accounts = accountWrapper.querySelectorAll('.list-a');
-        accounts.forEach(account => {
-            const username = account.querySelector('.list-item').innerText;
-            if (username.toLowerCase().includes(input.toLowerCase())) {
-            account.style.display = 'flex';
-            } else {
-            account.style.display = 'none';
-            }
-        });
+        if (input.length == 0){
+            fetch(`/api/accounts/admin/get?html=true`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    offset: 0,
+                })
+            })
+                .then(response => response.text())
+                .then(data => {
+                    const listContainer = accountWrapper.querySelector('.list-container');
+                    listContainer.innerHTML = data;
+                })
+            return;
+        }
+        fetch(`/api/accounts/admin/search?html=true`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                search: input
+            })
+        })
+            .then(response => response.text())
+            .then(data => {
+                const listContainer = accountWrapper.querySelector('.list-container');
+                listContainer.innerHTML = data;
+            })
     }
+    function getUsers() {
+        const accountWrapper = document.querySelector('.accounts-wrapper');
+        const listContainer = accountWrapper.querySelector('.list-container');
+        const accounts = accountWrapper.querySelectorAll('.list-a');
+        const lastAccount = accounts[accounts.length - 1];
+        const lastAccountUsername = lastAccount.querySelector('.list-item').innerText;
+        const lastAccountUUID = lastAccount.querySelector('.list-item').getAttribute('data-uuid');
+        var isScrolledDown = listContainer.scrollTop + listContainer.clientHeight >= listContainer.scrollHeight;
+        if (!isScrolledDown) {
+            return;
+        }
+        fetch(`/api/accounts/admin/get?html=true`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                offset: accounts.length,
+            })
+        })
+            .then(response => response.text())
+            .then(data => {
+                if (data === '') {
+                    return;
+                }
+                console.log(listContainer.innerHTML);
+                console.log(data);
+
+                listContainer.innerHTML += data;
+
+            }
+            )
+
+
+    }
+    function isScrolledDown(element){
+        var scrollPosition = element.scrollTop + element.clientHeight;
+        var scrollHeight = element.scrollHeight;
+        return scrollPosition >= scrollHeight;
+    }
+
 </script>
 <style>
     .list-container {
         max-height: 100%;
-        overflow-y: auto;
+        overflow-y: scroll;
         display: flex;
         flex-direction: column;
         width: 100%;

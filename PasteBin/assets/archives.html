@@ -40,11 +40,11 @@
 
     function searchPastes() {
         const searchInput = document.querySelector('.text-input');
-        if (searchInput.value.length < 3 && searchInput.value.length != 0){
+        if (searchInput.value.length < 3 && searchInput.value.length != 0) {
             return;
-        } 
+        }
         else if (searchInput.value.length == 0) {
-            fetch(`/api/pastes/search?html=true`,{
+            fetch(`/api/pastes/search?html=true`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -60,6 +60,16 @@
                         pastesWrapper.innerHTML = '<h1>no pastes found</h1>';
                         return;
                     }
+                    try {
+                        json = JSON.parse(data);
+                        if (json.error != null) {
+                            pastesWrapper.innerHTML = `<h1>${json.error}</h1>`;
+                            return;
+                        }
+                    }
+                    catch {
+                    }
+
                     pastesWrapper.innerHTML = data;
                 });
             return;
@@ -79,6 +89,15 @@
                 if (data === '') {
                     pastesWrapper.innerHTML = '<h1>no pastes found</h1>';
                     return;
+                }
+                try {
+                    json = JSON.parse(data);
+                    if (json.error != null) {
+                        pastesWrapper.innerHTML = `<h1>${json.error}</h1>`;
+                        return;
+                    }
+                }
+                catch {
                 }
                 pastesWrapper.innerHTML = data;
             });
