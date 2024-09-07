@@ -32,54 +32,59 @@
 </body>
 <script>
     let searchTimeout;
-        
-        function search() {
+
+    function search() {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(searchPastes, 200);
-        }
-        
-        function searchPastes() {
+    }
+
+    function searchPastes() {
         const searchInput = document.querySelector('.text-input');
-        if (searchInput.value.length < 3) return;
+        if (searchInput.value.length < 3 && searchInput.value.length != 0){
+            return;
+        } 
+        else if (searchInput.value.length == 0) {
+            fetch(`/api/pastes/search?html=true`,{
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    query: ''
+                })
+            })
+                .then(response => response.text())
+                .then(data => {
+                    const pastesWrapper = document.querySelector('.pastes-wrapper');
+                    if (data === '') {
+                        pastesWrapper.innerHTML = '<h1>no pastes found</h1>';
+                        return;
+                    }
+                    pastesWrapper.innerHTML = data;
+                });
+            return;
+        }
         fetch(`/api/pastes/search?html=true`, {
             method: 'POST',
             headers: {
-            'Content-Type': 'application/json'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-            query: searchInput.value
+                query: searchInput.value
             })
         })
-        .then(response => response.text())
-        .then(data => {
-            const pastesWrapper = document.querySelector('.pastes-wrapper');
-            if (data === '') {
-            pastesWrapper.innerHTML = '<h1>no pastes found</h1>';
-            return;
-            }
-            pastesWrapper.innerHTML = data;
-        });
-        }
+            .then(response => response.text())
+            .then(data => {
+                const pastesWrapper = document.querySelector('.pastes-wrapper');
+                if (data === '') {
+                    pastesWrapper.innerHTML = '<h1>no pastes found</h1>';
+                    return;
+                }
+                pastesWrapper.innerHTML = data;
+            });
+    }
 </script>
 <style>
-    .text-input {
-        transition: border 300ms;
-        width: 90.62%;
-        height: 1.2rem;
-        padding: 10px;
-        margin: 10px;
-        border-radius: 5px;
-        border: #222222 2px solid;
-        background-color: #222222;
-        color: white;
-        font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
-    }
-    .text-input:focus {
-        transition: border 300ms;
-        outline: none;
-        border: #3a3a3a 2px solid;
-    }
-
     body {
         font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
         font-weight: bold;
@@ -185,6 +190,25 @@
         transition: 300ms;
         background-color: #333333;
         border: 2px solid #3a3a3a;
+    }
+
+    .text-input {
+        transition: border 300ms;
+        width: 90.62%;
+        height: 1.2rem;
+        padding: 10px;
+        margin: 10px;
+        border-radius: 5px;
+        border: #222222 2px solid;
+        background-color: #222222;
+        color: white;
+        font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+    }
+
+    .text-input:focus {
+        transition: border 300ms;
+        outline: none;
+        border: #3a3a3a 2px solid;
     }
 
     .nav-div {

@@ -23,6 +23,7 @@
                 <input type="password" id="passwordInput" class="textinput" name="pasteTitle" required maxlength="50">
                 <button type="submit" class="button">Login</button>
             </form>
+            <h3 id="error-message"></h3>
         </div>
     </div>
 </body>
@@ -50,10 +51,20 @@
                 if (result.message != null) {
                     window.location.href = "/";
                 }
+                else if (result.error != null) {
+                    const errorElement = document.getElementById("error-message");
+                    errorElement.innerText = result.error;
+                    errorElement.style.opacity = 1;
+
+                    setTimeout(() => {
+                        errorElement.style.opacity = 0;
+                    }, 3000);
+                }
             })
     });
 </script>
 <style>
+
 body{
     font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
     font-weight: bold;
@@ -85,12 +96,23 @@ body{
     min-height: 20%;
     overflow-y: auto;
     border: #222222 2px solid;
+    position: relative;
 }
 #loginForm{
     display: flex;
     flex-direction: column;
     align-items: center;
     width: 100%;
+}
+#error-message{
+    color: red;
+    opacity: 0;
+    position: absolute;
+    bottom: -0.1px;
+    margin-bottom: -0.1px;
+    top: 88%;
+    transition: 300ms;
+
 }
 .label{
     font-size: 1.5em;
@@ -152,6 +174,8 @@ body{
     border: #2a2a2a00 2px solid;
     cursor: pointer;
     font-size: 1.2em;
+    font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+    font-weight: bold;
 }
 .button:hover{
     transition: 300ms;

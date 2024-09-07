@@ -916,6 +916,17 @@ class Program
                 }
             }
             string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
+            try
+            {
+                JObject.Parse(requestBody);
+            }
+            catch
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                return;
+            }
             if (string.IsNullOrEmpty(requestBody))
             {
                 context.Response.StatusCode = 400;
@@ -987,7 +998,8 @@ class Program
                 punishedUsersCommand.Parameters.AddWithValue("@Punisher", loggedInUser.UUID);
                 await punishedUsersCommand.ExecuteNonQueryAsync();
             }
-            Console.WriteLine($"[{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")}] Account {user.Username}({user.UUID}) has been banned by {loggedInUser.Username}({loggedInUser.UUID}) for {reason}");
+            Console.WriteLine($"[{DateTime.Now}] Account {user.Username}({user.UUID}) has been banned by {loggedInUser.Username}({loggedInUser.UUID}) for {reason}");
+            await File.AppendAllTextAsync("logs.log", $"[{DateTime.Now}] Account {user.Username}({user.UUID}) has been banned by {loggedInUser.Username}({loggedInUser.UUID}) for {reason}\n");
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "User banned" }.ToString());
@@ -1040,7 +1052,17 @@ class Program
             {
                 uploaderUUID = $"Anonymous-{Guid.NewGuid().ToString()}";
             }
-
+            try
+            {
+                JObject.Parse(requestBody);
+            }
+            catch
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                return;
+            }
             var data = JObject.Parse(requestBody);
             var title = SanitizeInput(data["title"]?.ToString() ?? "Untitled");
             var content = SanitizeInput(data["content"]?.ToString() ?? "");
@@ -1082,7 +1104,7 @@ class Program
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
 
-            string time = DateTimeOffset.FromUnixTimeSeconds(paste.UnixDate ?? 0).DateTime.ToString("yyyy-MM-dd HH:mm:ss");
+            string time = DateTimeOffset.FromUnixTimeSeconds(paste.UnixDate ?? 0).ToString().Split("+")[0].TrimEnd();
 
             JObject responseJson = new JObject();
             responseJson["pasteId"] = paste.Id;
@@ -1116,6 +1138,17 @@ class Program
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                return;
+            }
+            try
+            {
+                JObject.Parse(requestBody);
+            }
+            catch
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
                 return;
             }
             var data = JObject.Parse(requestBody);
@@ -1188,15 +1221,92 @@ class Program
                 await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
                 return;
             }
-            var data = JObject.Parse(requestBody);
-            var query = SanitizeInput(data["query"]?.ToString() ?? "");
-            Console.WriteLine($"erm: {query}");
-            if (string.IsNullOrEmpty(query) || string.IsNullOrWhiteSpace(query))
+            try
+            {
+                JObject.Parse(requestBody);
+            }
+            catch
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
                 return;
+            }
+            var data = JObject.Parse(requestBody);
+            var query = SanitizeInput(data["query"]?.ToString() ?? "");
+
+            if (string.IsNullOrEmpty(query) || string.IsNullOrWhiteSpace(query))
+            {
+                using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+                {
+                    await connection.OpenAsync();
+                    var command = connection.CreateCommand();
+                    command.CommandText = $"SELECT * FROM pastes WHERE Visibility != 'Private' ORDER BY UID DESC LIMIT 50";
+                    var reader = await command.ExecuteReaderAsync();
+                    string pastes = string.Empty;
+                    JArray pastesArray = new JArray();
+                    while (await reader.ReadAsync())
+                    {
+                        var paste = new Paste
+                        {
+                            Title = reader.GetString(1),
+                            UnixDate = long.Parse(reader.GetString(2)),
+                            Size = reader.GetString(3),
+                            Visibility = reader.GetString(4),
+                            Id = reader.GetString(5),
+                        };
+                        string title = paste.Title;
+                        if (paste.Visibility == "Private" || paste.Visibility == "Unlisted")
+                        {
+                            continue;
+                        }
+                        if (paste.Title == "" || string.IsNullOrEmpty(paste.Title))
+                        {
+                            title = $"Untitled {reader.GetString(0)}";
+                        }
+                        if (paste.Title.Length > 40)
+                        {
+                            title = paste.Title.Substring(0, 40) + "...";
+                        }
+                        var difference = GetTimeDifference(DateTimeOffset.FromUnixTimeSeconds(paste.UnixDate ?? 0), DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.Now.ToUnixTimeSeconds()));
+                        if (string.IsNullOrEmpty(parameters["html"]))
+                        {
+                            JObject pasteJson = new JObject();
+                            pasteJson["title"] = paste.Title;
+                            pasteJson["id"] = paste.Id;
+                            pasteJson["size"] = ConvertToBytes(paste.Size);
+                            pasteJson["date"] = difference;
+                            pasteJson["visibility"] = paste.Visibility;
+                            pastesArray.Add(pasteJson);
+                        }
+                        else
+                        {
+                            pastes += $"<a title=\"{paste.Title}\" href=\"/{paste.Id}\"><li>{title} {difference} {ConvertToBytes(paste.Size)}</li></a>";
+                        }
+                    }
+                    if (string.IsNullOrEmpty(pastes) && pastesArray.Count == 0)
+                    {
+                        pastes = "<h2>No pastes found</h2>";
+                        pastesArray.Add(new JObject { ["error"] = "No pastes found" });
+                        context.Response.StatusCode = 404;
+                    }
+                    else
+                    {
+                        context.Response.StatusCode = 200;
+                    }
+                    
+                    if (string.IsNullOrEmpty(parameters["html"]))
+                    {
+                        context.Response.ContentType = "application/json";
+                        await context.Response.WriteAsJsonAsync(pastesArray.ToString());
+                    }
+                    else
+                    {
+                        context.Response.ContentType = "text/html";
+                        await context.Response.WriteAsync(pastes);
+                    }
+                    return;
+                }
             }
 
             using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
@@ -1255,7 +1365,19 @@ class Program
         }).RequireRateLimiting("fixed");
         app.MapPost("/api/accounts/create", async (HttpContext context) =>
         {
+
             string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
+            try
+            {
+                JObject.Parse(requestBody);
+            }
+            catch
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                return;
+            }
             Log log = await Logging.LogRequestAsync(context);
 
             char[] disallowed = { ' ', '\'', '\"', '\\', '/', '(', ')', '[', ']', '{', '}', '<', '>', ';', ':', ',', '.', '!', '?', '@', '#', '$', '%', '^', '&', '*', '-', '+', '=', '~', '`' };
@@ -1300,9 +1422,9 @@ class Program
                 await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid characters in username" }.ToString());
                 return;
             }
-            string ip = Convert.ToBase64String(SHA1.HashData(Encoding.UTF8.GetBytes(log.IP)));
-            string token = Convert.ToBase64String(Encoding.UTF8.GetBytes(BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString())));
-            string passwordHash = BCrypt.Net.BCrypt.HashPassword(password, salt);
+            string token = string.Empty;
+            string ip = string.Empty;
+            string passwordHash = string.Empty;
             DateTime expirationDate = DateTime.Now.AddYears(1);
 
             using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
@@ -1324,6 +1446,10 @@ class Program
                 {
                     reader.Close();
                 }
+
+                ip = Convert.ToBase64String(SHA1.HashData(Encoding.UTF8.GetBytes(log.IP)));
+                token = Convert.ToBase64String(Encoding.UTF8.GetBytes(BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString())));
+                passwordHash = BCrypt.Net.BCrypt.HashPassword(password, salt);
                 var insertCommand = connection.CreateCommand();
                 insertCommand.CommandText = "INSERT INTO users (UUID, Username, PasswordHash, CreationDate, LastLoginDate, Type, State) VALUES (@UUID, @Username, @PasswordHash, @CreationDate, @LastLoginDate, @Type, @State)";
                 insertCommand.Parameters.AddWithValue("@UUID", Guid.NewGuid().ToString());
@@ -1356,36 +1482,47 @@ class Program
             context.Response.Cookies.Append("token", token, cookie);
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
-            Console.WriteLine($"[{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")}] Account {username} has been created");
-            File.AppendAllText("logs.log", $"[{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")}] Account {username} has been created by {log.IP}\n");
+            Console.WriteLine($"[{DateTime.Now}] Account {username} has been created");
+            File.AppendAllText("logs.log", $"[{DateTime.Now}] Account {username} has been created by {log.IP}\n");
             await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "Account created" }.ToString());
 
 
         }).RequireRateLimiting("fixed");
-        app.MapPost("/api/accounts/login", async (HttpContext Context) =>
+        app.MapPost("/api/accounts/login", (Delegate)(async (HttpContext context) =>
         {
-            string requestBody = await new StreamReader(Context.Request.Body).ReadToEndAsync();
-            Log log = await Logging.LogRequestAsync(Context);
-
-            if (IsLoggedInAsync(Context.Request.Cookies["token"]).Result)
+            string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
+            try
             {
-                Context.Response.StatusCode = 400;
-                Context.Response.ContentType = "application/json";
-                await Context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Already logged in" }.ToString());
+                JObject.Parse(requestBody);
+            }
+            catch
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                return;
+            }
+            Log log = await Logging.LogRequestAsync(context);
+
+            if (IsLoggedInAsync(context.Request.Cookies["token"]).Result)
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Already logged in" }.ToString());
                 return;
             }
             if (string.IsNullOrEmpty(requestBody))
             {
-                Context.Response.StatusCode = 400;
-                Context.Response.ContentType = "application/json";
-                await Context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
                 return;
             }
-            if (!requestBody.Contains("username") || !requestBody.Contains("password") || Context.Request.ContentType != "application/json")
+            if (!requestBody.Contains("username") || !requestBody.Contains("password") || context.Request.ContentType != "application/json")
             {
-                Context.Response.StatusCode = 400;
-                Context.Response.ContentType = "application/json";
-                await Context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
                 return;
             }
 
@@ -1395,9 +1532,9 @@ class Program
 
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
-                Context.Response.StatusCode = 400;
-                Context.Response.ContentType = "application/json";
-                await Context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid username or password" }.ToString());
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid username or password" }.ToString());
                 return;
             }
 
@@ -1414,9 +1551,9 @@ class Program
                 await reader.ReadAsync();
                 if (!reader.HasRows)
                 {
-                    Context.Response.StatusCode = 400;
-                    Context.Response.ContentType = "application/json";
-                    await Context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid username or password" }.ToString());
+                    context.Response.StatusCode = 400;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid username or password" }.ToString());
                     return;
                 }
                 if (BCrypt.Net.BCrypt.Verify(password, reader.GetString(3)))
@@ -1448,22 +1585,22 @@ class Program
                         SameSite = SameSiteMode.Strict
                     };
 
-                    Context.Response.Cookies.Append("token", token, cookie);
-                    Context.Response.StatusCode = 200;
-                    Context.Response.ContentType = "application/json";
+                    context.Response.Cookies.Append("token", token, cookie);
+                    context.Response.StatusCode = 200;
+                    context.Response.ContentType = "application/json";
                     Console.WriteLine($"[{DateTime.Now}] Account {username} has logged in");
                     File.AppendAllText("logs.log", $"[{DateTime.Now}] Account {username} has logged in from {log.IP}\n");
-                    await Context.Response.WriteAsJsonAsync(new JObject { ["message"] = "Logged in" }.ToString());
+                    await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "Logged in" }.ToString());
                     return;
                 }
                 else
                 {
-                    Context.Response.StatusCode = 400;
-                    Context.Response.ContentType = "application/json";
-                    await Context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid username or password" }.ToString());
+                    context.Response.StatusCode = 400;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid username or password" }.ToString());
                 }
             }
-        }).RequireRateLimiting("fixed");
+        })).RequireRateLimiting("fixed");
 
         #endregion
 
