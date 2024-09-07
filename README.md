@@ -1,5 +1,5 @@
 # Sharpbin  
-Sharpbin is a Pastebin type website completely in C#, except for the frontend, being HTML. 
+Sharpbin is a Pastebin type website completely in C#, except for the frontend, being pure HTML & CSS. 
 Sharpbin can be used for sharing large amounts of text.
 ## Features
 - Account System
