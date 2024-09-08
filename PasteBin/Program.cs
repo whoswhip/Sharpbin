@@ -5,6 +5,8 @@ using Newtonsoft.Json.Linq;
 using System.Data;
 using System.Text;
 using Sharpbin;
+using Microsoft.AspNetCore.ResponseCompression;
+using System.Reflection.Metadata;
 
 class Program
 {
@@ -34,6 +36,8 @@ class Program
         // Add services to the container.
         builder.Services.AddRazorPages();
         builder.Services.AddCors();
+        builder.Services.AddResponseCaching();
+        builder.Services.AddResponseCompression();
 
 
         builder.Services.AddRateLimiter(_ => _
@@ -62,14 +66,23 @@ class Program
             app.UseHsts();
         }
 
-        app.UseHttpsRedirection();
+
+        //app.UseHttpsRedirection();
         app.UseStaticFiles();
 
         app.UseRouting();
 
         app.UseRateLimiter();
 
+        app.UseCors(builder =>
+        {
+            builder.AllowAnyOrigin();
+            builder.AllowAnyMethod();
+            builder.AllowAnyHeader();
+        });
         app.UseAuthorization();
+        app.UseResponseCaching();
+        app.UseResponseCompression();
 
         app.MapRazorPages();
 
@@ -84,8 +97,17 @@ class Program
                 var user = await GetLoggedInUserAsync(context.Request.Cookies["token"]);
                 if (user.State != 0)
                 {
-                    context.Response.Redirect("/banned");
-                    return;
+                    var punishment = await GetPunishmentAsync(user.UUID);
+                    var unixNow = DateTimeOffset.Now.ToUnixTimeSeconds();
+                    if (punishment.ExpirationDate > unixNow)
+                    {
+                        context.Response.Redirect("/banned");
+                        return;
+                    }
+                    else
+                    {
+                        await UnbanUUIDAsync(user.UUID);
+                    }
                 }
                 html = html.Replace("{html}", "<a href=\"/dash\">dashboard</a>");
             }
@@ -316,24 +338,34 @@ class Program
         app.MapGet("/banned", async (HttpContext context) =>
         {
             context.Response.StatusCode = 404;
-            var error_html = File.ReadAllText("assets/error.html");
+            var error_html = File.ReadAllText("assets/banned.html");
             bool loggedIn = await IsLoggedInAsync(context.Request.Cookies["token"]);
+            var user = new User();
             if (loggedIn)
             {
-                var user = await GetLoggedInUserAsync(context.Request.Cookies["token"]);
-                if (user.State != 1)
+                user = await GetLoggedInUserAsync(context.Request.Cookies["token"]);
+                if (user.State != 1 && user.State != 2)
                 {
-                    context.Response.Redirect("/unauthorized");
+                    context.Response.Redirect("/");
                     return;
                 }
                 error_html = error_html.Replace("{html}", "<a href=\"/dash\">dashboard</a>");
             }
             else
             {
-                error_html = error_html.Replace("{html}", "<a href=\"/login\">login</a> <a href=\"/sign-up\">sign up</a>");
+                context.Response.Redirect("/");
+                return;
+            }
+            var punishment = await GetPunishmentAsync(user.UUID);
+            var unixNow = DateTimeOffset.Now.ToUnixTimeSeconds();
+            if (punishment.ExpirationDate < unixNow)
+            {
+                await UnbanUUIDAsync(user.UUID);
+                context.Response.Redirect("/");
+                return;
             }
             error_html = error_html.Replace("{code}", "403");
-            error_html = error_html.Replace("{message}", "You are banned");
+            error_html = error_html.Replace("{message}", $"You are banned until <a id=\"unix-date\">{punishment.ExpirationDate}</a> for \"{punishment.Reason}\"");
             context.Response.ContentType = "text/html";
             await context.Response.WriteAsync(error_html);
             return;
@@ -407,12 +439,6 @@ class Program
                 {
                     user.Username = $"<a class=\"user-a\" href=\"/u/{user.Username}\">{user.Username}</a>";
                 }
-                if (paste.Visibility == "Private")
-                {
-                    // WIP Private pastes will be implemented soon enough, most likely with a password or longer ID
-                    context.Response.StatusCode = 404;
-                    return;
-                }
                 if (paste.Title == "" || string.IsNullOrEmpty(paste.Title))
                 {
                     paste.Title = $"Untitled {reader.GetString(0)}";
@@ -425,6 +451,11 @@ class Program
 
 
                 var html = File.ReadAllText("assets/paste.html");
+                if (paste.Visibility == "Private")
+                {
+                    html = File.ReadAllText("assets/privatepaste.html");
+                    html = html.Replace("{password}", "");
+                }
                 html = html.Replace("{pastetitleattribute}", paste.Title);
                 html = html.Replace("{pastetitle}", title);
                 html = html.Replace("{content}", content);
@@ -461,16 +492,69 @@ class Program
         app.MapGet("/raw/{id}", async (HttpContext context) =>
         {
             var id = context.Request?.RouteValues?["id"]?.ToString();
-            if (!File.Exists($"pastes/{id}.txt"))
+            var filePath = $"pastes/{id}.txt";
+
+            if (!File.Exists(filePath))
             {
                 context.Response.StatusCode = 404;
                 return;
             }
-            var content = File.ReadAllText($"pastes/{id}.txt");
+            if (id.Length == 24)
+            {
+                var password = context.Request?.Query["password"].ToString();
+                if (string.IsNullOrEmpty(password))
+                {
+                    context.Response.StatusCode = 401;
+                    return;
+                }
+                using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+                {
+                    await connection.OpenAsync();
+                    var command = connection.CreateCommand();
+                    command.CommandText = "SELECT * FROM pastes WHERE ID = @ID";
+                    command.Parameters.AddWithValue("@ID", id);
+                    var reader = await command.ExecuteReaderAsync();
+                    await reader.ReadAsync();
+                    if (!reader.HasRows)
+                    {
+                        context.Response.StatusCode = 404;
+                        return;
+                    }
+                    var paste = new PrivatePaste
+                    {
+                        Title = reader.GetString(1),
+                        UnixDate = long.Parse(reader.GetString(2)),
+                        Size = reader.GetString(3),
+                        Visibility = reader.GetString(4),
+                        Id = id,
+                        Uploader = reader.GetString(6),
+                        Password = reader.GetString(7),
+                    };
+                    string hashedPassword = BCrypt.Net.BCrypt.HashPassword(password, salt);
+                    if (hashedPassword != paste.Password && paste.Visibility != "Private")
+                    {
+                        context.Response.StatusCode = 401;
+                        return;
+                    }
+                    string text = Encryption.DecryptString(await File.ReadAllTextAsync(filePath), password);
+                    context.Response.ContentType = "text/plain";
+                    await context.Response.WriteAsync(text);
+                    return;
+                }
+            }
+
+            var fileInfo = new FileInfo(filePath);
+            var fileSize = fileInfo.Length;
+
             context.Response.ContentType = "text/plain";
-            await context.Response.WriteAsync(content);
-            return;
+            context.Response.ContentLength = fileSize;
+
+            using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            {
+                await fileStream.CopyToAsync(context.Response.Body);
+            }
         }).RequireRateLimiting("fixed-bigger");
+
         app.MapGet("/pastes", async (HttpContext context) =>
         {
             var html = File.ReadAllText("assets/recent_pastes.html");
@@ -661,6 +745,10 @@ class Program
                             Visibility = pastesReader.GetString(4),
                             Id = pastesReader.GetString(5),
                         };
+                        if (paste.Visibility == "Private" || paste.Visibility == "Unlisted")
+                        {
+                            continue;
+                        }
                         pastes.Add(paste);
                     }
                     string pasteList = string.Empty;
@@ -754,6 +842,10 @@ class Program
                             Visibility = pastesReader.GetString(4),
                             Id = pastesReader.GetString(5),
                         };
+                        if (paste.Visibility == "Private" || paste.Visibility == "Unlisted")
+                        {
+                            continue;
+                        }
                         pastes.Add(paste);
                     }
                     string pasteList = string.Empty;
@@ -949,6 +1041,8 @@ class Program
             var data = JObject.Parse(requestBody);
             var uuid = SanitizeInput(data["uuid"]?.ToString() ?? "");
             var reason = SanitizeInput(data["reason"]?.ToString() ?? "No reason provided");
+            var expiration = SanitizeInput(data["expiration"]?.ToString() ?? "64060635661");
+            try { DateTimeOffset.FromUnixTimeSeconds(long.Parse(expiration)); } catch { expiration = "64060635661"; }
             if (string.IsNullOrEmpty(uuid) || string.IsNullOrWhiteSpace(uuid))
             {
                 context.Response.StatusCode = 400;
@@ -1003,10 +1097,11 @@ class Program
                 await banUserCommand.ExecuteNonQueryAsync();
 
                 var punishedUsersCommand = connection.CreateCommand();
-                punishedUsersCommand.CommandText = "INSERT INTO punishedUsers (UUID,State, Reason, Punisher) VALUES (@UUID, @State, @Reason, @Punisher)";
+                punishedUsersCommand.CommandText = "INSERT INTO punishedUsers (UUID,State, Reason,ExpirationDate, Punisher) VALUES (@UUID, @State, @Reason,@ExpirationDate, @Punisher)";
                 punishedUsersCommand.Parameters.AddWithValue("@UUID", uuid);
                 punishedUsersCommand.Parameters.AddWithValue("@State", 1);
                 punishedUsersCommand.Parameters.AddWithValue("@Reason", reason);
+                punishedUsersCommand.Parameters.AddWithValue("@ExpirationDate", expiration);
                 punishedUsersCommand.Parameters.AddWithValue("@Punisher", loggedInUser.UUID);
                 await punishedUsersCommand.ExecuteNonQueryAsync();
             }
@@ -1067,52 +1162,9 @@ class Program
                 await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
                 return;
             }
-            var user = new User();
-            using (var connection = new SqliteConnection("Data Source = pastes.sqlite"))
-            {
-                await connection.OpenAsync();
-                var command = connection.CreateCommand();
-                command.CommandText = "SELECT * FROM users WHERE UUID = @UUID";
-                command.Parameters.AddWithValue("@UUID", uuid);
-                var reader = await command.ExecuteReaderAsync();
-                await reader.ReadAsync();
-                if (!reader.HasRows)
-                {
-                    context.Response.StatusCode = 404;
-                    context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "User not found" }.ToString());
-                    return;
-                }
-                user = new User
-                {
-                    UID = reader.GetString(0),
-                    UUID = reader.GetString(1),
-                    Username = reader.GetString(2),
-                    PasswordHash = reader.GetString(3),
-                    CreationDate = reader.GetString(4),
-                    LastLoginDate = reader.GetString(5),
-                    Type = reader.GetInt32(6),
-                    State = reader.GetInt32(7),
-                };
-                if (user.State == 0)
-                {
-                    context.Response.StatusCode = 400;
-                    context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "User is already unbanned" }.ToString());
-                    return;
-                }
-                var banUserCommand = connection.CreateCommand();
-                banUserCommand.CommandText = "UPDATE users SET State = 0 WHERE UUID = @UUID";
-                banUserCommand.Parameters.AddWithValue("@UUID", uuid);
-                await banUserCommand.ExecuteNonQueryAsync();
-
-                var punishedUsersCommand = connection.CreateCommand();
-                punishedUsersCommand.CommandText = "DELETE FROM punishedUsers WHERE UUID = @UUID";
-                punishedUsersCommand.Parameters.AddWithValue("@UUID", uuid);
-                await punishedUsersCommand.ExecuteNonQueryAsync();
-            }
-            Console.WriteLine($"[{DateTime.Now}] Account {user.Username}({user.UUID}) has been banned by {loggedInUser.Username}({loggedInUser.UUID}) for {reason}");
-            await File.AppendAllTextAsync("logs.log", $"[{DateTime.Now}] Account {user.Username}({user.UUID}) has been banned by {loggedInUser.Username}({loggedInUser.UUID}) for {reason}\n");
+            var user = await UnbanUUIDAsync(uuid);
+            Console.WriteLine($"[{DateTime.Now}] Account {user.Username}({user.UUID}) has been unbanned by {loggedInUser.Username}({loggedInUser.UUID}) for {reason}");
+            await File.AppendAllTextAsync("logs.log", $"[{DateTime.Now}] Account {user.Username}({user.UUID}) has been unbanned by {loggedInUser.Username}({loggedInUser.UUID}) for {reason}\n");
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "User unbanned" }.ToString());
@@ -1480,7 +1532,6 @@ class Program
                 await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Content or Title is too long" }.ToString());
                 return;
             }
-
             if (visibility != "Public" && visibility != "Unlisted" && visibility != "Private")
             {
                 context.Response.StatusCode = 400;
@@ -1495,8 +1546,45 @@ class Program
                 await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
                 return;
             }
+            var paste = new Paste();
+            if (visibility == "Private")
+            {
+                var password = SanitizeInput(data["password"]?.ToString() ?? GenerateRandomPassword(30));
+                var privatePaste = await CreatePrivatePaste(title, content, password, uploaderUUID);
+                if (privatePaste == null)
+                {
+                    context.Response.StatusCode = 500;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Failed to create paste" }.ToString());
+                    return;
+                }
+                if (!File.Exists($"pastes/{privatePaste.Id}.txt"))
+                {
+                    context.Response.StatusCode = 500;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Failed to create paste" }.ToString());
+                    return;
+                }
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                string _time = DateTimeOffset.FromUnixTimeSeconds(privatePaste.UnixDate ?? 0).ToString().Split("+")[0].TrimEnd();
+                JObject _responseJson = new JObject();
+                _responseJson["pasteId"] = privatePaste.Id;
+                _responseJson["pasteSize"] = ConvertToBytes(privatePaste.Size ?? string.Empty);
+                _responseJson["pasteDate"] = _time;
+                _responseJson["pasteVisibility"] = privatePaste.Visibility;
 
-            var paste = await CreatePaste(content, title, visibility, uploaderUUID);
+                Log _log = await Logging.LogRequestAsync(context);
+                Console.WriteLine($"[{_time}] Private Paste created, {ConvertToBytes(privatePaste.Size ?? string.Empty)}, {privatePaste.Id} by {uploaderUUID}");
+                await File.AppendAllTextAsync("logs.log", $"[{_time}] {privatePaste.Id} {_log.IP} {_log.Method} {_log.Path} {_log.UserAgent} {_log.Referer} {_log.Body} {uploaderUUID}\n");
+                await context.Response.WriteAsJsonAsync(_responseJson.ToString());
+                return;
+            }
+            else
+            {
+                paste = await CreatePaste(content, title, visibility, uploaderUUID);
+            }
+            
 
             if (!File.Exists($"pastes/{paste?.Id}.txt") || paste == null)
             {
@@ -1768,6 +1856,83 @@ class Program
             }
 
         }).RequireRateLimiting("fixed");
+        app.MapPost("/api/pastes/password/{pasteid}", async (HttpContext context) =>
+        {
+            var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+            if (string.IsNullOrEmpty(body))
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                return;
+            }
+            try
+            {
+                JObject.Parse(body);
+            }
+            catch
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                return;
+            }
+            var data = JObject.Parse(body);
+            var password = SanitizeInput(data["password"]?.ToString() ?? "");
+            var pasteId = context.Request.RouteValues["pasteid"].ToString();
+            if (string.IsNullOrEmpty(password) || string.IsNullOrWhiteSpace(password))
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                return;
+            }
+            if (!File.Exists($"pastes/{pasteId}.txt"))
+            {
+                context.Response.StatusCode = 404;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Paste not found" }.ToString());
+                return;
+            }
+            using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+            {
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT * FROM pastes WHERE ID = @ID";
+                command.Parameters.AddWithValue("@ID", pasteId);
+                var reader = await command.ExecuteReaderAsync();
+                await reader.ReadAsync();
+                if (!reader.HasRows)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Paste not found" }.ToString());
+                    return;
+                }
+                var paste = new PrivatePaste
+                {
+                    Id = reader.GetString(5),
+                    Title = reader.GetString(1),
+                    Size = reader.GetString(3),
+                    UnixDate = long.Parse(reader.GetString(2)),
+                    Visibility = reader.GetString(4),
+                    Password = reader.GetString(7),
+                };
+                string passwordHash = BCrypt.Net.BCrypt.HashPassword(password, salt);
+                if (paste.Password != passwordHash)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid password" }.ToString());
+                    return;
+                }
+
+            }
+            string decryptedText = Encryption.DecryptString(File.ReadAllText($"pastes/{pasteId}.txt"), password);
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new JObject { ["content"] = decryptedText }.ToString());
+        });
         app.MapPost("/api/accounts/create", async (HttpContext context) =>
         {
 
@@ -2040,6 +2205,37 @@ class Program
         }
         return paste;
     }
+    public static async Task<PrivatePaste> CreatePrivatePaste(string title, string content, string password, string UUID)
+    {
+        string encryptedText = Encryption.EncryptString($"{content}", password);
+        string passwordHash = BCrypt.Net.BCrypt.HashPassword(password, salt);
+        var paste = new PrivatePaste
+        {
+            Title = title,
+            UnixDate = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            Size = content.Length.ToString(),
+            Id = GenerateRandomString(24),
+            Uploader = UUID,
+            Password = passwordHash
+        };
+        
+        await File.WriteAllTextAsync($"pastes/{paste.Id}.txt", encryptedText);
+        using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+        {
+            await connection.OpenAsync();
+            var command = connection.CreateCommand();
+            command.CommandText = "INSERT INTO pastes (Title, Date, Size, Visibility, ID, Uploader, PasswordHash) VALUES (@Title, @Date, @Size, @Visibility, @ID, @Uploader, @PasswordHash)";
+            command.Parameters.AddWithValue("@Title", paste.Title);
+            command.Parameters.AddWithValue("@Date", paste.UnixDate);
+            command.Parameters.AddWithValue("@Size", paste.Size);
+            command.Parameters.AddWithValue("@Visibility", "Private");
+            command.Parameters.AddWithValue("@ID", paste.Id);
+            command.Parameters.AddWithValue("@Uploader", paste.Uploader);
+            command.Parameters.AddWithValue("@PasswordHash", paste.Password);
+            await command.ExecuteNonQueryAsync();
+        }
+        return paste;
+    }
     public static string SanitizeInput(string input)
     {
         return input?.Replace("<", "&lt;").Replace(">", "&gt;") ?? string.Empty + input;
@@ -2153,6 +2349,63 @@ class Program
             };
         }
     }
+    public static async Task<Punishment> GetPunishmentAsync(string UUID)
+    {
+        using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+        {
+            await connection.OpenAsync();
+            var command = connection.CreateCommand();
+            command.CommandText = "SELECT * FROM punishedUsers WHERE UUID = @UUID";
+            command.Parameters.AddWithValue("@UUID", UUID);
+            var reader = await command.ExecuteReaderAsync();
+            await reader.ReadAsync();
+            if (!reader.HasRows || reader.IsDBNull(3))
+            {
+                return new Punishment();
+            }
+            return new Punishment
+            {
+                UUID = reader.GetString(0),
+                State = reader.GetInt32(1),
+                Reason = reader.GetString(2),
+                ExpirationDate = long.Parse(reader.GetString(3)),
+                Punisher = reader.GetString(4)
+            };
+        }
+    }
+    public static async Task<User> UnbanUUIDAsync(string UUID)
+    {
+        User user = new User();
+        using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+        {
+            await connection.OpenAsync();
+            var command = connection.CreateCommand();
+            command.CommandText = "DELETE FROM punishedUsers WHERE UUID = @UUID";
+            command.Parameters.AddWithValue("@UUID", UUID);
+            await command.ExecuteNonQueryAsync();
+            var userCommand = connection.CreateCommand();
+            userCommand.CommandText = "UPDATE users SET State = 0 WHERE UUID = @UUID";
+            userCommand.Parameters.AddWithValue("@UUID", UUID);
+            await userCommand.ExecuteNonQueryAsync();
+            var selectCommand = connection.CreateCommand();
+            selectCommand.CommandText = "SELECT * FROM users WHERE UUID = @UUID";
+            selectCommand.Parameters.AddWithValue("@UUID", UUID);
+            var reader = await selectCommand.ExecuteReaderAsync();
+            await reader.ReadAsync();
+            user = new User
+            {
+                UID = reader.GetString(0),
+                UUID = reader.GetString(1),
+                Username = reader.GetString(2),
+                PasswordHash = reader.GetString(3),
+                CreationDate = reader.GetString(4),
+                LastLoginDate = reader.GetString(5),
+                Type = reader.GetInt32(6),
+                State = reader.GetInt32(7)
+            };
+        }
+        return user;
+    }
     public static async Task InitializeAsync()
     {
         if (!File.Exists("pastes.sqlite"))
@@ -2161,7 +2414,7 @@ class Program
             {
                 await connection.OpenAsync();
                 var command = connection.CreateCommand();
-                command.CommandText = "CREATE TABLE pastes (UID INTEGER,Title TEXT, Date TEXT, Size TEXT, Visibility TEXT, ID TEXT,Uploader TEXT, PRIMARY KEY(UID AUTOINCREMENT))";
+                command.CommandText = "CREATE TABLE pastes (UID INTEGER,Title TEXT, Date TEXT, Size TEXT, Visibility TEXT, ID TEXT,Uploader TEXT, PasswordHash TEXT, PRIMARY KEY(UID AUTOINCREMENT))";
                 await command.ExecuteNonQueryAsync();
 
                 var usersTableCommand = connection.CreateCommand();
@@ -2173,7 +2426,7 @@ class Program
                 await loginsTableCommand.ExecuteNonQueryAsync();
 
                 var punishedUsersTableCommand = connection.CreateCommand();
-                punishedUsersTableCommand.CommandText = "CREATE TABLE punished_users (UUID TEXT,Username TEXT,State INTEGER,Reason TEXT,ExpirationDate TEXT";
+                punishedUsersTableCommand.CommandText = "CREATE TABLE punishedUsers (UUID TEXT,Username TEXT,State INTEGER,Reason TEXT,ExpirationDate TEXT";
                 await punishedUsersTableCommand.ExecuteNonQueryAsync();
             }
         }
@@ -2182,6 +2435,7 @@ class Program
             var config = JObject.Parse(File.ReadAllText("config.json"));
             salt = config["Salt"]?.ToString() ?? BCrypt.Net.BCrypt.GenerateSalt(13);
             smallerSalt = config["SmallerSalt"]?.ToString() ?? BCrypt.Net.BCrypt.GenerateSalt(8);
+            File.WriteAllText("config.json", config.ToString());
 
             Logging.Api_CreateMessage = config["API_CreateMessage"]?.ToString() ?? "";
         }
@@ -2222,6 +2476,10 @@ public class Paste
     public string? Id { get; set; }
     public string? Uploader { get; set; }
 }
+public class PrivatePaste : Paste
+{
+    public string? Password { get; set; }
+}
 public class User
 {
     public string? UID { get; set; }
@@ -2232,5 +2490,15 @@ public class User
     public string? LastLoginDate { get; set; }
     public int Type { get; set; }
     public int State { get; set; }
+}
+public class Punishment
+{
+    public string? UUID { get; set; }
+    public int State { get; set; }
+
+    public string? Reason { get; set; }
+    public long? ExpirationDate { get; set; }
+    public string? Punisher { get; set; }
+
 }
 

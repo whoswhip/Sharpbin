@@ -21,6 +21,7 @@
             <input type="text" placeholder="search" class="text-input" oninput="search()">
             <div class="pastes-wrapper">
                 {pastes}
+                <a title="" href="/yZXC7EmRpexG"><li>Untitled 46 2.1 hrs ago 488.28KB</li></a>
             </div>
             <div class="buttons-wrapper">
                 <a class="arrow-button" href="/archive?page={backpagenum}">&lt;</a>
@@ -144,21 +145,14 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        width: 95%;
+        width: 100%;
         padding: 20px;
         overflow-x: hidden;
         overflow-y: auto;
         max-height: 70vh;
     }
 
-    .pastes-wrapper a {
-        text-decoration: none;
-        color: white;
-        width: 100%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
+
 
     li {
         transition: 300ms;
@@ -211,12 +205,22 @@
         border: 2px solid #3a3a3a;
     }
 
+    .pastes-wrapper a {
+        text-decoration: none;
+        color: white;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
     .text-input {
         transition: border 300ms;
-        width: 90.62%;
+        width: calc(100% - 44px);
         height: 1.2rem;
         padding: 10px;
         margin: 10px;
+        margin-left: 12px;
         border-radius: 5px;
         border: #222222 2px solid;
         background-color: #222222;

@@ -22,7 +22,7 @@
                 <p id="text"></p>
             </div>
             <div class="buttons-wrapper">
-                <a href="/raw/{pasteid}">
+                <a href="" id="view-raw-a">
                     <button id="view-raw-button" class="button">view raw</button>
                 </a>
                 <button id="copy-button" class="button">copy</button>
@@ -30,9 +30,45 @@
                 {deletebutton}
             </div>
         </div>
+        <div class="passwordDiv">
+            <div class="inputDiv">
+                <h1>This paste is password protected</h1>
+                <input type="password" id="password" class="textinput" name="password" maxlength="500" placeholder="password">
+                <button id="submitPassword" class="button-input">Submit</button>
+            </div>
+        </div>
+    </div>
+    <div class="notification-div" id="notification">
+        <h2 id="notification-text"></h2>
     </div>
 </body>
 <script>
+    document.getElementById("submitPassword").addEventListener("click", function () {
+        var password = document.getElementById("password").value;
+        fetch(`/api/pastes/password/{pasteid}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                password: password
+            })
+        })
+        .then(response => response.json())
+        .then(obj => {
+            const result = JSON.parse(obj);
+            if (result.content != null){
+                const textElement = document.getElementById('text');
+                textElement.innerText = result.content;
+                document.querySelector(".passwordDiv").style.display = "none";
+                const viewRawButton = document.getElementById('view-raw-a');
+                viewRawButton.href = `/raw/{pasteid}?password=${password}`;
+            }
+            else {
+                notification(`Error: ${result.error}`);
+            }
+        });
+    });
     function localizeDateTime(unixTimestamp) {
         const date = new Date(unixTimestamp * 1000);
         return date.toLocaleString();
@@ -41,29 +77,8 @@
     document.addEventListener("DOMContentLoaded", function() {
         const creationdateElement = document.getElementById('creationdate');
         const creationdateText = creationdateElement.innerText.trim();
-        const textElement = document.getElementById('text');
         
         creationdateElement.innerText = localizeDateTime(parseInt(creationdateText));
-        textElement.innerText = "Loading...";
-        fetch(`/raw/{pasteid}`)
-            .then(response => response.body)
-            .then(stream => {
-            const reader = stream.getReader();
-            let text = '';
-
-            const read = () => {
-                return reader.read().then(({ done, value }) => {
-                if (done) {
-                    textElement.innerText = text;
-                    return;
-                }
-                text += new TextDecoder().decode(value);
-                return read();
-                });
-            };
-
-            return read();
-            });
     });
 
     document.getElementById("copy-button").addEventListener("click", function () {
@@ -79,6 +94,23 @@
         document.body.removeChild(element);
     });
     {deletescript}
+    function notification(message) {
+        const notification = document.getElementById('notification');
+        const notificationText = document.getElementById('notification-text');
+        notificationText.innerText = message;
+        notification.style.animation = 'none';
+        notification.style.display = 'none';
+        notification.style.display = 'flex';
+        notification.style.animation = 'hoverup 1s';
+        setTimeout(() => {
+
+            notification.style.animation = 'hoverdown 1s';
+        }, 4000);
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 4900);
+
+    }
     
 </script>
 
@@ -103,6 +135,64 @@
         align-items: center;
         width: 100%;
         height: 98.7vh;
+    }
+    .button-input {
+        transition: 300ms;
+        background-color: #222222;
+        color: white;
+        border: 2px solid #33333300;
+        border-radius: 5px;
+        padding: 5px;
+        margin: 5px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 1.05rem;
+        width: 100%;
+        padding: 10px;
+        font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+        font-weight: 625;
+        box-sizing: content-box;
+    }
+    .button-input:hover {
+        transition: 300ms;
+        background-color: #333333;
+        border: 2px solid #3a3a3a;
+    }
+    .passwordDiv {
+        z-index: 100;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(8px);
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .inputDiv {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: fit-content;
+        color: white;
+    }
+    .textinput {
+        width: 100%;
+        height: 50px;
+        border-radius: 5px;
+        border: 2px solid #222222;
+        background-color: #181818;
+        padding: 10px;
+        font-size: 1.05rem;
+        font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+        font-weight: 625;
+        color: white;
+    }
+    .textinput:focus {
+        outline: none;
+        border: 2px solid #333333;
     }
 
     .paste-container {
@@ -201,6 +291,7 @@
         height: fit-content;
         overflow-y: auto;
         border: #222222 2px solid;
+        z-index: 102;
     }
 
     .nav-div a {
@@ -218,5 +309,59 @@
         transition: 300ms;
         background-color: #333333;
         border: #3a3a3a 2px solid;
+    }
+    @keyframes hoverup {
+        0% {
+            opacity: 0;
+            transform: translateY(100%);
+        }
+
+        25% {
+            opacity: 1;
+        }
+
+        50% {
+
+            transform: translateY(-10px);
+        }
+
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes hoverdown {
+        0% {
+            transform: translateY(0);
+        }
+
+        50% {
+            transform: translateY(-10px);
+        }
+
+        100% {
+            transform: translateY(200%);
+        }
+
+    }
+    .notification-div {
+        position: fixed;
+        display: none;
+        right: 0;
+        bottom: 0;
+        width: fit-content;
+        height: fit-content;
+        color: white;
+        background-color: #181818;
+        border-radius: 5px;
+        border: #222222 2px solid;
+        padding-left: 10px;
+        padding-right: 10px;
+        margin-right: 10px;
+        margin-bottom: 10px;
+        justify-content: center;
+        align-items: center;
+        z-index: 101;
     }
 </style>

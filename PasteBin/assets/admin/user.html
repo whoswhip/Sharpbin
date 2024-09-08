@@ -31,7 +31,7 @@
                 <div class="action-wrapper">
                     <h2 style="text-align: center;">Actions</h2>
                     <div class="button-wrapper">
-                        <a onclick="banAccount()" class="button">{typeban}</a>
+                        <a onclick="banorunban()" class="button">{typeban}</a>
                         <a onclick="changePassword()" class="button">change password</a>
                     </div>
                 </div>
@@ -47,6 +47,12 @@
     </div>
     <div class="notification-div" id="notification">
         <h2 id="notification-text"></h2>
+    </div>
+    <div class="input-div" id="ban-div" style="display: none;">
+        <button onclick="banorunban()" class="exit-button">X</button>
+        <input type="date" id="ban-date" placeholder="{typeban} date">
+        <input type="text" id="ban-reason" placeholder="{typeban} reason">
+        <button id="ban-button" onclick="banAccount()">{typeban}</button>
     </div>
 </body>
 <script>
@@ -65,29 +71,89 @@
 
         creationdateElement.innerText = "Creation Date: " + localizeDateTime(parseInt(creationdateText));
         lastlogindateElement.innerText = "Last Login Date: " + localizeDateTime(parseInt(lastlogindateText));
+        if ('{typeban}' == 'unban') {
+            document.getElementById('ban-date').style.display = 'none';
+        }
     });
+    function banorunban() {
+        const banDiv = document.getElementById('ban-div');
+        console.log(banDiv.style.display);
+        if (banDiv.style.display == 'none') {
+            banDiv.style.animation = 'hoverup 1s';
+            banDiv.style.display = 'flex';
+        } else {
+            banDiv.style.animation = 'hoverdown 1s';
+
+            setTimeout(() => {
+                banDiv.style.transition = '200ms';
+                banDiv.style.opacity = 0;
+
+
+            }, 600);
+            setTimeout(() => {
+                banDiv.style.display = 'none';
+                banDiv.style.opacity = 1;
+            }, 1000);
+
+        }
+        console.log(banDiv.style.display);
+    }
     function banAccount() {
-        let reason = prompt('Enter the reason for {typeban}ning the account');
-        fetch('/api/accounts/admin/{typeban}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                uuid: '{uuid}',
-                reason: `${reason}`
-            })
+        let date = document.getElementById('ban-date').value;
+        date = new Date(date).getTime() / 1000;
+        let reason = document.getElementById('ban-reason').value;
+        if (date == null || reason == null) {
+            notification('Please fill out all fields');
+            return;
+        }
+        if (date < new Date().getTime() / 1000) {
+            notification('Please select a date in the future');
+            return;
+        }
+        if ('{typeban}' == 'unban') {
+            fetch('/api/accounts/admin/{typeban}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    uuid: '{uuid}',
+                    reason: `${reason}`
+                })
 
-        }).then(response => response.json())
-            .then(obj => {
-                const result = JSON.parse(obj);
-                if (result.message != null) {
-                    notification(`${result.message} for ${reason}`);
-                } else {
-                    notification(`Failed to {typeban} ${result.error}`);
-                }
-            })
-
+            }).then(response => response.json())
+                .then(obj => {
+                    const result = JSON.parse(obj);
+                    if (result.message != null) {
+                        notification(`${result.message} for ${reason}`);
+                    } else {
+                        notification(`Failed to {typeban} ${result.error}`);
+                    }
+                })
+        } else {
+            fetch('/api/accounts/admin/{typeban}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    uuid: '{uuid}',
+                    expiration: `${date}`,
+                    reason: `${reason}`
+                })
+                
+            }).then(response => response.json())
+                .then(obj => {
+                    const result = JSON.parse(obj);
+                    if (result.message != null) {
+                        notification(`${result.message} for ${reason}`);
+                    } else {
+                        notification(`Failed to {typeban} ${result.error}`);
+                    }
+                })
+        }
+        console.log(date);
+        banorunban();
     }
     function changePassword() {
         let password = prompt('Enter the new password');
@@ -131,16 +197,103 @@
     }
 </script>
 <style>
+    .exit-button {
+        position: absolute;
+        right: 10px;
+        top: 10px;
+        background-color: #222222;
+        color: white;
+        border: #222222 2px solid;
+        border-radius: 5px;
+        padding: 5px;
+        padding-left: 10px;
+        padding-right: 10px;
+        cursor: pointer;
+        font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+        font-weight: bold;
+        width: fit-content;
+        height: fit-content;
+    }
+
+    #ban-div {
+        display: none;
+    }
+
+    .input-div {
+        z-index: 2;
+        position: fixed;
+        background-color: #121212;
+        border-radius: 10px;
+        width: fit-content;
+        max-width: 50%;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: fit-content;
+        padding: 60px;
+        max-height: 50%;
+        border: #181818 3px solid;
+    }
+
+    input {
+        transition: 300ms;
+        width: 80%;
+        max-width: 80%;
+        padding: 10px;
+        margin: 10px;
+        border-radius: 5px;
+        border: #222222 2px solid;
+        background-color: #222222;
+        color: white;
+        font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+    }
+
+    input:focus {
+        transition: 300ms;
+        outline: none;
+        border: #3a3a3a 2px solid;
+    }
+
+    #ban-button {
+        transition: 300ms;
+        width: 80%;
+        max-width: 80%;
+        padding: 10px;
+        margin: 10px;
+        border-radius: 5px;
+        border: #222222 2px solid;
+        background-color: #222222;
+        color: white;
+        font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+        font-weight: bold;
+        cursor: pointer;
+        box-sizing: content-box;
+    }
+
+    #ban-button:hover {
+        transition: 300ms;
+        background-color: #333333;
+        border: #3a3a3a 2px solid;
+    }
+
     @keyframes hoverup {
         0% {
+            opacity: 0;
             transform: translateY(100%);
         }
 
+        25% {
+            opacity: 1;
+        }
+
         50% {
+
             transform: translateY(-10px);
         }
 
         100% {
+            opacity: 1;
             transform: translateY(0);
         }
     }

@@ -17,6 +17,7 @@
     <None Remove="assets\admin.html" />
     <None Remove="assets\admin\user.html" />
     <None Remove="assets\archives.html" />
+    <None Remove="assets\banned.html" />
     <None Remove="assets\dash.html" />
     <None Remove="assets\error.html" />
     <None Remove="assets\login.html" />
@@ -27,22 +28,26 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="assets\admin.html">
+    <Content Include="assets\admin.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="assets\admin\user.html">
+    </Content>
+    <Content Include="assets\admin\user.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="assets\archives.html">
+    </Content>
+    <Content Include="assets\archives.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="assets\index.html">
+    </Content>
+    <Content Include="assets\banned.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
+    </Content>
+    <Content Include="assets\index.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.4.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.8" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
@@ -52,27 +57,27 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="assets\dash.html">
+    <Content Include="assets\dash.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="assets\error.html">
+    </Content>
+    <Content Include="assets\error.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="assets\login.html">
+    </Content>
+    <Content Include="assets\login.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="assets\paste.html">
+    </Content>
+    <Content Include="assets\paste.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="assets\recent_pastes.html">
+    </Content>
+    <Content Include="assets\recent_pastes.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="assets\signup.html">
+    </Content>
+    <Content Include="assets\signup.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="assets\user.html">
+    </Content>
+    <Content Include="assets\user.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

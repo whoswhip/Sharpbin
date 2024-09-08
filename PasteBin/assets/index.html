@@ -23,41 +23,148 @@
                 <input type="text" id="pasteTitle" class="textinput" name="pasteTitle" maxlength="500">
                 <label for="pasteContent" class="label">Content</label>
                 <textarea id="pasteContent" class="textarea" name="pasteContent" required maxlength="500000"></textarea>
+                <select for="pasteVisibility" id="pasteVisibility" class="textinput" name="pasteVisibility" required>
+                    <option value="Public">Public</option>
+                    <option value="Unlisted">Unlisted</option>
+                    <option value="Private">Private</option>
+                </select>
+                <label for="pastePassword" class="label" id="pastePasswordLabel">Paste Password</label>
+                <input type="password" id="pastePassword" class="textinput" name="pastePassword" maxlength="500">
                 <button type="submit" class="button">Create</button>
             </form>
         </div>
     </div>
-
+    <div class="notification-div" id="notification">
+        <h2 id="notification-text"></h2>
+    </div>
 </body>
 <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.getElementById("pasteVisibility").value = "Public";
+    });
     document.getElementById("createForm").addEventListener("submit", function (event) {
         event.preventDefault();
 
         var textAreaContent = document.getElementById("pasteContent").value;
         var textTitleContent = document.getElementById("pasteTitle").value;
+        var textVisibilityContent = document.getElementById("pasteVisibility").value;
 
         var requestUrl = "/api/pastes/create";
+        var fetchBody = {
+            title: textTitleContent,
+            content: textAreaContent,
+            visibility: textVisibilityContent
+        };
+        if (textVisibilityContent == "Private") {
+            fetchBody.password = document.getElementById("pastePassword").value;
+        }
         fetch(requestUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-                title: textTitleContent,
-                content: textAreaContent
-            })
+            body: JSON.stringify(fetchBody)
         })
             .then(response => response.json())
             .then(obj => {
                 const result = JSON.parse(obj);
                 if (result.pasteId != null) {
                     window.location.href = `/${result.pasteId}`;
+                }else if (result.error != null) {
+                    notification(result.error);
                 }
             })
     });
+    document.getElementById("pasteVisibility").addEventListener("change", function (event) {
+        var visibility = document.getElementById("pasteVisibility").value;
+        if (visibility == "Private") {
+            document.getElementById("pastePassword").style.display = "block";
+            document.getElementById("pastePasswordLabel").style.display = "block";
+        } else {
+            document.getElementById("pastePassword").style.display = "none";
+            document.getElementById("pastePasswordLabel").style.display = "none";
+        }
+    });
+    function notification(message) {
+        const notification = document.getElementById('notification');
+        const notificationText = document.getElementById('notification-text');
+        notificationText.innerText = message;
+        notification.style.animation = 'none';
+        notification.style.display = 'none';
+        notification.style.display = 'flex';
+        notification.style.animation = 'hoverup 1s';
+        setTimeout(() => {
+
+            notification.style.animation = 'hoverdown 1s';
+        }, 4000);
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 4900);
+
+    }
+    
+
 </script>
 <style>
+    @keyframes hoverup {
+        0% {
+            opacity: 0;
+            transform: translateY(100%);
+        }
 
+        25% {
+            opacity: 1;
+        }
+
+        50% {
+
+            transform: translateY(-10px);
+        }
+
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes hoverdown {
+        0% {
+            transform: translateY(0);
+        }
+
+        50% {
+            transform: translateY(-10px);
+        }
+
+        100% {
+            transform: translateY(200%);
+        }
+
+    }
+    #pastePassword{
+        display: none;
+    }
+    #pastePasswordLabel{
+        display: none;
+    }
+    .notification-div {
+        position: fixed;
+        display: none;
+        right: 0;
+        bottom: 0;
+        width: fit-content;
+        height: fit-content;
+        color: white;
+        background-color: #181818;
+        border-radius: 5px;
+        border: #222222 2px solid;
+        padding-left: 10px;
+        padding-right: 10px;
+        margin-right: 10px;
+        margin-bottom: 10px;
+        justify-content: center;
+        align-items: center;
+    }
 
     body {
         font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
