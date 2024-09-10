@@ -94,7 +94,7 @@ class Program
             bool loggedIn = await IsLoggedInAsync(context.Request.Cookies["token"]);
             if (loggedIn)
             {
-                var user = await GetLoggedInUserAsync(context.Request.Cookies["token"]);
+                var user = await GetLoggedInUserAsync(context?.Request?.Cookies?["token"]);
                 if (user.State != 0)
                 {
                     var punishment = await GetPunishmentAsync(user.UUID);
@@ -639,7 +639,7 @@ class Program
             {
                 await connection.OpenAsync();
                 var command = connection.CreateCommand();
-                command.CommandText = $"SELECT * FROM pastes WHERE Visibility != 'Private' ORDER BY UID DESC LIMIT {pastesPerPage} OFFSET {skipCount}";
+                command.CommandText = $"SELECT * FROM pastes WHERE Visibility != 'Private' AND Visibility != 'Unlisted' ORDER BY UID DESC LIMIT {pastesPerPage} OFFSET {skipCount}";
                 var reader = await command.ExecuteReaderAsync();
                 string pastes = string.Empty;
                 while (await reader.ReadAsync())
@@ -652,6 +652,7 @@ class Program
                         Visibility = reader.GetString(4),
                         Id = reader.GetString(5),
                     };
+
                     string title = paste.Title;
                     if (paste.Visibility == "Private" || paste.Visibility == "Unlisted")
                     {
@@ -668,8 +669,9 @@ class Program
                     var difference = GetTimeDifference(DateTimeOffset.FromUnixTimeSeconds(paste.UnixDate ?? 0), DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.Now.ToUnixTimeSeconds()));
                     pastes += $"<a title=\"{paste.Title}\" href=\"/{paste.Id}\"><li>{title} {difference} {ConvertToBytes(paste.Size)}</li></a>";
                 }
+                
                 var findCountCommand = connection.CreateCommand();
-                findCountCommand.CommandText = "SELECT COUNT(*) FROM pastes WHERE Visibility != 'Private'";
+                findCountCommand.CommandText = "SELECT COUNT(*) FROM pastes WHERE Visibility != 'Private' AND Visibility != 'Unlisted'";
                 int totalPastes = Convert.ToInt32(await findCountCommand.ExecuteScalarAsync());
                 int totalPages = (int)Math.Ceiling((double)totalPastes / pastesPerPage);
 

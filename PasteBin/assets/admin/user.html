@@ -45,8 +45,8 @@
 
         </div>
     </div>
-    <div class="notification-div" id="notification">
-        <h2 id="notification-text"></h2>
+    <div class="notifcations-wrapper" id="notifications">
+
     </div>
     <div class="input-div" id="ban-div" style="display: none;">
         <button onclick="banorunban()" class="exit-button">X</button>
@@ -141,7 +141,7 @@
                     expiration: `${date}`,
                     reason: `${reason}`
                 })
-                
+
             }).then(response => response.json())
                 .then(obj => {
                     const result = JSON.parse(obj);
@@ -171,32 +171,53 @@
             .then(obj => {
                 const result = JSON.parse(obj);
                 if (result.message != null) {
-                    notification(`${result.message} to ${password}`);
+                    createNotification(`${result.message} to ${result.password}`);
+                    navigator.clipboard.writeText(result.password);
                 } else {
                     notification(`Failed to change password for ${result.error}`);
                 }
             })
 
     }
-    function notification(message) {
-        const notification = document.getElementById('notification');
-        const notificationText = document.getElementById('notification-text');
+    function createNotification(message) {
+        const notificationWrapper = document.getElementById('notifications');
+        const notificationDiv = document.createElement('div');
+        notificationDiv.classList.add('notification-div');
+        notificationDiv.id = 'notification';
+
+        const notificationText = document.createElement('h2');
+        notificationText.id = 'notification-text';
         notificationText.innerText = message;
-        notification.style.animation = 'none';
-        notification.style.display = 'none';
-        notification.style.display = 'flex';
-        notification.style.animation = 'hoverup 1s';
-        setTimeout(() => {
 
-            notification.style.animation = 'hoverdown 1s';
+        notificationDiv.appendChild(notificationText);
+        notificationWrapper.appendChild(notificationDiv);
+
+        notificationDiv.style.animation = 'none';
+        notificationDiv.style.display = 'none';
+        notificationDiv.style.display = 'flex';
+        notificationDiv.style.animation = 'hoverup 1s';
+
+        setTimeout(() => {
+            notificationDiv.style.animation = 'hoverdown 1s';
         }, 4000);
-        setTimeout(() => {
-            notification.style.display = 'none';
-        }, 4900);
 
+        setTimeout(() => {
+            notificationDiv.remove();
+        }, 4900);
     }
 </script>
 <style>
+    .notifcations-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        justify-content: flex-end;
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        pointer-events: none;
+    }
+
     .exit-button {
         position: absolute;
         right: 10px;
@@ -314,8 +335,7 @@
     }
 
     .notification-div {
-        position: fixed;
-        display: none;
+        display: flex;
         right: 0;
         bottom: 0;
         width: fit-content;

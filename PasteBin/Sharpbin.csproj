@@ -22,9 +22,11 @@
     <None Remove="assets\error.html" />
     <None Remove="assets\login.html" />
     <None Remove="assets\paste.html" />
+    <None Remove="assets\privatepaste.html" />
     <None Remove="assets\recent_pastes.html" />
     <None Remove="assets\signup.html" />
     <None Remove="assets\user.html" />
+    <None Remove="pastes.sqlite" />
   </ItemGroup>
 
   <ItemGroup>
@@ -41,6 +43,12 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="assets\index.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="assets\privatepaste.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="pastes.sqlite">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
