@@ -41,6 +41,13 @@ class Program
 
 
         builder.Services.AddRateLimiter(_ => _
+        .AddFixedWindowLimiter(policyName: "OneRequest", options =>
+        {
+            options.PermitLimit = 1;
+            options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            options.QueueLimit = 2;
+        }));
+        builder.Services.AddRateLimiter(_ => _
         .AddFixedWindowLimiter(policyName: "fixed", options =>
         {
             options.PermitLimit = 4;
@@ -56,6 +63,16 @@ class Program
             options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
             options.QueueLimit = 4;
         }));
+        builder.Services.AddRateLimiter(options =>
+        {
+            options.AddPolicy("OneRequestPerIP", context =>
+                RateLimitPartition.GetConcurrencyLimiter(context.Request.Headers["X-Forwarded-For"].ToString() ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown", key => new ConcurrencyLimiterOptions
+                {
+                    PermitLimit = 1,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 1
+                }));
+        });
 
         var app = builder.Build();
 
@@ -69,7 +86,7 @@ class Program
 
         //app.UseHttpsRedirection();
         app.UseStaticFiles();
-
+        
         app.UseRouting();
 
         app.UseRateLimiter();
@@ -1477,7 +1494,7 @@ class Program
             string ip = context.Request.Headers["X-Forwarded-For"].ToString() ?? context.Connection.RemoteIpAddress.ToString();
             string uploaderUUID = string.Empty;
             string token = context.Request.Cookies["token"] ?? context.Request.Headers["Authorization"];
-
+            var user = await GetLoggedInUserAsync(token);
 
             if (string.IsNullOrEmpty(requestBody))
             {
@@ -1486,7 +1503,7 @@ class Program
                 await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No content uploaded" }.ToString());
                 return;
             }
-            if (await IsLoggedInAsync(token))
+            if (string.IsNullOrEmpty(user.UUID))
             {
                 using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
                 {
@@ -1497,7 +1514,7 @@ class Program
                     var reader = await command.ExecuteReaderAsync();
                     await reader.ReadAsync();
                     uploaderUUID = reader.GetString(0);
-                    var user = await GetLoggedInUserAsync(token);
+                    
                     if (user.State != 0)
                     {
                         context.Response.StatusCode = 401;
