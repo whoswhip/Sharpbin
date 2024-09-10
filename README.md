@@ -10,4 +10,5 @@ Sharpbin can be used for sharing large amounts of text.
 - Recent Pastes and Paste Archives
 - Pastes can be deleted by an admin or the creator
 - User profile pages
+- Mobile Support
 ... And more to come!
