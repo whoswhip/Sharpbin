@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@100..900&display=swap" rel="stylesheet">
-    <title>create paste</title>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <title>sign-up</title>
 </head>
 
 <body>
@@ -25,6 +26,7 @@
                 <label for="passwordTitle" class="label" id="margin-top">Password</label>
                 <input type="password" id="passwordInput" class="textinput" name="pasteTitle" required maxlength="50" minlength="8">
                 <label id="passcharacterCount" for="characterCount" class="ccounter">0/50</label>
+                <div id="cf-turnstile" class="cf-turnstile" data-sitekey="{sitekey}"></div>
                 <button type="submit" class="button" id="button-margin-top">Sign-up</button>
             </form>
             <h3 id="error-message"></h3>
@@ -41,6 +43,7 @@
 
         var usernameContent = document.getElementById("usernameInput").value;
         var passwordContent = document.getElementById("passwordInput").value;
+        var cf = turnstile.getResponse();
 
         if (isLoggingIn) {
             createNotification("Please wait for the login to finish.");
@@ -56,7 +59,8 @@
             },
             body: JSON.stringify({
                 username: usernameContent,
-                password: passwordContent
+                password: passwordContent,
+                cf: cf
             })
         })
             .then(response => response.json())
@@ -75,6 +79,7 @@
                         errorElement.style.opacity = 0;
                     }, 3000);
                     isLoggingIn = false;
+                    
                 }
             })
     });

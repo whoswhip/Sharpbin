@@ -12,6 +12,8 @@ class Program
 {
     private static string salt = string.Empty;
     private static string smallerSalt = string.Empty;
+    private static string cfTurnstileSiteKey = string.Empty;
+    public static string cfTurnstileSecret = string.Empty;
 
     public static Dictionary<int, string> accountType = new Dictionary<int, string>
     {
@@ -156,6 +158,7 @@ class Program
             }
             var html = File.ReadAllText("assets/login.html");
             html = html.Replace("{html}", "<a href=\"/sign-up\">sign up</a>");
+            html = html.Replace("{sitekey}", cfTurnstileSiteKey);
             context.Response.ContentType = "text/html";
             await context.Response.WriteAsync(html);
             return;
@@ -169,6 +172,7 @@ class Program
             }
             var html = File.ReadAllText("assets/signup.html");
             html = html.Replace("{html}", "<a href=\"/login\">login</a>");
+            html = html.Replace("{sitekey}", cfTurnstileSiteKey);
             context.Response.ContentType = "text/html";
             await context.Response.WriteAsync(html);
             return;
@@ -1503,7 +1507,7 @@ class Program
                 await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No content uploaded" }.ToString());
                 return;
             }
-            if (string.IsNullOrEmpty(user.UUID))
+            if (!string.IsNullOrEmpty(user.UUID))
             {
                 using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
                 {
@@ -1996,6 +2000,23 @@ class Program
             var data = JObject.Parse(requestBody);
             var username = SanitizeInput(data["username"]?.ToString() ?? "");
             var password = SanitizeInput(data["password"]?.ToString() ?? "");
+            var cfToken = SanitizeInput(data["cf"]?.ToString() ?? "");
+            if (string.IsNullOrEmpty(cfToken) || string.IsNullOrEmpty(cfToken))
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid Cloudflare Turnstile Token" }.ToString());
+                return;
+            }
+            bool cfValid = await Turnstile.VerifyTurnstileToken(cfToken);
+            if (!cfValid)
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid Cloudflare Turnstile Token" }.ToString());
+                return;
+            }
+
 
             if (username.Length > 20 || username.Length < 3 || password.Length > 50 || password.Length < 8)
             {
@@ -2118,7 +2139,22 @@ class Program
             var data = JObject.Parse(requestBody);
             var username = SanitizeInput(data["username"]?.ToString() ?? "");
             var password = SanitizeInput(data["password"]?.ToString() ?? "");
-
+            var cfToken = SanitizeInput(data["cf"]?.ToString() ?? "");
+            if (string.IsNullOrEmpty(cfToken) || string.IsNullOrEmpty(cfToken))
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid Cloudflare Turnstile Token" }.ToString());
+                return;
+            }
+            bool cfValid = await Turnstile.VerifyTurnstileToken(cfToken);
+            if (!cfValid)
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid Cloudflare Turnstile Token" }.ToString());
+                return;
+            }
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
                 context.Response.StatusCode = 400;
@@ -2454,6 +2490,11 @@ class Program
             var config = JObject.Parse(File.ReadAllText("config.json"));
             salt = config["Salt"]?.ToString() ?? BCrypt.Net.BCrypt.GenerateSalt(13);
             smallerSalt = config["SmallerSalt"]?.ToString() ?? BCrypt.Net.BCrypt.GenerateSalt(8);
+            cfTurnstileSecret = config["CF_TurnstileSecret"]?.ToString() ?? "";
+            cfTurnstileSiteKey = config["CF_TurnstileSiteKey"]?.ToString() ?? "";
+
+            config["Salt"] = salt;
+            config["SmallerSalt"] = smallerSalt;
             File.WriteAllText("config.json", config.ToString());
 
             Logging.Api_CreateMessage = config["API_CreateMessage"]?.ToString() ?? "";
@@ -2466,6 +2507,15 @@ class Program
             salt = config["Salt"]?.ToString() ?? BCrypt.Net.BCrypt.GenerateSalt(13);
             smallerSalt = config["SmallerSalt"]?.ToString() ?? BCrypt.Net.BCrypt.GenerateSalt(8);
             File.WriteAllText("config.json", config.ToString());
+        }
+        if (cfTurnstileSiteKey == "" || cfTurnstileSecret == "")
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.Write("error: ");
+            Console.ResetColor();
+            Console.WriteLine("Cloudflare Turnstile secret or site key is not set in config.json");
+            Console.ReadKey();
+            Environment.Exit(1);
         }
         if (!Directory.Exists("pastes"))
             Directory.CreateDirectory("pastes");

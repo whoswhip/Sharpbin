@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@100..900&display=swap" rel="stylesheet">
-    <title>create paste</title>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <title>login</title>
 </head>
+
 <body>
     <div class="nav-div">
         <a href="/">home</a>
@@ -13,7 +16,7 @@
         <a href="/archive">archive</a>
         {html}
     </div>
-    <div class="container-wrapper"> 
+    <div class="container-wrapper">
         <div class="creation-container">
             <h1>login</h1>
             <form id="loginForm">
@@ -21,6 +24,7 @@
                 <input type="text" id="usernameInput" class="textinput" name="pasteTitle" required maxlength="20">
                 <label for="passwordTitle" class="label">Password</label>
                 <input type="password" id="passwordInput" class="textinput" name="pasteTitle" required maxlength="50">
+                <div id="cf-turnstile" class="cf-turnstile" data-sitekey="{sitekey}"></div>
                 <button type="submit" class="button">Login</button>
             </form>
             <h3 id="error-message"></h3>
@@ -36,13 +40,14 @@
 
         var usernameContent = document.getElementById("usernameInput").value;
         var passwordContent = document.getElementById("passwordInput").value;
+        var cf = turnstile.getResponse();
+
 
         if (isLoggingIn) {
             createNotification("Please wait for the login to finish.");
             return;
         }
         isLoggingIn = true;
-        console.log(isLoggingIn);
         var requestUrl = "/api/accounts/login";
         fetch(requestUrl, {
             method: "POST",
@@ -51,10 +56,11 @@
             },
             body: JSON.stringify({
                 username: usernameContent,
-                password: passwordContent
+                password: passwordContent,
+                cf: cf
             })
         })
-        
+
             .then(response => response.json())
             .then(obj => {
                 const result = JSON.parse(obj);
@@ -72,6 +78,7 @@
                         errorElement.style.opacity = 0;
                     }, 3000);
                     isLoggingIn = false;
+                    turnstile.reset(); 
                 }
             })
     });
@@ -101,161 +108,179 @@
             notificationDiv.remove();
         }, 4900);
     }
+    document.getElementById("cf-turnstile").addEventListener("expired-callback", function () {
+        createNotification("Please complete the captcha.");
+        turnstile.reset(); 
+    });
+
 </script>
 <style>
+    body {
+        font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+        font-weight: bold;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background-color: #0d0d0d;
+    }
 
-body{
-    font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
-    font-weight: bold;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    background-color: #0d0d0d;
-}
-.container-wrapper{
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    height: 98.7vh;
-}
-.creation-container{
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 80%;
-    padding: 20px;
-    background-color: #181818;
-    color: white;
-    border-radius: 5px;
-    height: fit-content;
-    max-height: 80vh;
-    min-height: 20%;
-    overflow-y: auto;
-    border: #222222 2px solid;
-    position: relative;
-}
-#loginForm{
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-}
-#error-message{
-    color: red;
-    opacity: 0;
-    position: absolute;
-    bottom: -0.1px;
-    margin-bottom: -0.1px;
-    top: 88%;
-    transition: 300ms;
+    .container-wrapper {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 98.7vh;
+    }
 
-}
-.label{
-    font-size: 1.5em;
-}
-.textinput{
-    transition: 300ms;
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0;
-    border-radius: 5px;
-    border: none;
-    background-color: #282828;
-    color: white;
-    border: #2a2a2a 2px solid;
-    box-sizing: border-box;
-    font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
-    font-size: 1.1em;
-    outline: none;
-}
-.textinput:focus{
-    transition: 300ms;
-    background-color: #333333;
-    border: 2px solid #3a3a3a;
-    outline: none;
-}
-.textarea{
-    transition: 300ms;
-    width: 100%;
-    min-width: 100%;
-    max-width: 100%;
-    min-height: auto;
-    padding: 10px;
-    margin: 10px 0;
-    border-radius: 5px;
-    border: none;
-    background-color: #282828;
-    color: white;
-    border: #2a2a2a 2px solid;
-    box-sizing: border-box;
-    font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
-    font-size: 1.08em;
-    outline: none;
-}
-.textarea:focus{
-    transition: 300ms;
-    background-color: #333333;
-    border: 2px solid #3a3a3a;
-    outline: none;
-}
-.button{
-    transition: 300ms;
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0;
-    border-radius: 5px;
-    border: none;
-    background-color: #222222;
-    color: white;
-    border: #2a2a2a00 2px solid;
-    cursor: pointer;
-    font-size: 1.2em;
-    font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
-    font-weight: bold;
-}
-.button:hover{
-    transition: 300ms;
-    background-color: #333333;
-    border: 2px solid #3a3a3a;
-}
-.nav-div{
-    top: 0;
-    margin-top: 10px;
-    position: absolute;
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    width: fit-content;
-    background-color: #181818;
-    padding-left: 10px;
-    padding-right: 10px;
-    color: white;
-    border-radius: 5px;
-    height: fit-content;
-    overflow-y: auto;
-    border: #222222 2px solid;
-}
-.nav-div a{
-    text-decoration: none;
-    color: white;
-    padding: 10px;
-    margin: 10px;
-    border-radius: 5px;
-    background-color: #222222;
-    transition: 300ms;
-    border: #2a2a2a00 2px solid;
-}
-.nav-div a:hover{
-    transition: 300ms;
-    background-color: #333333;
-    border: #3a3a3a 2px solid;
-}
+    .creation-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 80%;
+        padding: 20px;
+        background-color: #181818;
+        color: white;
+        border-radius: 5px;
+        height: fit-content;
+        max-height: 80vh;
+        min-height: 20%;
+        overflow-y: auto;
+        border: #222222 2px solid;
+        position: relative;
+    }
 
-@keyframes hoverup {
+    #loginForm {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+    }
+
+    #error-message {
+        color: red;
+        opacity: 0;
+        position: absolute;
+        bottom: -0.1px;
+        margin-bottom: -0.1px;
+        top: 88%;
+        transition: 300ms;
+
+    }
+
+    .label {
+        font-size: 1.5em;
+    }
+
+    .textinput {
+        transition: 300ms;
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 5px;
+        border: none;
+        background-color: #282828;
+        color: white;
+        border: #2a2a2a 2px solid;
+        box-sizing: border-box;
+        font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+        font-size: 1.1em;
+        outline: none;
+    }
+
+    .textinput:focus {
+        transition: 300ms;
+        background-color: #333333;
+        border: 2px solid #3a3a3a;
+        outline: none;
+    }
+
+    .textarea {
+        transition: 300ms;
+        width: 100%;
+        min-width: 100%;
+        max-width: 100%;
+        min-height: auto;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 5px;
+        border: none;
+        background-color: #282828;
+        color: white;
+        border: #2a2a2a 2px solid;
+        box-sizing: border-box;
+        font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+        font-size: 1.08em;
+        outline: none;
+    }
+
+    .textarea:focus {
+        transition: 300ms;
+        background-color: #333333;
+        border: 2px solid #3a3a3a;
+        outline: none;
+    }
+
+    .button {
+        transition: 300ms;
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 5px;
+        border: none;
+        background-color: #222222;
+        color: white;
+        border: #2a2a2a00 2px solid;
+        cursor: pointer;
+        font-size: 1.2em;
+        font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
+        font-weight: bold;
+    }
+
+    .button:hover {
+        transition: 300ms;
+        background-color: #333333;
+        border: 2px solid #3a3a3a;
+    }
+
+    .nav-div {
+        top: 0;
+        margin-top: 10px;
+        position: absolute;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        width: fit-content;
+        background-color: #181818;
+        padding-left: 10px;
+        padding-right: 10px;
+        color: white;
+        border-radius: 5px;
+        height: fit-content;
+        overflow-y: auto;
+        border: #222222 2px solid;
+    }
+
+    .nav-div a {
+        text-decoration: none;
+        color: white;
+        padding: 10px;
+        margin: 10px;
+        border-radius: 5px;
+        background-color: #222222;
+        transition: 300ms;
+        border: #2a2a2a00 2px solid;
+    }
+
+    .nav-div a:hover {
+        transition: 300ms;
+        background-color: #333333;
+        border: #3a3a3a 2px solid;
+    }
+
+    @keyframes hoverup {
         0% {
             opacity: 0;
             transform: translateY(100%);
@@ -308,6 +333,7 @@ body{
         justify-content: center;
         align-items: center;
     }
+
     .notifcations-wrapper {
         display: flex;
         flex-direction: column;
@@ -319,4 +345,5 @@ body{
         pointer-events: none;
     }
 </style>
+
 </html>
