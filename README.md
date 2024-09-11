@@ -10,4 +10,13 @@ Sharpbin can be used for sharing large amounts of text.
 - Recent Pastes and Paste Archives
 - Pastes can be deleted by an admin or the creator
 - User profile pages
+- Private encrypted pastes, sadly the encryption is server side, although client side may be soon!
+- Mobile Support
 ... And more to come!
+
+# Demo Website & Screenshots
+You can find the test website at https://bin.whoswhip.top , there is no removed functionality and is the exact same code in this repo.
+
+![deQ2MDJHGy6g4dNLsQgn741](https://github.com/user-attachments/assets/07a28669-3f93-4f79-a3a4-652feab0bbd2)
+![R8Cz3M5g8CAAkQSfbpHv742](https://github.com/user-attachments/assets/638d5bab-c967-4856-8ec4-47f4d907aec4)
+![CAmklT6daOJnXS0bHX42743](https://github.com/user-attachments/assets/7fb09e6d-a7fc-4a43-babb-58de14301ff6)
