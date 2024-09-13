@@ -24,7 +24,6 @@ namespace Sharpbin
             using (var response = await httpClient.SendAsync(request))
             {
                 var jsonresponse = JObject.Parse(await response.Content.ReadAsStringAsync());
-                Console.WriteLine(jsonresponse["success"]?.ToString());
                 if (jsonresponse["success"]?.ToString().ToLower() == "true")
                 {
                     return true;

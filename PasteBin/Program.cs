@@ -1239,7 +1239,6 @@ class Program
             {
                 newPassword = GenerateRandomPassword(50);
             }
-            Console.WriteLine(newPassword);
             if (string.IsNullOrEmpty(uuid) || string.IsNullOrWhiteSpace(uuid))
             {
                 context.Response.StatusCode = 400;

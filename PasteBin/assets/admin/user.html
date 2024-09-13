@@ -133,11 +133,11 @@
         date = new Date(date).getTime() / 1000;
         let reason = document.getElementById('ban-reason').value;
         if (date == null || reason == null) {
-            notification('Please fill out all fields');
+            createNotification('Please fill out all fields');
             return;
         }
         if (date < new Date().getTime() / 1000) {
-            notification('Please select a date in the future');
+            createNotification('Please select a date in the future');
             return;
         }
         if ('{typeban}' == 'unban') {
@@ -155,9 +155,9 @@
                 .then(obj => {
                     const result = JSON.parse(obj);
                     if (result.message != null) {
-                        notification(`${result.message} for ${reason}`);
+                        createNotification(`${result.message} for ${reason}`);
                     } else {
-                        notification(`Failed to {typeban} ${result.error}`);
+                        createNotification(`Failed to {typeban} ${result.error}`);
                     }
                 })
         } else {
@@ -176,9 +176,9 @@
                 .then(obj => {
                     const result = JSON.parse(obj);
                     if (result.message != null) {
-                        notification(`${result.message} for ${reason}`);
+                        createNotification(`${result.message} for ${reason}`);
                     } else {
-                        notification(`Failed to {typeban} ${result.error}`);
+                        createNotification(`Failed to {typeban} ${result.error}`);
                     }
                 })
         }
