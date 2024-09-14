@@ -18,10 +18,10 @@ Sharpbin can be used for sharing large amounts of text.
 # Demo Website & Screenshots
 You can find the test website at https://bin.whoswhip.top , there is no removed functionality and is the exact same code in this repo.
 <div>
-  <img src="https://github.com/user-attachments/assets/07a28669-3f93-4f79-a3a4-652feab0bbd2" style="width: 450px;">
-  <img src="https://github.com/user-attachments/assets/638d5bab-c967-4856-8ec4-47f4d907aec4" style="width: 450px;">
-  <img src="https://github.com/user-attachments/assets/972b82fa-38ca-41bd-9f65-c8d291bd32e4" style="width: 450px;">
-  <img src="https://github.com/user-attachments/assets/72829045-97da-453b-89c1-ed901c7d840e" style="width: 450px;">
+  <img src="https://github.com/user-attachments/assets/07a28669-3f93-4f79-a3a4-652feab0bbd2" style="width: 350px;">
+  <img src="https://github.com/user-attachments/assets/638d5bab-c967-4856-8ec4-47f4d907aec4" style="width: 350px;">
+  <img src="https://github.com/user-attachments/assets/972b82fa-38ca-41bd-9f65-c8d291bd32e4" style="width: 350px;">
+  <img src="https://github.com/user-attachments/assets/72829045-97da-453b-89c1-ed901c7d840e" style="width: 350px;">
 
 </div>
 
