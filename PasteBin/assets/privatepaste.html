@@ -12,8 +12,8 @@
         <a href="/">home</a>
         <a href="/pastes">recent pastes</a>
         <a href="/archive">archive</a>
-        <a href="login" id="login-signup-btn">login</a>
-        <a href="sign-up" id="login-signup-btn">sign up</a>
+        <a href="login" id="login-signup-btn" style="display: none;" >login</a>
+        <a href="sign-up" id="login-signup-btn" style="display: none;">sign up</a>
         <a href="dash" id="dash-btn" style="display: none;">dashboard</a>
     </div>
     <div class="nav-hamburger-menu">
@@ -26,15 +26,15 @@
             <a href="/">home</a>
             <a href="/pastes">recent pastes</a>
             <a href="/archive">archive</a>
-            <a href="login" id="login-signup-btn">login</a>
-            <a href="sign-up" id="login-signup-btn">sign up</a>
+            <a href="login" id="login-signup-btn" style="display: none;" >login</a>
+            <a href="sign-up" id="login-signup-btn" style="display: none;">sign up</a>
             <a href="dash" id="dash-btn" style="display: none;">dashboard</a>
         </div>
     </div>
     <div class="container-wrapper">
         <div class="paste-container">
             <h1 id="paste-title" title="{pastetitleattribute}">{pastetitle}</h1>
-            <h3 class="uploader-text"><a id="uploader-username"></a> <a id="creationdate"></a> <a id="paste-size"></a>
+            <h3 class="uploader-text"><a id="uploader-username" class="user-a"></a> <a id="creationdate"></a> <a id="paste-size"></a>
             </h3>
             <div class="paste-wrapper">
                 <p id="text"></p>
@@ -46,6 +46,7 @@
                 <button id="copy-button" class="button">copy</button>
                 <button id="download-button" class="button">download</button>
                 <button id="delete-button" class="button" style="display: none;">delete</button>
+                <button id="edit-button" class="button" style="display: none;">edit</button>
             </div>
         </div>
         <div class="passwordDiv">
@@ -62,9 +63,7 @@
     </div>
     <div class="input-wrapper" id="input-wrapper">
         <div class="input-wrapper-container">
-            <h2>
-                Are you sure you want to delete this paste?
-            </h2>
+            <h2 id="input-message"></h2>
             <div>
                 <button id="yes-button" class="button">Yes</button>
                 <button id="no-button" class="button">No</button>
@@ -73,19 +72,25 @@
     </div>
 </body>
 <script>
-
     info = "";
-
+    editing = false;
     function authenticated() {
         fetch('/api/accounts/authenticated')
             .then(response => response.json())
             .then(data => {
                 if (data.message == "Authenticated") {
-                    if (info.uploader == data.username) {
+                    if (info.uploader == data.username || data.type == "Admin") {
                         document.getElementById('delete-button').style.display = 'block';
+                        //document.getElementById('edit-button').style.display = 'block';
                     }
-                    document.getElementById('login-signup-btn').style.display = 'none';
+                    document.querySelectorAll("#login-signup-btn").forEach(element => {
+                        element.style.display = 'none';
+                    });
                     document.getElementById('dash-btn').style.display = 'block';
+                }else{
+                    document.querySelectorAll("#login-signup-btn").forEach(element => {
+                        element.style.display = 'block';
+                    });
                 }
             });
     }
@@ -112,7 +117,21 @@
                 }
             });
     }
-
+    document.getElementById("edit-button").addEventListener("click", function () {
+        if (editing) {
+            createInput('Are you sure you want to save this edit?');
+            document.getElementById('yes-button').removeEventListener("click", deletePaste);
+            document.getElementById('yes-button').addEventListener("click", finalizeEdit);
+            document.getElementById('yes-button').removeEventListener("click", finalizeEdit);
+        } else {
+            editing = true;
+            var editButton = document.getElementById('edit-button');
+            editButton.innerText = 'save';
+            var text = document.getElementById('text');
+            var innertext = text.innerText;
+            text.innerHTML = `<textarea class="textarea" id="edit-textarea" style="width: 100%; height: ${text.clientHeight}px;">${innertext}</textarea>`;
+        }
+    });
     document.getElementById("submitPassword").addEventListener("click", function () {
         var password = document.getElementById("password").value;
         fetch(`/api/pastes/password/{pasteid}`, {
@@ -145,11 +164,11 @@
     }
 
     document.addEventListener("DOMContentLoaded", function () {
-        const creationdateElement = document.getElementById('creationdate');
-        const creationdateText = creationdateElement.innerText.trim();
         fetchInfo();
         authenticated();
 
+        const creationdateElement = document.getElementById('creationdate');
+        const creationdateText = creationdateElement.innerText.trim();
         creationdateElement.innerText = localizeDateTime(parseInt(creationdateText));
         var mobile = window.mobileCheck();
         if (mobile) {
@@ -183,12 +202,13 @@
         document.body.removeChild(element);
     });
     document.getElementById("delete-button").addEventListener("click", function () {
-        const inputWrapper = document.getElementById('input-wrapper');
-        inputWrapper.style.display = 'flex';
+        createInput('Are you sure you want to delete this paste?');
+        document.getElementById('yes-button').removeEventListener("click", finalizeEdit);
+        document.getElementById('yes-button').addEventListener("click", deletePaste);
+        document.getElementById('yes-button').removeEventListener("click", deletePaste);
     });
-    document.getElementById("yes-button").addEventListener("click", function () {
-        var requestUrl = "/api/pastes/delete";
-        fetch(requestUrl, {
+    function deletePaste() {
+        fetch(`/api/pastes/delete?id={pasteid}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -201,15 +221,47 @@
             .then(obj => {
                 const result = JSON.parse(obj);
                 if (result.message != null) {
-                    window.location.href = `/`;
+                    createNotification(`Success: ${result.message}`);
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
                 } else {
                     createNotification(`Error: ${result.error}`);
                 }
             });
-    });
+    }
+    function finalizeEdit() {
+        var textarea = document.getElementById('edit-textarea');
+        var text = textarea.value;
+        fetch(`/api/pastes/edit`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                id: '{pasteid}',
+                text: text
+            })
+        })
+            .then(response => response.json())
+            .then(obj => {
+                const result = JSON.parse(obj);
+                if (result.message != null) {
+                    createNotification(`Success: ${result.message}`);
+                    document.getElementById('text').innerText = text;
+                    document.getElementById('edit-textarea').remove();
+                    editing = false;
+                } else {
+                    createNotification(`Error: ${result.error}`);
+                }
+            });
+    }
     document.getElementById("no-button").addEventListener("click", function () {
         const inputWrapper = document.getElementById('input-wrapper');
         inputWrapper.style.display = 'none';
+        document.getElementById('yes-button').removeEventListener("click", finalizeEdit);
+        document.getElementById('yes-button').removeEventListener("click", deletePaste);
+        
     });
     function notification(message) {
         const notification = document.getElementById('notification');
@@ -228,7 +280,12 @@
         }, 4900);
 
     }
-
+    function createInput(message) {
+        const inputWrapper = document.getElementById('input-wrapper');
+        const inputMessage = document.getElementById('input-message');
+        inputMessage.innerText = message;
+        inputWrapper.style.display = 'flex';
+    }
 </script>
 
 
@@ -441,6 +498,7 @@
         height: fit-content;
         overflow-y: auto;
         border: #222222 2px solid;
+        z-index: 999999;
     }
 
     .nav-hamburger-menu {
@@ -576,6 +634,10 @@
         margin-bottom: 10px;
         justify-content: center;
         align-items: center;
+        z-index: 102;
+        position: absolute;
+    }
+    .notifcations-wrapper{
         z-index: 101;
     }
 </style>

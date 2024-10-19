@@ -528,14 +528,14 @@ class Program
                     }
                     try
                     {
-                        string decompressedEncryptedContent = Compression.DecompressString(await File.ReadAllBytesAsync(filePath));
+                        string decompressedEncryptedContent = await Compression.DecompressByteArrayToString(await File.ReadAllBytesAsync(filePath));
                         string text = Encryption.DecryptString(decompressedEncryptedContent, password);
                         context.Response.ContentType = "text/plain";
                         await context.Response.WriteAsync(text);
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine(e.Message);
+                        await Logging.LogError(e.Message);
                         context.Response.StatusCode = 401;
                         var json = new JObject
                         {
@@ -552,26 +552,15 @@ class Program
 
             context.Response.ContentType = "text/plain";
             context.Response.ContentLength = fileSize;
-            try
+            var _content = await File.ReadAllBytesAsync(filePath);
+            if (Compression.IsCompressed(_content))
             {
-                var compressedContent = await File.ReadAllBytesAsync($"pastes/{id}.txt");
-                var content = Compression.DecompressString(compressedContent);
-
-                using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(content)))
-                {
-                    await stream.CopyToAsync(context.Response.Body);
-                }
+                _content = await Compression.DecompressByteArray(_content);
             }
-            catch
+            using (var stream = new MemoryStream(_content))
             {
-                var text = await File.ReadAllTextAsync(filePath);
-                using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(text)))
-                {
-                    await stream.CopyToAsync(context.Response.Body);
-                }
-                return;
+                await stream.CopyToAsync(context.Response.Body);
             }
-
         }).RequireRateLimiting("fixed-bigger");
 
         app.MapGet("/pastes", async (HttpContext context) =>
@@ -1126,8 +1115,7 @@ class Program
                 punishedUsersCommand.Parameters.AddWithValue("@Punisher", loggedInUser.UUID);
                 await punishedUsersCommand.ExecuteNonQueryAsync();
             }
-            Console.WriteLine($"[{DateTime.Now}] Account {user.Username}({user.UUID}) has been banned by {loggedInUser.Username}({loggedInUser.UUID}) for {reason}");
-            await File.AppendAllTextAsync("logs.log", $"[{DateTime.Now}] Account {user.Username}({user.UUID}) has been banned by {loggedInUser.Username}({loggedInUser.UUID}) for {reason}\n");
+            await Logging.LogInfo($"Account {user.Username}({user.UUID}) has been banned by {loggedInUser.Username}({loggedInUser.UUID}) for {reason}");
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "User banned" }.ToString());
@@ -1184,8 +1172,7 @@ class Program
                 return;
             }
             var user = await UnbanUUIDAsync(uuid);
-            Console.WriteLine($"[{DateTime.Now}] Account {user.Username}({user.UUID}) has been unbanned by {loggedInUser.Username}({loggedInUser.UUID}) for {reason}");
-            await File.AppendAllTextAsync("logs.log", $"[{DateTime.Now}] Account {user.Username}({user.UUID}) has been unbanned by {loggedInUser.Username}({loggedInUser.UUID}) for {reason}\n");
+            await Logging.LogInfo($"Account {user.Username}({user.UUID}) has been unbanned by {loggedInUser.Username}({loggedInUser.UUID}) for {reason}");
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "User unbanned" }.ToString());
@@ -1281,8 +1268,7 @@ class Program
                 deleteLoginsCommand.Parameters.AddWithValue("@UUID", uuid);
                 await deleteLoginsCommand.ExecuteNonQueryAsync();
             }
-            Console.WriteLine($"[{DateTime.Now}] Account {user.Username}({user.UUID}) has had their password changed by {loggedInUser.Username}({loggedInUser.UUID})");
-            await File.AppendAllTextAsync("logs.log", $"[{DateTime.Now}] Account {user.Username}({user.UUID}) has had their password changed by {loggedInUser.Username}({loggedInUser.UUID})\n");
+            await Logging.LogInfo($"Account {user.Username}({user.UUID}) has had their password changed by {loggedInUser.Username}({loggedInUser.UUID})");
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "Password changed", ["password"] = newPassword }.ToString());
@@ -1481,7 +1467,7 @@ class Program
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsJsonAsync(usersJson.ToString());
             }
-        });
+        }).RequireRateLimiting("fixed-bigger"); ;
 
         #endregion
 
@@ -1595,8 +1581,7 @@ class Program
                 _responseJson["pasteVisibility"] = privatePaste.Visibility;
 
                 Log _log = await Logging.LogRequestAsync(context);
-                Console.WriteLine($"[{_time}] Private Paste created, {ConvertToBytes(privatePaste.Size ?? string.Empty)}, {privatePaste.Id} by {uploaderUUID}");
-                await File.AppendAllTextAsync("logs.log", $"[{_time}] {privatePaste.Id} {_log.IP} {_log.Method} {_log.Path} {_log.UserAgent} {_log.Referer} {_log.Body} {uploaderUUID}\n");
+                await Logging.LogInfo($"Private Paste created, {ConvertToBytes(privatePaste.Size ?? string.Empty)}, {privatePaste.Id} by {uploaderUUID}");
                 await context.Response.WriteAsJsonAsync(_responseJson.ToString());
                 return;
             }
@@ -1627,13 +1612,101 @@ class Program
 
             Log log = await Logging.LogRequestAsync(context);
 
-            Console.WriteLine($"[{time}] Paste created, {ConvertToBytes(paste.Size ?? string.Empty)}, {paste.Id} by {uploaderUUID}");
-            await File.AppendAllTextAsync("logs.log", $"[{time}] {paste.Id} {log.IP} {log.Method} {log.Path} {log.UserAgent} {log.Referer} {log.Body} {uploaderUUID}\n");
+            await Logging.LogInfo($"Paste created, {ConvertToBytes(paste.Size ?? string.Empty)}, {paste.Id} by {uploaderUUID}");
 
             await context.Response.WriteAsJsonAsync(responseJson.ToString());
             return;
 
         }).RequireRateLimiting("fixed");
+        app.MapPost("/api/pastes/edit", async (HttpContext context) =>
+        {
+            var token = context.Request.Cookies["token"] ?? context.Request.Headers["Authorization"];
+            var user = await GetLoggedInUserAsync(token);
+            if (user.UUID == null || user.UID == null)
+            {
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                return;
+            }
+            if (user.State != 0)
+            {
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "User is banned/suspended" }.ToString());
+                return;
+            }
+            string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
+            if (string.IsNullOrEmpty(requestBody))
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                return;
+            }
+            try
+            {
+                JObject.Parse(requestBody);
+            }
+            catch
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                return;
+            }
+            var data = JObject.Parse(requestBody);
+            var id = SanitizeInput(data["id"]?.ToString() ?? "");
+            var content = SanitizeInput(data["text"]?.ToString() ?? "");
+
+            if (string.IsNullOrEmpty(id) || string.IsNullOrWhiteSpace(id) || string.IsNullOrEmpty(content) || string.IsNullOrWhiteSpace(content))
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                return;
+            }
+
+            using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+            {
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT * FROM pastes WHERE ID = @ID";
+                command.Parameters.AddWithValue("@ID", id);
+                var reader = await command.ExecuteReaderAsync();
+                await reader.ReadAsync();
+                if (!reader.HasRows)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Paste not found" }.ToString());
+                    return;
+                }
+                var paste = new Paste
+                {
+                    Title = reader.GetString(1),
+                    UnixDate = long.Parse(reader.GetString(2)),
+                    Size = reader.GetString(3),
+                    Visibility = reader.GetString(4),
+                    Id = reader.GetString(5),
+                };
+                if (paste.Visibility == "Private")
+                {
+                    context.Response.StatusCode = 501;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Editing private pastes has not been implemented." }.ToString());
+                    return;
+                }
+
+                var compressedContent = await Compression.CompressString(content);
+                await File.WriteAllBytesAsync($"pastes/{id}.txt", compressedContent);
+                await Logging.LogInfo($"{user.Username}({user.UUID}) edited their paste {paste.Id}");
+            }
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "Paste edited" }.ToString());
+        });
         app.MapPost("/api/pastes/delete", async (HttpContext context) =>
         {
             string token = context.Request.Cookies["token"] ?? context.Request.Headers["Authorization"];
@@ -1715,8 +1788,7 @@ class Program
                 deleteCommand.Parameters.AddWithValue("@ID", id);
                 await deleteCommand.ExecuteNonQueryAsync();
                 File.Delete($"pastes/{id}.txt");
-                Console.WriteLine($"[{log.Now}] Paste {id} deleted by {user.Username}({user.UUID})");
-                await File.AppendAllTextAsync("logs.log", $"[{log.Now}] PASTE DELETED {id} {log.IP} {log.Method} {log.Path} {log.UserAgent} {log.Referer} {log.Body} {user.UUID}\n");
+                await Logging.LogInfo($"Paste {id} deleted by {user.Username}({user.UUID})");
                 context.Response.StatusCode = 200;
                 await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "Paste deleted" }.ToString());
             }
@@ -1922,6 +1994,7 @@ class Program
                     Uploader = reader.GetString(6)
                 };
                 var filelength = new FileInfo($"pastes/{id}.txt").Length;
+                var user = await GetUserFromUUID(paste.Uploader);
 
                 JObject responseJson = new JObject();
                 responseJson["title"] = paste.Title;
@@ -1931,12 +2004,11 @@ class Program
                 responseJson["compressedSize"] = ConvertToBytes(filelength.ToString());
                 responseJson["date"] = paste.UnixDate;
                 responseJson["visibility"] = paste.Visibility;
-                responseJson["uploader"] = paste.Uploader;
-                Console.WriteLine(responseJson);
+                responseJson["uploader"] = user.Username;
 
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(responseJson.ToString());
+                await context.Response.WriteAsync(responseJson.ToString());
             }
         }).RequireRateLimiting("fixed");
         app.MapPost("/api/pastes/password/{pasteid}", async (HttpContext context) =>
@@ -2010,13 +2082,13 @@ class Program
                     return;
                 }
             }
-            string decompressedEncryptedText = Compression.DecompressString(File.ReadAllBytes($"pastes/{pasteId}.txt"));
+            string decompressedEncryptedText = await Compression.DecompressByteArrayToString(File.ReadAllBytes($"pastes/{pasteId}.txt"));
             string decryptedText = Encryption.DecryptString(decompressedEncryptedText, password);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsJsonAsync(new JObject { ["content"] = decryptedText }.ToString());
-        });
+        }).RequireRateLimiting("fixed");
         app.MapPost("/api/accounts/create", async (HttpContext context) =>
         {
 
@@ -2153,8 +2225,7 @@ class Program
             context.Response.Cookies.Append("token", token, cookie);
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
-            Console.WriteLine($"[{DateTime.Now}] Account {username} has been created");
-            File.AppendAllText("logs.log", $"[{DateTime.Now}] Account {username} has been created by {log.IP}\n");
+            await Logging.LogInfo($"Account {username} has been created");
             await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "Account created" }.ToString());
 
 
@@ -2274,8 +2345,7 @@ class Program
                     context.Response.Cookies.Append("token", token, cookie);
                     context.Response.StatusCode = 200;
                     context.Response.ContentType = "application/json";
-                    Console.WriteLine($"[{DateTime.Now}] Account {username} has logged in");
-                    File.AppendAllText("logs.log", $"[{DateTime.Now}] Account {username} has logged in from {log.IP}\n");
+                    await Logging.LogInfo($"Account {username} has logged in");
                     await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "Logged in" }.ToString());
                     return;
                 }
@@ -2326,8 +2396,8 @@ class Program
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(responseJson);
-        }));
+            await context.Response.WriteAsync(responseJson.ToString());
+        })).RequireRateLimiting("fixed"); ;
 
         #endregion
 
@@ -2346,7 +2416,7 @@ class Program
             Id = GenerateRandomString(12),
             Uploader = UUID
         };
-        var compressedText = Compression.CompressString(paste.Content);
+        var compressedText = await Compression.CompressString(paste.Content);
         await File.WriteAllBytesAsync($"pastes/{paste.Id}.txt", compressedText);
         using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
         {
@@ -2366,7 +2436,7 @@ class Program
     public static async Task<PrivatePaste> CreatePrivatePaste(string title, string content, string password, string UUID)
     {
         string encryptedText = Encryption.EncryptString(content, password);
-        var compressedEncryptedText = Compression.CompressString(encryptedText);
+        var compressedEncryptedText = await Compression.CompressString(encryptedText);
         string passwordHash = BCrypt.Net.BCrypt.HashPassword(password, salt);
         var paste = new PrivatePaste
         {
@@ -2532,6 +2602,33 @@ class Program
             };
         }
     }
+    public static async Task<User> GetUserFromUUID(string UUID)
+    {
+        using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+        {
+            await connection.OpenAsync();
+            var command = connection.CreateCommand();
+            command.CommandText = "SELECT * FROM users WHERE UUID = @UUID";
+            command.Parameters.AddWithValue("@UUID", UUID);
+            var reader = await command.ExecuteReaderAsync();
+            await reader.ReadAsync();
+            if (!reader.HasRows)
+            {
+                return new User();
+            }
+            return new User
+            {
+                UID = reader.GetString(0),
+                UUID = reader.GetString(1),
+                Username = reader.GetString(2),
+                PasswordHash = reader.GetString(3),
+                CreationDate = reader.GetString(4),
+                LastLoginDate = reader.GetString(5),
+                Type = reader.GetInt32(6),
+                State = reader.GetInt32(7)
+            };
+        }
+    }
     public static async Task<User> UnbanUUIDAsync(string UUID)
     {
         User user = new User();
@@ -2601,8 +2698,6 @@ class Program
             config["Salt"] = salt;
             config["SmallerSalt"] = smallerSalt;
             File.WriteAllText("config.json", config.ToString());
-
-            Logging.Api_CreateMessage = config["API_CreateMessage"]?.ToString() ?? "";
         }
         else
         {

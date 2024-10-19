@@ -1,8 +1,9 @@
-﻿namespace Sharpbin
+﻿using Org.BouncyCastle.Asn1.Cms;
+
+namespace Sharpbin
 {
     public class Logging
     {
-        public static string Api_CreateMessage = "";
         public static async Task<Log> LogRequestAsync(HttpContext context)
         {
             Log log = new Log();
@@ -14,6 +15,29 @@
             log.IP = context.Request.Headers["X-Forwarded-For"].ToString() ?? context.Connection.RemoteIpAddress.ToString();
             return log;
         }
+        public static async Task LogError(string message)
+        {
+            Console.BackgroundColor = ConsoleColor.Red;
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine($"[ERROR - {DateTime.Now}] {message}");
+            await File.AppendAllTextAsync("logs.log", $"[ERROR - {DateTime.Now}] {message}\n");
+            Console.ResetColor();
+        }
+        public static async Task LogInfo(string message)
+        {
+            Console.WriteLine($"[INFO - {DateTime.Now}] {message}");
+            await File.AppendAllTextAsync("logs.log", $"[INFO - {DateTime.Now}] {message}\n");
+            Console.ResetColor();
+        }
+        public static async Task LogWarning(string message)
+        {
+            Console.BackgroundColor = ConsoleColor.Yellow;
+            Console.ForegroundColor = ConsoleColor.Black;
+            Console.WriteLine($"[WARNING - {DateTime.Now}] {message}");
+            await File.AppendAllTextAsync("logs.log", $"[WARNING - {DateTime.Now}] {message}\n");
+            Console.ResetColor();
+        }
+
     }
     public class Log
     {
