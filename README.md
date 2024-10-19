@@ -16,6 +16,10 @@ Sharpbin can be used for sharing large amounts of text.
 - Editable pastes
 ... And more to come!
 
+# TODO
+- Fix css on the confirmations
+- Update file size when an edit is made in the database
+
 # Demo Website & Screenshots
 You can find the test website at https://bin.whoswhip.top , there is no removed functionality and is the exact same code in this repo.
 <div>
@@ -25,6 +29,4 @@ You can find the test website at https://bin.whoswhip.top , there is no removed 
   <img src="https://github.com/user-attachments/assets/72829045-97da-453b-89c1-ed901c7d840e" style="width: 250px;">
 
 </div>
-# TODO
-- Fix css on the confirmations
-- Update file size when an edit is made in the database
+
