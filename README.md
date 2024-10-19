@@ -13,6 +13,7 @@ Sharpbin can be used for sharing large amounts of text.
 - Private encrypted pastes, sadly the encryption is server side, although client side may be soon!
 - Mobile Support
 - Captchas for logins and sign ups
+- Editable pastes
 ... And more to come!
 
 # Demo Website & Screenshots
@@ -24,4 +25,6 @@ You can find the test website at https://bin.whoswhip.top , there is no removed 
   <img src="https://github.com/user-attachments/assets/72829045-97da-453b-89c1-ed901c7d840e" style="width: 250px;">
 
 </div>
-
+# TODO
+- Fix css on the confirmations
+- Update file size when an edit is made in the database
