@@ -4,7 +4,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{pastetitle}</title>
 </head>
 
 <body>
@@ -12,7 +11,9 @@
         <a href="/">home</a>
         <a href="/pastes">recent pastes</a>
         <a href="/archive">archive</a>
-        {html}
+        <a href="login" id="login-signup-btn">login</a>
+        <a href="sign-up" id="login-signup-btn">sign up</a>
+        <a href="dash" id="dash-btn" style="display: none;">dashboard</a>
     </div>
     <div class="nav-hamburger-menu">
         <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-list"
@@ -24,13 +25,15 @@
             <a href="/">home</a>
             <a href="/pastes">recent pastes</a>
             <a href="/archive">archive</a>
-            {html}
+            <a href="login" id="login-signup-btn">login</a>
+            <a href="sign-up" id="login-signup-btn">sign up</a>
+            <a href="dash" id="dash-btn" style="display: none;">dashboard</a>
         </div>
     </div>
     <div class="container-wrapper">
         <div class="paste-container">
-            <h1 id="paste-title" title="{pastetitleattribute}">{pastetitle}</h1>
-            <h3 class="uploader-text">{username} <a id="creationdate">{creationdate}</a> {pastesize}</h3>
+            <h1 id="paste-title" ></h1>
+            <h3 class="uploader-text"><a id="uploader-username" ></a> <a id="creationdate"></a> <a id="paste-size"></a></h3>
             <div class="paste-wrapper">
                 <p id="text"></p>
             </div>
@@ -40,21 +43,60 @@
                 </a>
                 <button id="copy-button" class="button">copy</button>
                 <button id="download-button" class="button">download</button>
-                {deletebutton}
+                <button id="delete-button" class="button" style="display: none;">delete</button>
             </div>
         </div>
     </div>
 </body>
 <script>
+    info = "";
     function localizeDateTime(unixTimestamp) {
         const date = new Date(unixTimestamp * 1000);
         return date.toLocaleString();
+    }
+    function authenticated() {
+        fetch('/api/accounts/authenticated')
+            .then(response => response.json())
+            .then(data => {
+                if (data.message == "Authenticated") {
+                    if (info.uploader == data.username) {
+                        document.getElementById('delete-button').style.display = 'block';
+                    }
+                    document.getElementById('login-signup-btn').style.display = 'none';
+                    document.getElementById('dash-btn').style.display = 'block';
+                }
+            });
+    }
+    function fetchInfo() {
+        fetch('/api/pastes/info?id={pasteid}')
+            .then(response => response.json())
+            .then(data => {
+                const json = JSON.parse(data);
+                info = json;
+                document.getElementById('uploader-username').innerText = json.uploader;
+                document.getElementById('creationdate').innerText = localizeDateTime(json.date);
+                document.getElementById('paste-size').innerText = json.size;
+                document.getElementById('paste-size').title = `Compressed Size: ${json.compressedSize}`;
+                document.getElementById('paste-title').innerText = json.title;
+                document.getElementById('paste-title').title = json.title;
+                if (json.title == "") {
+                    document.getElementById('paste-title').innerText = `Untitled ${json.uid}`;
+                    document.title = `Untitled ${json.uid}`;
+                }
+                if (json.uploader.startsWith("Anonymous") && json.uploader.length == 46) {
+                    document.getElementById('uploader-username').innerText = 'Anonymous';
+                } else {
+                    document.getElementById('uploader-username').href = `/u/${json.uploader}`;
+                }
+            });
     }
 
     document.addEventListener("DOMContentLoaded", function () {
         const creationdateElement = document.getElementById('creationdate');
         const creationdateText = creationdateElement.innerText.trim();
         const textElement = document.getElementById('text');
+        fetchInfo();
+        authenticated();
 
         creationdateElement.innerText = localizeDateTime(parseInt(creationdateText));
         textElement.innerText = "Loading...";
@@ -109,7 +151,6 @@
         element.click();
         document.body.removeChild(element);
     });
-    { deletescript }
 
 </script>
 

@@ -5,8 +5,6 @@ using Newtonsoft.Json.Linq;
 using System.Data;
 using System.Text;
 using Sharpbin;
-using Microsoft.AspNetCore.ResponseCompression;
-using System.Reflection.Metadata;
 
 class Program
 {
@@ -402,8 +400,6 @@ class Program
                 context.Response.Redirect("/paste-not-found");
                 return;
             }
-            var content = File.ReadAllText($"pastes/{id}.txt");
-            content = content.Replace("\n", "<br>").Replace("\r", "");
             using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
             {
                 await connection.OpenAsync();
@@ -452,24 +448,6 @@ class Program
                     user.LastLoginDate = userReader.GetString(5);
                     user.Type = userReader.GetInt32(6);
                 }
-                if (paste.Uploader.Contains("Anonymous"))
-                {
-                    user.Username = "Anonymous";
-                }
-                else
-                {
-                    user.Username = $"<a class=\"user-a\" href=\"/u/{user.Username}\">{user.Username}</a>";
-                }
-                if (paste.Title == "" || string.IsNullOrEmpty(paste.Title))
-                {
-                    paste.Title = $"Untitled {reader.GetString(0)}";
-                    title = $"Untitled {reader.GetString(0)}";
-                }
-                if (paste.Title.Length > 40)
-                {
-                    title = paste.Title.Substring(0, 40) + "...";
-                }
-
 
                 var html = File.ReadAllText("assets/paste.html");
                 if (paste.Visibility == "Private")
@@ -477,33 +455,7 @@ class Program
                     html = File.ReadAllText("assets/privatepaste.html");
                     html = html.Replace("{password}", "");
                 }
-                html = html.Replace("{pastetitleattribute}", paste.Title);
-                html = html.Replace("{pastetitle}", title);
-                html = html.Replace("{content}", content);
                 html = html.Replace("{pasteid}", paste.Id);
-                html = html.Replace("{username}", user.Username);
-                html = html.Replace("{creationdate}", paste.UnixDate.ToString());
-                html = html.Replace("{pastesize}", ConvertToBytes(paste.Size));
-                if (paste.Uploader == loggedInUser.UUID || loggedInUser.Type == 255)
-                {
-                    html = html.Replace("{deletebutton}", "<button id=\"delete-button\" class=\"button\">delete</button>");
-                    html = html.Replace("{deletescript}", "    document.getElementById(\"delete-button\").addEventListener(\"click\", function () {\r\n        alert(\"Deletion cannot be undone. Are you sure you want to delete this paste?\");\r\n        var requestUrl = \"/api/pastes/delete\";\r\n        fetch(requestUrl, {\r\n            method: \"POST\",\r\n            headers: {\r\n                \"Content-Type\": \"application/json\",\r\n            },\r\n            body: JSON.stringify({\r\n                id: \"" + paste.Id + "\"\r\n            })\r\n        })\r\n            .then(response => response.json())\r\n            .then(obj => {\r\n                const result = JSON.parse(obj);\r\n                if (result.message != null) {\r\n                    window.location.href = `/`;\r\n                }\r\n            })\r\n    });");
-                }
-                else
-                {
-                    html = html.Replace("{deletebutton}", "");
-                    html = html.Replace("{deletescript}", "");
-                }
-                bool loggedIn = await IsLoggedInAsync(context.Request.Cookies["token"]);
-
-                if (loggedIn)
-                {
-                    html = html.Replace("{html}", "<a href=\"/dash\">dashboard</a>");
-                }
-                else
-                {
-                    html = html.Replace("{html}", "<a href=\"/login\">login</a> <a href=\"/sign-up\">sign up</a>");
-                }
 
                 context.Response.ContentType = "text/html";
                 await context.Response.WriteAsync(html);
@@ -518,6 +470,10 @@ class Program
             if (!File.Exists(filePath))
             {
                 context.Response.StatusCode = 404;
+                var json = new JObject
+                {
+                    ["error"] = "Paste not found"
+                };
                 return;
             }
             if (id.Length == 24)
@@ -526,6 +482,10 @@ class Program
                 if (string.IsNullOrEmpty(password))
                 {
                     context.Response.StatusCode = 401;
+                    var json = new JObject
+                    {
+                        ["error"] = "Password required"
+                    };
                     return;
                 }
                 using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
@@ -539,6 +499,10 @@ class Program
                     if (!reader.HasRows)
                     {
                         context.Response.StatusCode = 404;
+                        var json = new JObject
+                        {
+                            ["error"] = "Paste not found"
+                        };
                         return;
                     }
                     var paste = new PrivatePaste
@@ -555,11 +519,29 @@ class Program
                     if (hashedPassword != paste.Password && paste.Visibility != "Private")
                     {
                         context.Response.StatusCode = 401;
+                        var json = new JObject
+                        {
+                            ["error"] = "Invalid password"
+                        };
                         return;
                     }
-                    string text = Encryption.DecryptString(await File.ReadAllTextAsync(filePath), password);
-                    context.Response.ContentType = "text/plain";
-                    await context.Response.WriteAsync(text);
+                    try
+                    {
+                        string decompressedEncryptedContent = Compression.DecompressString(await File.ReadAllBytesAsync(filePath));
+                        string text = Encryption.DecryptString(decompressedEncryptedContent, password);
+                        context.Response.ContentType = "text/plain";
+                        await context.Response.WriteAsync(text);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.Message);
+                        context.Response.StatusCode = 401;
+                        var json = new JObject
+                        {
+                            ["error"] = "Invalid password or Failed to decompress text"
+                        };
+                        return;
+                    }
                     return;
                 }
             }
@@ -569,11 +551,26 @@ class Program
 
             context.Response.ContentType = "text/plain";
             context.Response.ContentLength = fileSize;
-
-            using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            try
             {
-                await fileStream.CopyToAsync(context.Response.Body);
+                var compressedContent = await File.ReadAllBytesAsync($"pastes/{id}.txt");
+                var content = Compression.DecompressString(compressedContent);
+
+                using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(content)))
+                {
+                    await stream.CopyToAsync(context.Response.Body);
+                }
             }
+            catch
+            {
+                var text = await File.ReadAllTextAsync(filePath);
+                using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(text)))
+                {
+                    await stream.CopyToAsync(context.Response.Body);
+                }
+                return;
+            }
+
         }).RequireRateLimiting("fixed-bigger");
 
         app.MapGet("/pastes", async (HttpContext context) =>
@@ -1878,6 +1875,69 @@ class Program
             }
 
         }).RequireRateLimiting("fixed");
+        app.MapGet("/api/pastes/info", async (HttpContext context) =>
+        {
+            var query = context.Request.Query;
+            var id = query["id"].ToString();
+            
+            if (string.IsNullOrEmpty(id) || string.IsNullOrWhiteSpace(id))
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request" }.ToString());
+                return;
+            }
+            if (!File.Exists($"pastes/{id}.txt"))
+            {
+                context.Response.StatusCode = 404;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Paste not found" }.ToString());
+                return;
+            }
+
+            using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+            {
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT * FROM pastes WHERE ID = @ID";
+                command.Parameters.AddWithValue("@ID", id);
+                var reader = await command.ExecuteReaderAsync();
+                await reader.ReadAsync();
+                if (!reader.HasRows)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Paste not found" }.ToString());
+                    return;
+                }
+                var paste = new Paste
+                {
+                    Title = reader.GetString(1),
+                    UnixDate = long.Parse(reader.GetString(2)),
+                    Size = reader.GetString(3),
+                    Visibility = reader.GetString(4),
+                    Id = reader.GetString(5),
+                    UID = long.Parse(reader.GetString(0)),
+                    Uploader = reader.GetString(6)
+                };
+                var filelength = new FileInfo($"pastes/{id}.txt").Length;
+
+                JObject responseJson = new JObject();
+                responseJson["title"] = paste.Title;
+                responseJson["id"] = paste.Id;
+                responseJson["uid"] = paste.UID;
+                responseJson["size"] = ConvertToBytes(paste.Size);
+                responseJson["compressedSize"] = ConvertToBytes(filelength.ToString());
+                responseJson["date"] = paste.UnixDate;
+                responseJson["visibility"] = paste.Visibility;
+                responseJson["uploader"] = paste.Uploader;
+                Console.WriteLine(responseJson);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(responseJson.ToString());
+            }
+        }).RequireRateLimiting("fixed");
         app.MapPost("/api/pastes/password/{pasteid}", async (HttpContext context) =>
         {
             var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
@@ -1948,9 +2008,10 @@ class Program
                     await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid password" }.ToString());
                     return;
                 }
-
             }
-            string decryptedText = Encryption.DecryptString(File.ReadAllText($"pastes/{pasteId}.txt"), password);
+            string decompressedEncryptedText = Compression.DecompressString(File.ReadAllBytes($"pastes/{pasteId}.txt"));
+            string decryptedText = Encryption.DecryptString(decompressedEncryptedText, password);
+
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsJsonAsync(new JObject { ["content"] = decryptedText }.ToString());
@@ -2225,6 +2286,39 @@ class Program
                 }
             }
         })).RequireRateLimiting("fixed");
+        app.MapGet("/api/accounts/authenticated", (async (HttpContext context) =>
+        {
+            var token = context.Request.Cookies["token"] ?? context.Request.Headers["Authorization"];
+            if (string.IsNullOrEmpty(token) || string.IsNullOrWhiteSpace(token))
+            {
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                return;
+            }
+            var user = await GetLoggedInUserAsync(token);
+            if (user == null)
+            {
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                return;
+            }
+
+            var responseJson = new JObject();
+            responseJson["message"] = "Authenticated";
+            responseJson["username"] = user.Username;
+            responseJson["uid"] = user.UID;
+            responseJson["uuid"] = user.UUID;
+            responseJson["type"] = accountType[user.Type];
+            responseJson["state"] = accountState[user.State];
+            responseJson["creationDate"] = DateTimeOffset.FromUnixTimeSeconds(long.Parse(user.CreationDate)).ToString().Split("+")[0].TrimEnd();
+            responseJson["lastLoginDate"] = DateTimeOffset.FromUnixTimeSeconds(long.Parse(user.LastLoginDate)).ToString().Split("+")[0].TrimEnd();
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(responseJson.ToString());
+        }));
 
         #endregion
 
@@ -2243,7 +2337,8 @@ class Program
             Id = GenerateRandomString(12),
             Uploader = UUID
         };
-        await File.WriteAllTextAsync($"pastes/{paste.Id}.txt", paste.Content);
+        var compressedText = Compression.CompressString(paste.Content);
+        await File.WriteAllBytesAsync($"pastes/{paste.Id}.txt", compressedText);
         using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
         {
             await connection.OpenAsync();
@@ -2261,7 +2356,8 @@ class Program
     }
     public static async Task<PrivatePaste> CreatePrivatePaste(string title, string content, string password, string UUID)
     {
-        string encryptedText = Encryption.EncryptString($"{content}", password);
+        string encryptedText = Encryption.EncryptString(content, password);
+        var compressedEncryptedText = Compression.CompressString(encryptedText);
         string passwordHash = BCrypt.Net.BCrypt.HashPassword(password, salt);
         var paste = new PrivatePaste
         {
@@ -2272,8 +2368,8 @@ class Program
             Uploader = UUID,
             Password = passwordHash
         };
-        
-        await File.WriteAllTextAsync($"pastes/{paste.Id}.txt", encryptedText);
+
+        await File.WriteAllBytesAsync($"pastes/{paste.Id}.txt", compressedEncryptedText);
         using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
         {
             await connection.OpenAsync();
@@ -2464,6 +2560,7 @@ class Program
     {
         if (!File.Exists("pastes.sqlite"))
         {
+            File.Create("pastes.sqlite").Close();
             using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
             {
                 await connection.OpenAsync();
@@ -2542,6 +2639,7 @@ public class Paste
     public long? UnixDate { get; set; }
     public string? Visibility { get; set; }
     public string? Id { get; set; }
+    public long? UID { get; set; }
     public string? Uploader { get; set; }
 }
 public class PrivatePaste : Paste
