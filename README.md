@@ -17,8 +17,8 @@ Sharpbin can be used for sharing large amounts of text.
 ... And more to come!
 
 # TODO
-- Fix css on the confirmations
-- Update file size when an edit is made in the database
+- ~~Fix css on the confirmations~~
+- ~~Update file size when an edit is made in the database~~
 
 # Demo Website & Screenshots
 You can find the test website at https://bin.whoswhip.top , there is no removed functionality and is the exact same code in this repo.
