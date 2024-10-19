@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using System.Data;
 using System.Text;
 using Sharpbin;
+using System.Reflection;
 
 class Program
 {
@@ -2296,8 +2297,16 @@ class Program
                 await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
                 return;
             }
+
             var user = await GetLoggedInUserAsync(token);
             if (user == null)
+            {
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                return;
+            }
+            if (user.UUID == null)
             {
                 context.Response.StatusCode = 401;
                 context.Response.ContentType = "application/json";
@@ -2317,7 +2326,7 @@ class Program
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(responseJson.ToString());
+            await context.Response.WriteAsJsonAsync(responseJson);
         }));
 
         #endregion

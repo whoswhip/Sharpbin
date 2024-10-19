@@ -17,7 +17,8 @@
         <a href="dash" id="dash-btn" style="display: none;">dashboard</a>
     </div>
     <div class="nav-hamburger-menu">
-        <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-list" viewBox="0 0 16 16" id="hamburger-button" style="cursor: pointer;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-list"
+            viewBox="0 0 16 16" id="hamburger-button" style="cursor: pointer;">
             <path fill-rule="evenodd"
                 d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5" />
         </svg>
@@ -33,7 +34,8 @@
     <div class="container-wrapper">
         <div class="paste-container">
             <h1 id="paste-title" title="{pastetitleattribute}">{pastetitle}</h1>
-            <h3 class="uploader-text"><a id="uploader-username" ></a> <a id="creationdate"></a> <a id="paste-size"></a></h3>
+            <h3 class="uploader-text"><a id="uploader-username"></a> <a id="creationdate"></a> <a id="paste-size"></a>
+            </h3>
             <div class="paste-wrapper">
                 <p id="text"></p>
             </div>
@@ -49,13 +51,25 @@
         <div class="passwordDiv">
             <div class="inputDiv">
                 <h1>This paste is password protected</h1>
-                <input type="password" id="password" class="textinput" name="password" maxlength="500" placeholder="password">
+                <input type="password" id="password" class="textinput" name="password" maxlength="500"
+                    placeholder="password">
                 <button id="submitPassword" class="button-input">Submit</button>
             </div>
         </div>
     </div>
     <div class="notification-div" id="notification">
         <h2 id="notification-text"></h2>
+    </div>
+    <div class="input-wrapper" id="input-wrapper">
+        <div class="input-wrapper-container">
+            <h2>
+                Are you sure you want to delete this paste?
+            </h2>
+            <div>
+                <button id="yes-button" class="button">Yes</button>
+                <button id="no-button" class="button">No</button>
+            </div>
+        </div>
     </div>
 </body>
 <script>
@@ -110,32 +124,32 @@
                 password: password
             })
         })
-        .then(response => response.json())
-        .then(obj => {
-            const result = JSON.parse(obj);
-            if (result.content != null){
-                const textElement = document.getElementById('text');
-                textElement.innerText = result.content;
-                document.querySelector(".passwordDiv").style.display = "none";
-                const viewRawButton = document.getElementById('view-raw-a');
-                viewRawButton.href = `/raw/{pasteid}?password=` + password;
-            }
-            else {
-                notification(`Error: ${result.error}`);
-            }
-        });
+            .then(response => response.json())
+            .then(obj => {
+                const result = JSON.parse(obj);
+                if (result.content != null) {
+                    const textElement = document.getElementById('text');
+                    textElement.innerText = result.content;
+                    document.querySelector(".passwordDiv").style.display = "none";
+                    const viewRawButton = document.getElementById('view-raw-a');
+                    viewRawButton.href = `/raw/{pasteid}?password=` + password;
+                }
+                else {
+                    notification(`Error: ${result.error}`);
+                }
+            });
     });
     function localizeDateTime(unixTimestamp) {
         const date = new Date(unixTimestamp * 1000);
         return date.toLocaleString();
     }
 
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function () {
         const creationdateElement = document.getElementById('creationdate');
         const creationdateText = creationdateElement.innerText.trim();
         fetchInfo();
         authenticated();
-        
+
         creationdateElement.innerText = localizeDateTime(parseInt(creationdateText));
         var mobile = window.mobileCheck();
         if (mobile) {
@@ -168,7 +182,35 @@
         element.click();
         document.body.removeChild(element);
     });
-    {deletescript}
+    document.getElementById("delete-button").addEventListener("click", function () {
+        const inputWrapper = document.getElementById('input-wrapper');
+        inputWrapper.style.display = 'flex';
+    });
+    document.getElementById("yes-button").addEventListener("click", function () {
+        var requestUrl = "/api/pastes/delete";
+        fetch(requestUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                id: '{pasteid}'
+            })
+        })
+            .then(response => response.json())
+            .then(obj => {
+                const result = JSON.parse(obj);
+                if (result.message != null) {
+                    window.location.href = `/`;
+                } else {
+                    createNotification(`Error: ${result.error}`);
+                }
+            });
+    });
+    document.getElementById("no-button").addEventListener("click", function () {
+        const inputWrapper = document.getElementById('input-wrapper');
+        inputWrapper.style.display = 'none';
+    });
     function notification(message) {
         const notification = document.getElementById('notification');
         const notificationText = document.getElementById('notification-text');
@@ -186,13 +228,14 @@
         }, 4900);
 
     }
-    
+
 </script>
 
 
 </html>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@100..900&display=swap');
+
     body {
         font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
         font-weight: bold;
@@ -203,6 +246,31 @@
         background-color: #0d0d0d;
     }
 
+    .input-wrapper {
+        z-index: 100;
+        display: none;
+        position: absolute;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 100%;
+        color: white;
+        backdrop-filter: blur(2.5px);
+    }
+
+    .input-wrapper-container {
+        z-index: 101;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 50%;
+        border-radius: 5px;
+        padding: 20px;
+        background-color: #181818;
+    }
+
     .container-wrapper {
         display: flex;
         flex-direction: column;
@@ -211,6 +279,7 @@
         width: 100%;
         height: 98.7vh;
     }
+
     .button-input {
         transition: 300ms;
         background-color: #222222;
@@ -228,11 +297,13 @@
         font-weight: 625;
         box-sizing: content-box;
     }
+
     .button-input:hover {
         transition: 300ms;
         background-color: #333333;
         border: 2px solid #3a3a3a;
     }
+
     .passwordDiv {
         z-index: 100;
         position: absolute;
@@ -245,6 +316,7 @@
         justify-content: center;
         align-items: center;
     }
+
     .inputDiv {
         display: flex;
         flex-direction: column;
@@ -253,6 +325,7 @@
         width: fit-content;
         color: white;
     }
+
     .textinput {
         width: 100%;
         height: 50px;
@@ -265,6 +338,7 @@
         font-weight: 625;
         color: white;
     }
+
     .textinput:focus {
         outline: none;
         border: 2px solid #333333;
@@ -429,6 +503,7 @@
         background-color: #333333;
         border: #3a3a3a 2px solid;
     }
+
     @media screen and (max-width: 800px) {
         .nav-div {
             display: none;
@@ -445,8 +520,9 @@
         .nav-buttons a {
             display: block;
         }
-        
+
     }
+
     @keyframes hoverup {
         0% {
             opacity: 0;
@@ -482,6 +558,7 @@
         }
 
     }
+
     .notification-div {
         position: fixed;
         display: none;

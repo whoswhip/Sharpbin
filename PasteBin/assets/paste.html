@@ -32,8 +32,9 @@
     </div>
     <div class="container-wrapper">
         <div class="paste-container">
-            <h1 id="paste-title" ></h1>
-            <h3 class="uploader-text"><a id="uploader-username" ></a> <a id="creationdate"></a> <a id="paste-size"></a></h3>
+            <h1 id="paste-title"></h1>
+            <h3 class="uploader-text"><a id="uploader-username"></a> <a id="creationdate"></a> <a id="paste-size"></a>
+            </h3>
             <div class="paste-wrapper">
                 <p id="text"></p>
             </div>
@@ -44,6 +45,18 @@
                 <button id="copy-button" class="button">copy</button>
                 <button id="download-button" class="button">download</button>
                 <button id="delete-button" class="button" style="display: none;">delete</button>
+            </div>
+        </div>
+    </div>
+    <div class="notifcations-wrapper" id="notifications"></div>
+    <div class="input-wrapper" id="input-wrapper">
+        <div class="input-wrapper-container">
+            <h2>
+                Are you sure you want to delete this paste?
+            </h2>
+            <div>
+                <button id="yes-button" class="button">Yes</button>
+                <button id="no-button" class="button">No</button>
             </div>
         </div>
     </div>
@@ -151,7 +164,61 @@
         element.click();
         document.body.removeChild(element);
     });
-    { deletescript }
+    document.getElementById("delete-button").addEventListener("click", function () {
+        const inputWrapper = document.getElementById('input-wrapper');
+        inputWrapper.style.display = 'flex';
+    });
+    document.getElementById("yes-button").addEventListener("click", function () {
+        var requestUrl = "/api/pastes/delete";
+        fetch(requestUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                id: '{pasteid}'
+            })
+        })
+        .then(response => response.json())
+        .then(obj => {
+            const result = JSON.parse(obj);
+            if (result.message != null) {
+                window.location.href = `/`;
+            }else{
+                createNotification(`Error: ${result.error}`);
+            }
+        });
+    });
+    document.getElementById("no-button").addEventListener("click", function () {
+        const inputWrapper = document.getElementById('input-wrapper');
+        inputWrapper.style.display = 'none';
+    });
+    function createNotification(message) {
+        const notificationWrapper = document.getElementById('notifications');
+        const notificationDiv = document.createElement('div');
+        notificationDiv.classList.add('notification-div');
+        notificationDiv.id = 'notification';
+
+        const notificationText = document.createElement('h2');
+        notificationText.id = 'notification-text';
+        notificationText.innerText = message;
+
+        notificationDiv.appendChild(notificationText);
+        notificationWrapper.appendChild(notificationDiv);
+
+        notificationDiv.style.animation = 'none';
+        notificationDiv.style.display = 'none';
+        notificationDiv.style.display = 'flex';
+        notificationDiv.style.animation = 'hoverup 1s';
+
+        setTimeout(() => {
+            notificationDiv.style.animation = 'hoverdown 1s';
+        }, 4000);
+
+        setTimeout(() => {
+            notificationDiv.remove();
+        }, 4900);
+    }
 
 </script>
 
@@ -159,6 +226,30 @@
 </html>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@100..900&display=swap');
+
+    .input-wrapper{
+        z-index: 100;
+        display: none;
+        position: absolute;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 100%;
+        color: white;
+        backdrop-filter: blur(2.5px);
+    }
+    .input-wrapper-container{
+        z-index: 101;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 50%;
+        border-radius: 5px;
+        padding: 20px;
+        background-color: #181818;
+    }
 
     body {
         font-family: "Noto Sans Mono", "Consolas", "SF Mono", monospace;
@@ -355,5 +446,59 @@
             display: block;
         }
 
+    }
+    
+    @keyframes hoverup {
+        0% {
+            opacity: 0;
+            transform: translateY(100%);
+        }
+
+        25% {
+            opacity: 1;
+        }
+
+        50% {
+
+            transform: translateY(-10px);
+        }
+
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes hoverdown {
+        0% {
+            transform: translateY(0);
+        }
+
+        50% {
+            transform: translateY(-10px);
+        }
+
+        100% {
+            transform: translateY(200%);
+        }
+
+    }
+
+    .notification-div {
+        display: flex;
+        right: 0;
+        bottom: 0;
+        width: fit-content;
+        height: fit-content;
+        color: white;
+        background-color: #181818;
+        border-radius: 5px;
+        border: #222222 2px solid;
+        padding-left: 10px;
+        padding-right: 10px;
+        margin-right: 10px;
+        margin-bottom: 10px;
+        justify-content: center;
+        align-items: center;
     }
 </style>
