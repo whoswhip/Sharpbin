@@ -64,6 +64,14 @@ class Program
             options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
             options.QueueLimit = 4;
         }));
+        builder.Services.AddRateLimiter(_ => _
+        .AddFixedWindowLimiter(policyName: "fixed-xl", options =>
+        {
+            options.PermitLimit = 16;
+            options.Window = TimeSpan.FromSeconds(6);
+            options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            options.QueueLimit = 4;
+        }));
         builder.Services.AddRateLimiter(options =>
         {
             options.AddPolicy("OneRequestPerIP", context =>
@@ -462,7 +470,7 @@ class Program
                 await context.Response.WriteAsync(html);
                 return;
             }
-        }).RequireRateLimiting("fixed-bigger");
+        });
         app.MapGet("/raw/{id}", async (HttpContext context) =>
         {
             var id = context.Request?.RouteValues?["id"]?.ToString();
@@ -561,7 +569,7 @@ class Program
             {
                 await stream.CopyToAsync(context.Response.Body);
             }
-        }).RequireRateLimiting("fixed-bigger");
+        });
 
         app.MapGet("/pastes", async (HttpContext context) =>
         {
@@ -802,7 +810,7 @@ class Program
                     return;
                 }
             }
-        });
+        }).RequireRateLimiting("fixed-xl");
         app.MapGet("/uid/{uid}", async (HttpContext context) =>
         {
             string username = context.Request?.RouteValues?["uid"]?.ToString();
@@ -899,7 +907,7 @@ class Program
                     return;
                 }
             }
-        });
+        }).RequireRateLimiting("fixed-xl");
 
         #region ADMIN PANEL
 
@@ -1467,7 +1475,92 @@ class Program
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsync(usersJson.ToString());
             }
-        }).RequireRateLimiting("fixed-bigger"); ;
+        }).RequireRateLimiting("fixed-bigger");
+        app.MapPost("/api/pastes/admin/change-id", async (HttpContext context) =>
+        {
+            var token = context.Request.Cookies["token"] ?? context.Request.Headers["Authorization"];
+            var user = await GetLoggedInUserAsync(token);
+            if (string.IsNullOrEmpty(user.UID) || user.Type != 255)
+            {
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                return;
+            }
+            string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
+            try
+            {
+                JObject.Parse(requestBody);
+            }
+            catch
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                return;
+            }
+            var json = JObject.Parse(requestBody);
+            var pasteId = SanitizeInput(json["pasteId"]?.ToString() ?? "");
+            var newPasteId = SanitizeInput(json["newPasteId"]?.ToString() ?? "");
+
+            if (string.IsNullOrEmpty(pasteId) || string.IsNullOrWhiteSpace(pasteId) || string.IsNullOrEmpty(newPasteId) || string.IsNullOrWhiteSpace(newPasteId))
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                return;
+            }
+
+            if (!File.Exists($"pastes/{pasteId}.txt"))
+            {
+                context.Response.StatusCode = 404;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync(new JObject { ["error"] = "Paste not found" }.ToString());
+                return;
+            }
+            using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+            {
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT * FROM pastes WHERE Id = @Id";
+                command.Parameters.AddWithValue("@Id", pasteId);
+                var reader = await command.ExecuteReaderAsync();
+                await reader.ReadAsync();
+                if (!reader.HasRows)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Paste not found" }.ToString());
+                    return;
+                }
+                var paste = new Paste
+                {
+                    Title = reader.GetString(1),
+                    UnixDate = long.Parse(reader.GetString(2)),
+                    Size = reader.GetString(3),
+                    Visibility = reader.GetString(4),
+                    Id = reader.GetString(5),
+                    Uploader = reader.GetString(6),
+                };
+                var changeIdCommand = connection.CreateCommand();
+                changeIdCommand.CommandText = "UPDATE pastes SET Id = @NewId WHERE Id = @Id";
+                changeIdCommand.Parameters.AddWithValue("@NewId", newPasteId);
+                changeIdCommand.Parameters.AddWithValue("@Id", pasteId);
+                await changeIdCommand.ExecuteNonQueryAsync();
+                File.Move($"pastes/{pasteId}.txt", $"pastes/{newPasteId}.txt");
+                if (File.Exists($"pastes/{pasteId}.txt"))
+                {
+                    context.Response.StatusCode = 500;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Failed to change paste ID" }.ToString());
+                    return;
+                }
+                await Logging.LogInfo($"Paste {pasteId} has been changed to {newPasteId} by {user.Username}({user.UUID})");
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync(new JObject { ["message"] = "Paste ID changed" }.ToString());
+            }
+        }).RequireRateLimiting("fixed");
 
         #endregion
 
@@ -1698,15 +1791,21 @@ class Program
                     return;
                 }
 
+                var updateCommand = connection.CreateCommand();
+                updateCommand.CommandText = "UPDATE pastes SET Size = @Size WHERE ID = @ID";
+                updateCommand.Parameters.AddWithValue("@Size", content.Length.ToString());
+                updateCommand.Parameters.AddWithValue("@ID", id);
+                await updateCommand.ExecuteNonQueryAsync();
+
                 var compressedContent = await Compression.CompressString(content);
                 await File.WriteAllBytesAsync($"pastes/{id}.txt", compressedContent);
-                await Logging.LogInfo($"{user.Username}({user.UUID}) edited their paste {paste.Id}");
+                await Logging.LogInfo($"Paste {paste.Id} edited by {user.Username}({user.UUID})");
             }
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsync(new JObject { ["message"] = "Paste edited" }.ToString());
-        });
+        }).RequireRateLimiting("fixed-bigger");
         app.MapPost("/api/pastes/delete", async (HttpContext context) =>
         {
             string token = context.Request.Cookies["token"] ?? context.Request.Headers["Authorization"];
@@ -1947,7 +2046,7 @@ class Program
                 }
             }
 
-        }).RequireRateLimiting("fixed");
+        }).RequireRateLimiting("fixed-bigger");
         app.MapGet("/api/pastes/info", async (HttpContext context) =>
         {
             var query = context.Request.Query;
@@ -2010,7 +2109,7 @@ class Program
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsync(responseJson.ToString());
             }
-        }).RequireRateLimiting("fixed");
+        });
         app.MapPost("/api/pastes/password/{pasteid}", async (HttpContext context) =>
         {
             var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
@@ -2397,7 +2496,7 @@ class Program
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsync(responseJson.ToString());
-        })).RequireRateLimiting("fixed"); ;
+        })).RequireRateLimiting("fixed-xl"); ;
 
         #endregion
 

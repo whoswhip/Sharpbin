@@ -33,7 +33,7 @@
     </div>
     <div class="container-wrapper">
         <div class="paste-container">
-            <h1 id="paste-title" title="{pastetitleattribute}">{pastetitle}</h1>
+            <h1 id="paste-title"></h1>
             <h3 class="uploader-text"><a id="uploader-username" class="user-a"></a> <a id="creationdate"></a> <a id="paste-size"></a>
             </h3>
             <div class="paste-wrapper">
@@ -97,8 +97,7 @@
     function fetchInfo() {
         fetch('/api/pastes/info?id={pasteid}')
             .then(response => response.json())
-            .then(data => {
-                const json = JSON.parse(data);
+            .then(json => {
                 info = json;
                 document.getElementById('uploader-username').innerText = json.uploader;
                 document.getElementById('creationdate').innerText = localizeDateTime(json.date);
@@ -144,8 +143,7 @@
             })
         })
             .then(response => response.json())
-            .then(obj => {
-                const result = obj;
+            .then(result => {
                 if (result.content != null) {
                     const textElement = document.getElementById('text');
                     textElement.innerText = result.content;
@@ -166,10 +164,6 @@
     document.addEventListener("DOMContentLoaded", function () {
         fetchInfo();
         authenticated();
-
-        const creationdateElement = document.getElementById('creationdate');
-        const creationdateText = creationdateElement.innerText.trim();
-        creationdateElement.innerText = localizeDateTime(parseInt(creationdateText));
         var mobile = window.mobileCheck();
         if (mobile) {
             document.querySelector('.nav-div').style.display = 'none';
@@ -218,8 +212,7 @@
             })
         })
             .then(response => response.json())
-            .then(obj => {
-                const result = obj;
+            .then(result => {
                 if (result.message != null) {
                     createNotification(`Success: ${result.message}`);
                     setTimeout(() => {
@@ -244,8 +237,7 @@
             })
         })
             .then(response => response.json())
-            .then(obj => {
-                const result = obj;
+            .then(result => {
                 if (result.message != null) {
                     createNotification(`Success: ${result.message}`);
                     document.getElementById('text').innerText = text;
@@ -313,7 +305,7 @@
         width: 100%;
         height: 100%;
         color: white;
-        backdrop-filter: blur(2.5px);
+        backdrop-filter: blur(5px);
     }
 
     .input-wrapper-container {
@@ -326,6 +318,7 @@
         border-radius: 5px;
         padding: 20px;
         background-color: #181818;
+        border: #222222 2px solid;
     }
 
     .container-wrapper {
@@ -474,7 +467,7 @@
         font-weight: 600;
     }
 
-    .user-a {
+    .user-a:any-link {
         color: rgb(190, 190, 190);
         text-decoration: none;
         text-decoration: underline;
