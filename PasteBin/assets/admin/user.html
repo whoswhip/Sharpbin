@@ -153,7 +153,7 @@
 
             }).then(response => response.json())
                 .then(obj => {
-                    const result = JSON.parse(obj);
+                    const result = obj;
                     if (result.message != null) {
                         createNotification(`${result.message} for ${reason}`);
                     } else {
@@ -174,7 +174,7 @@
 
             }).then(response => response.json())
                 .then(obj => {
-                    const result = JSON.parse(obj);
+                    const result = obj;
                     if (result.message != null) {
                         createNotification(`${result.message} for ${reason}`);
                     } else {
@@ -199,7 +199,7 @@
 
         }).then(response => response.json())
             .then(obj => {
-                const result = JSON.parse(obj);
+                const result = obj;
                 if (result.message != null) {
                     createNotification(`${result.message} to ${result.password}`);
                     navigator.clipboard.writeText(result.password);

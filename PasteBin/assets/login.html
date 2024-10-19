@@ -63,7 +63,7 @@
 
             .then(response => response.json())
             .then(obj => {
-                const result = JSON.parse(obj);
+                const result = obj;
                 isLoggingIn = true;
                 if (result.message != null) {
                     window.location.href = "/";

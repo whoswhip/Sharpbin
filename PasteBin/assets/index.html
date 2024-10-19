@@ -84,11 +84,10 @@
         })
             .then(response => response.json())
             .then(obj => {
-                const result = JSON.parse(obj);
-                if (result.pasteId != null) {
-                    window.location.href = `/${result.pasteId}`;
-                } else if (result.error != null) {
-                    notification(result.error);
+                if (obj.pasteId != null) {
+                    window.location.href = `/${obj.pasteId}`;
+                } else if (obj.error != null) {
+                    notification(obj.error);
                 }
             })
     });

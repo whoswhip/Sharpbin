@@ -74,8 +74,8 @@
 <script>
     info = "";
     editing = false;
-    function authenticated() {
-        fetch('/api/accounts/authenticated')
+    function authenticate() {
+        fetch('/api/accounts/authenticate')
             .then(response => response.json())
             .then(data => {
                 if (data.message == "Authenticated") {
@@ -145,7 +145,7 @@
         })
             .then(response => response.json())
             .then(obj => {
-                const result = JSON.parse(obj);
+                const result = obj;
                 if (result.content != null) {
                     const textElement = document.getElementById('text');
                     textElement.innerText = result.content;
@@ -219,7 +219,7 @@
         })
             .then(response => response.json())
             .then(obj => {
-                const result = JSON.parse(obj);
+                const result = obj;
                 if (result.message != null) {
                     createNotification(`Success: ${result.message}`);
                     setTimeout(() => {
@@ -245,7 +245,7 @@
         })
             .then(response => response.json())
             .then(obj => {
-                const result = JSON.parse(obj);
+                const result = obj;
                 if (result.message != null) {
                     createNotification(`Success: ${result.message}`);
                     document.getElementById('text').innerText = text;

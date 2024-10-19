@@ -67,8 +67,8 @@
         const date = new Date(unixTimestamp * 1000);
         return date.toLocaleString();
     }
-    function authenticated() {
-        fetch('/api/accounts/authenticated')
+    function authenticate() {
+        fetch('/api/accounts/authenticate')
             .then(response => response.json())
             .then(data => {
                 if (data.message == "Authenticated") {
@@ -126,7 +126,7 @@
 
     document.addEventListener("DOMContentLoaded", function () {
         fetchInfo();
-        authenticated();
+        authenticate();
         const creationdateElement = document.getElementById('creationdate');
         const creationdateText = creationdateElement.innerText.trim();
         const textElement = document.getElementById('text');
@@ -197,7 +197,7 @@
             })
                 .then(response => response.json())
                 .then(obj => {
-                    const result = JSON.parse(obj);
+                    const result = obj;
                     if (result.message != null) {
                         createNotification(`Success: ${result.message}`);
                         setTimeout(() => {
@@ -265,7 +265,7 @@
         })
             .then(response => response.json())
             .then(obj => {
-                const result = JSON.parse(obj);
+                const result = obj;
                 if (result.message != null) {
                     const inputWrapper = document.getElementById('input-wrapper');
                     inputWrapper.style.display = 'none';

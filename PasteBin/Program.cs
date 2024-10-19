@@ -5,7 +5,7 @@ using Newtonsoft.Json.Linq;
 using System.Data;
 using System.Text;
 using Sharpbin;
-using System.Reflection;
+
 
 class Program
 {
@@ -1015,7 +1015,7 @@ class Program
             {
                 context.Response.StatusCode = 401;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
                 return;
             }
             else if (await IsLoggedInAsync(context.Request.Cookies["token"]))
@@ -1025,7 +1025,7 @@ class Program
                 {
                     context.Response.StatusCode = 401;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
                     return;
                 }
             }
@@ -1038,14 +1038,14 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
                 return;
             }
             if (string.IsNullOrEmpty(requestBody))
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
                 return;
             }
             var data = JObject.Parse(requestBody);
@@ -1057,7 +1057,7 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
                 return;
             }
             var user = new User();
@@ -1073,7 +1073,7 @@ class Program
                 {
                     context.Response.StatusCode = 404;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "User not found" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "User not found" }.ToString());
                     return;
                 }
                 user = new User
@@ -1091,14 +1091,14 @@ class Program
                 {
                     context.Response.StatusCode = 400;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "User is already banned" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "User is already banned" }.ToString());
                     return;
                 }
                 if (user.Type == 255)
                 {
                     context.Response.StatusCode = 400;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Cannot ban an admin" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Cannot ban an admin" }.ToString());
                     return;
                 }
                 var banUserCommand = connection.CreateCommand();
@@ -1118,7 +1118,7 @@ class Program
             await Logging.LogInfo($"Account {user.Username}({user.UUID}) has been banned by {loggedInUser.Username}({loggedInUser.UUID}) for {reason}");
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "User banned" }.ToString());
+            await context.Response.WriteAsync(new JObject { ["message"] = "User banned" }.ToString());
             return;
         }).RequireRateLimiting("fixed");
         app.MapPost("/api/accounts/admin/unban", async (HttpContext context) =>
@@ -1128,7 +1128,7 @@ class Program
             {
                 context.Response.StatusCode = 401;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
                 return;
             }
             else if (await IsLoggedInAsync(context.Request.Cookies["token"]))
@@ -1138,7 +1138,7 @@ class Program
                 {
                     context.Response.StatusCode = 401;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
                     return;
                 }
             }
@@ -1151,14 +1151,14 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
                 return;
             }
             if (string.IsNullOrEmpty(requestBody))
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
                 return;
             }
             var data = JObject.Parse(requestBody);
@@ -1168,14 +1168,14 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
                 return;
             }
             var user = await UnbanUUIDAsync(uuid);
             await Logging.LogInfo($"Account {user.Username}({user.UUID}) has been unbanned by {loggedInUser.Username}({loggedInUser.UUID}) for {reason}");
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "User unbanned" }.ToString());
+            await context.Response.WriteAsync(new JObject { ["message"] = "User unbanned" }.ToString());
         }).RequireRateLimiting("fixed");
         app.MapPost("/api/accounts/admin/change-password", async (HttpContext context) =>
         {
@@ -1184,7 +1184,7 @@ class Program
             {
                 context.Response.StatusCode = 401;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
                 return;
             }
             else if (await IsLoggedInAsync(context.Request.Cookies["token"]))
@@ -1194,7 +1194,7 @@ class Program
                 {
                     context.Response.StatusCode = 401;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
                     return;
                 }
             }
@@ -1207,14 +1207,14 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
                 return;
             }
             if (string.IsNullOrEmpty(requestBody))
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
                 return;
             }
             var data = JObject.Parse(requestBody);
@@ -1228,7 +1228,7 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
                 return;
             }
             var user = new User();
@@ -1244,7 +1244,7 @@ class Program
                 {
                     context.Response.StatusCode = 404;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "User not found" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "User not found" }.ToString());
                     return;
                 }
                 user = new User
@@ -1271,7 +1271,7 @@ class Program
             await Logging.LogInfo($"Account {user.Username}({user.UUID}) has had their password changed by {loggedInUser.Username}({loggedInUser.UUID})");
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "Password changed", ["password"] = newPassword }.ToString());
+            await context.Response.WriteAsync(new JObject { ["message"] = "Password changed", ["password"] = newPassword }.ToString());
         }).RequireRateLimiting("fixed");
         app.MapPost("/api/accounts/admin/get", async (HttpContext context) =>
         {
@@ -1281,7 +1281,7 @@ class Program
             {
                 context.Response.StatusCode = 401;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
                 return;
             }
             else if (await IsLoggedInAsync(context.Request.Cookies["token"]))
@@ -1291,7 +1291,7 @@ class Program
                 {
                     context.Response.StatusCode = 401;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
                     return;
                 }
             }
@@ -1304,14 +1304,14 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
                 return;
             }
             if (string.IsNullOrEmpty(requestBody))
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
                 return;
             }
             var data = JObject.Parse(requestBody);
@@ -1368,7 +1368,7 @@ class Program
             else
             {
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(usersJson.ToString());
+                await context.Response.WriteAsync(usersJson.ToString());
             }
         }).RequireRateLimiting("fixed-bigger");
         app.MapPost("/api/accounts/admin/search", async (HttpContext context) =>
@@ -1379,7 +1379,7 @@ class Program
             {
                 context.Response.StatusCode = 401;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
                 return;
             }
             else if (await IsLoggedInAsync(context.Request.Cookies["token"]))
@@ -1389,7 +1389,7 @@ class Program
                 {
                     context.Response.StatusCode = 401;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
                     return;
                 }
             }
@@ -1402,14 +1402,14 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
                 return;
             }
             if (string.IsNullOrEmpty(requestBody))
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
                 return;
             }
             var data = JObject.Parse(requestBody);
@@ -1465,7 +1465,7 @@ class Program
             else
             {
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(usersJson.ToString());
+                await context.Response.WriteAsync(usersJson.ToString());
             }
         }).RequireRateLimiting("fixed-bigger"); ;
 
@@ -1487,7 +1487,7 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No content uploaded" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "No content uploaded" }.ToString());
                 return;
             }
             if (!string.IsNullOrEmpty(user.UUID))
@@ -1506,7 +1506,7 @@ class Program
                     {
                         context.Response.StatusCode = 401;
                         context.Response.ContentType = "application/json";
-                        await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "User is banned" }.ToString());
+                        await context.Response.WriteAsync(new JObject { ["error"] = "User is banned" }.ToString());
                         return;
                     }
                 }
@@ -1523,7 +1523,7 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
                 return;
             }
             var data = JObject.Parse(requestBody);
@@ -1535,21 +1535,21 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Content or Title is too long" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Content or Title is too long" }.ToString());
                 return;
             }
             if (visibility != "Public" && visibility != "Unlisted" && visibility != "Private")
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid visibility" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid visibility" }.ToString());
                 return;
             }
             if (string.IsNullOrEmpty(content) || string.IsNullOrWhiteSpace(content))
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
                 return;
             }
             var paste = new Paste();
@@ -1561,14 +1561,14 @@ class Program
                 {
                     context.Response.StatusCode = 500;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Failed to create paste" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Failed to create paste" }.ToString());
                     return;
                 }
                 if (!File.Exists($"pastes/{privatePaste.Id}.txt"))
                 {
                     context.Response.StatusCode = 500;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Failed to create paste" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Failed to create paste" }.ToString());
                     return;
                 }
                 context.Response.StatusCode = 200;
@@ -1582,7 +1582,7 @@ class Program
 
                 Log _log = await Logging.LogRequestAsync(context);
                 await Logging.LogInfo($"Private Paste created, {ConvertToBytes(privatePaste.Size ?? string.Empty)}, {privatePaste.Id} by {uploaderUUID}");
-                await context.Response.WriteAsJsonAsync(_responseJson.ToString());
+                await context.Response.WriteAsync(_responseJson.ToString());
                 return;
             }
             else
@@ -1595,7 +1595,7 @@ class Program
             {
                 context.Response.StatusCode = 500;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Failed to create paste" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Failed to create paste" }.ToString());
                 return;
             }
 
@@ -1614,7 +1614,7 @@ class Program
 
             await Logging.LogInfo($"Paste created, {ConvertToBytes(paste.Size ?? string.Empty)}, {paste.Id} by {uploaderUUID}");
 
-            await context.Response.WriteAsJsonAsync(responseJson.ToString());
+            await context.Response.WriteAsync(responseJson.ToString());
             return;
 
         }).RequireRateLimiting("fixed");
@@ -1626,14 +1626,14 @@ class Program
             {
                 context.Response.StatusCode = 401;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
                 return;
             }
             if (user.State != 0)
             {
                 context.Response.StatusCode = 401;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "User is banned/suspended" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "User is banned/suspended" }.ToString());
                 return;
             }
             string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
@@ -1641,7 +1641,7 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
                 return;
             }
             try
@@ -1652,7 +1652,7 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
                 return;
             }
             var data = JObject.Parse(requestBody);
@@ -1663,7 +1663,7 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
                 return;
             }
 
@@ -1679,7 +1679,7 @@ class Program
                 {
                     context.Response.StatusCode = 404;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Paste not found" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Paste not found" }.ToString());
                     return;
                 }
                 var paste = new Paste
@@ -1694,7 +1694,7 @@ class Program
                 {
                     context.Response.StatusCode = 501;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Editing private pastes has not been implemented." }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Editing private pastes has not been implemented." }.ToString());
                     return;
                 }
 
@@ -1705,7 +1705,7 @@ class Program
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "Paste edited" }.ToString());
+            await context.Response.WriteAsync(new JObject { ["message"] = "Paste edited" }.ToString());
         });
         app.MapPost("/api/pastes/delete", async (HttpContext context) =>
         {
@@ -1716,14 +1716,14 @@ class Program
             {
                 context.Response.StatusCode = 401;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
                 return;
             }
             if (string.IsNullOrEmpty(requestBody))
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
                 return;
             }
             try
@@ -1734,7 +1734,7 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
                 return;
             }
             var data = JObject.Parse(requestBody);
@@ -1743,7 +1743,7 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
                 return;
             }
             using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
@@ -1759,7 +1759,7 @@ class Program
                 {
                     context.Response.StatusCode = 404;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Paste not found" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Paste not found" }.ToString());
                     return;
                 }
                 string UUID = reader.GetString(6);
@@ -1778,7 +1778,7 @@ class Program
                 {
                     context.Response.StatusCode = 401;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
                     return;
                 }
 
@@ -1790,7 +1790,7 @@ class Program
                 File.Delete($"pastes/{id}.txt");
                 await Logging.LogInfo($"Paste {id} deleted by {user.Username}({user.UUID})");
                 context.Response.StatusCode = 200;
-                await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "Paste deleted" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["message"] = "Paste deleted" }.ToString());
             }
 
         }).RequireRateLimiting("fixed");
@@ -1803,7 +1803,7 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
                 return;
             }
             try
@@ -1814,7 +1814,7 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
                 return;
             }
             var data = JObject.Parse(requestBody);
@@ -1883,7 +1883,7 @@ class Program
                     if (string.IsNullOrEmpty(parameters["html"]))
                     {
                         context.Response.ContentType = "application/json";
-                        await context.Response.WriteAsJsonAsync(pastesArray.ToString());
+                        await context.Response.WriteAsync(pastesArray.ToString());
                     }
                     else
                     {
@@ -1938,7 +1938,7 @@ class Program
                 if (string.IsNullOrEmpty(parameters["html"]))
                 {
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(pastes.ToString());
+                    await context.Response.WriteAsync(pastes.ToString());
                 }
                 else
                 {
@@ -1957,14 +1957,14 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid request" }.ToString());
                 return;
             }
             if (!File.Exists($"pastes/{id}.txt"))
             {
                 context.Response.StatusCode = 404;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Paste not found" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Paste not found" }.ToString());
                 return;
             }
 
@@ -1980,7 +1980,7 @@ class Program
                 {
                     context.Response.StatusCode = 404;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Paste not found" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Paste not found" }.ToString());
                     return;
                 }
                 var paste = new Paste
@@ -2018,7 +2018,7 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
                 return;
             }
             try
@@ -2029,7 +2029,7 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
                 return;
             }
             var data = JObject.Parse(body);
@@ -2039,14 +2039,14 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
                 return;
             }
             if (!File.Exists($"pastes/{pasteId}.txt"))
             {
                 context.Response.StatusCode = 404;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Paste not found" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Paste not found" }.ToString());
                 return;
             }
             using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
@@ -2061,7 +2061,7 @@ class Program
                 {
                     context.Response.StatusCode = 404;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Paste not found" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Paste not found" }.ToString());
                     return;
                 }
                 var paste = new PrivatePaste
@@ -2078,7 +2078,7 @@ class Program
                 {
                     context.Response.StatusCode = 401;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid password" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Invalid password" }.ToString());
                     return;
                 }
             }
@@ -2087,7 +2087,7 @@ class Program
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new JObject { ["content"] = decryptedText }.ToString());
+            await context.Response.WriteAsync(new JObject { ["content"] = decryptedText }.ToString());
         }).RequireRateLimiting("fixed");
         app.MapPost("/api/accounts/create", async (HttpContext context) =>
         {
@@ -2101,7 +2101,7 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
                 return;
             }
             Log log = await Logging.LogRequestAsync(context);
@@ -2112,21 +2112,21 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Already logged in" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Already logged in" }.ToString());
                 return;
             }
             if (string.IsNullOrEmpty(requestBody))
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
                 return;
             }
             if (!requestBody.Contains("username") || !requestBody.Contains("password") || context.Request.ContentType != "application/json")
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
                 return;
             }
 
@@ -2138,7 +2138,7 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid Cloudflare Turnstile Token" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid Cloudflare Turnstile Token" }.ToString());
                 return;
             }
             bool cfValid = await Turnstile.VerifyTurnstileToken(cfToken);
@@ -2146,7 +2146,7 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid Cloudflare Turnstile Token" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid Cloudflare Turnstile Token" }.ToString());
                 return;
             }
 
@@ -2155,14 +2155,14 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid username or password length" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid username or password length" }.ToString());
                 return;
             }
             if (username.IndexOfAny(disallowed) != -1)
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid characters in username" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid characters in username" }.ToString());
                 return;
             }
             string token = string.Empty;
@@ -2182,7 +2182,7 @@ class Program
                 {
                     context.Response.StatusCode = 400;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Username already exists" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Username already exists" }.ToString());
                     return;
                 }
                 else if (!reader.HasRows && !reader.IsClosed)
@@ -2226,7 +2226,7 @@ class Program
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
             await Logging.LogInfo($"Account {username} has been created");
-            await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "Account created" }.ToString());
+            await context.Response.WriteAsync(new JObject { ["message"] = "Account created" }.ToString());
 
 
         }).RequireRateLimiting("fixed");
@@ -2241,7 +2241,7 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
                 return;
             }
             Log log = await Logging.LogRequestAsync(context);
@@ -2250,21 +2250,21 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Already logged in" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Already logged in" }.ToString());
                 return;
             }
             if (string.IsNullOrEmpty(requestBody))
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
                 return;
             }
             if (!requestBody.Contains("username") || !requestBody.Contains("password") || context.Request.ContentType != "application/json")
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid request body" }.ToString());
                 return;
             }
 
@@ -2276,7 +2276,7 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid Cloudflare Turnstile Token" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid Cloudflare Turnstile Token" }.ToString());
                 return;
             }
             bool cfValid = await Turnstile.VerifyTurnstileToken(cfToken);
@@ -2284,14 +2284,14 @@ class Program
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid Cloudflare Turnstile Token" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid Cloudflare Turnstile Token" }.ToString());
                 return;
             }
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
                 context.Response.StatusCode = 400;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid username or password" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid username or password" }.ToString());
                 return;
             }
 
@@ -2310,7 +2310,7 @@ class Program
                 {
                     context.Response.StatusCode = 400;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid username or password" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Invalid username or password" }.ToString());
                     return;
                 }
                 if (BCrypt.Net.BCrypt.Verify(password, reader.GetString(3)))
@@ -2346,25 +2346,25 @@ class Program
                     context.Response.StatusCode = 200;
                     context.Response.ContentType = "application/json";
                     await Logging.LogInfo($"Account {username} has logged in");
-                    await context.Response.WriteAsJsonAsync(new JObject { ["message"] = "Logged in" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["message"] = "Logged in" }.ToString());
                     return;
                 }
                 else
                 {
                     context.Response.StatusCode = 400;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Invalid username or password" }.ToString());
+                    await context.Response.WriteAsync(new JObject { ["error"] = "Invalid username or password" }.ToString());
                 }
             }
         })).RequireRateLimiting("fixed");
-        app.MapGet("/api/accounts/authenticated", (async (HttpContext context) =>
+        app.MapGet("/api/accounts/authenticate", (async (HttpContext context) =>
         {
             var token = context.Request.Cookies["token"] ?? context.Request.Headers["Authorization"];
             if (string.IsNullOrEmpty(token) || string.IsNullOrWhiteSpace(token))
             {
                 context.Response.StatusCode = 401;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
                 return;
             }
 
@@ -2373,14 +2373,14 @@ class Program
             {
                 context.Response.StatusCode = 401;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
                 return;
             }
             if (user.UUID == null)
             {
                 context.Response.StatusCode = 401;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
+                await context.Response.WriteAsync(new JObject { ["error"] = "Unauthorized" }.ToString());
                 return;
             }
 
