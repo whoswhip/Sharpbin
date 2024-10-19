@@ -9,7 +9,7 @@
 mkdir sharpbin
 cd sharpbin
 
-curl -s "https://api.github.com/repos/whoswhip/Sharpbin/releases/latest" | jq -r '.assets[] | select(.name | test("sharpbin-linux.tar$")) | .browser_download_url' | xargs -I {} curl -L -o sharpbin-linux.tar {}
+curl -s "https://api.github.com/repos/whoswhip/Sharpbin/releases/latest" | jq -r '.assets[] | select(.name | test("sharpbin-linux-.*\\.tar$")) | .browser_download_url' | xargs -I {} curl -L -o sharpbin-linux.tar {}
 
 tar -xvf sharpbin-linux.tar
 chmod +x Sharpbin
