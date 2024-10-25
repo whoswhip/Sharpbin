@@ -13,10 +13,13 @@
         <a href="/">home</a>
         <a href="/pastes">recent pastes</a>
         <a href="/archive">archive</a>
-        {html}
+        <a href="login" id="login-signup-btn" style="display: none;" >login</a>
+        <a href="sign-up" id="login-signup-btn" style="display: none;">sign up</a>
+        <a href="dash" id="dash-btn" style="display: none;">dashboard</a>
     </div>
     <div class="nav-hamburger-menu">
-        <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-list" viewBox="0 0 16 16" id="hamburger-button" style="cursor: pointer;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-list"
+            viewBox="0 0 16 16" id="hamburger-button" style="cursor: pointer;">
             <path fill-rule="evenodd"
                 d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5" />
         </svg>
@@ -24,7 +27,9 @@
             <a href="/">home</a>
             <a href="/pastes">recent pastes</a>
             <a href="/archive">archive</a>
-            {html}
+            <a href="login" id="login-signup-btn" style="display: none;" >login</a>
+            <a href="sign-up" id="login-signup-btn" style="display: none;">sign up</a>
+            <a href="dash" id="dash-btn" style="display: none;">dashboard</a>
         </div>
     </div>
     <div class="container-wrapper">
@@ -32,18 +37,73 @@
             <h1>paste archive</h1>
             <input type="text" placeholder="search" class="text-input" oninput="search()">
             <div class="pastes-wrapper">
-                {pastes}
+                Loading...
             </div>
             <div class="buttons-wrapper">
-                <a class="arrow-button" href="/archive?page={backpagenum}">&lt;</a>
-                <p>{currentpagenum}/{totalpages}</p>
-                <a class="arrow-button" href="/archive?page={pagenum}">></a>
+                <a class="arrow-button" id="back-page">&lt;</a>
+                <p id="page-count"></p>
+                <a class="arrow-button" id="next-page">></a>
             </div>
         </div>
     </div>
 </body>
 <script>
     let searchTimeout;
+    let pagenum = 1;
+
+    function authenticate() {
+        fetch('/api/accounts/authenticate')
+            .then(response => response.json())
+            .then(data => {
+                if (data.message == "Authenticated") {
+                    document.querySelectorAll("#login-signup-btn").forEach(element => {
+                        element.style.display = 'none';
+                    });
+                    document.getElementById('dash-btn').style.display = 'block';
+                }else{
+                    document.querySelectorAll("#login-signup-btn").forEach(element => {
+                        element.style.display = 'block';
+                    });
+                }
+            });
+    }
+
+    function getPastes() {
+        fetch(`/api/pastes/get`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                page: pagenum
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const pastesWrapper = document.querySelector('.pastes-wrapper');
+            const pageCount = document.getElementById('page-count');
+            pastesWrapper.innerHTML = '';
+            pageCount.innerHTML = `${pagenum}/${data.pages}`;
+            if (data.pastes.length === 0) {
+                pastesWrapper.innerHTML = '<h1>no pastes found</h1>';
+                return;
+            }
+            data.pastes.forEach(paste => {
+                title = paste.title.length > 30 ? paste.title.substring(0, 30) + '...' : paste.title;
+                pastesWrapper.innerHTML += `<a href="/${paste.id}" title="${paste.title}"><li>${title} ${paste.date} ${paste.size}</li></a>`;
+            });
+        });
+    }
+    document.getElementById('back-page').addEventListener('click', function () {
+        if (pagenum > 1) {
+            pagenum--;
+            getPastes();
+        }
+    });
+    document.getElementById('next-page').addEventListener('click', function () {
+        pagenum++;
+        getPastes();
+    });
 
     document.addEventListener('DOMContentLoaded', () => {
         var mobile = window.mobileCheck();
@@ -51,6 +111,8 @@
             document.querySelector('.nav-div').style.display = 'none';
             document.querySelector('.nav-hamburger-menu').style.display = 'flex';
         }
+        authenticate();
+        getPastes();
     });
 
     document.getElementById("hamburger-button").addEventListener("click", function () {

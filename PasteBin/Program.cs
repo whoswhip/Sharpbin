@@ -632,87 +632,10 @@ class Program
         {
             var html = File.ReadAllText("assets/archives.html");
             var page = context.Request?.Query["page"].ToString();
+            context.Response.ContentType = "text/html";
+            await context.Response.WriteAsync(html);
+            return;
 
-            bool loggedIn = await IsLoggedInAsync(context.Request.Cookies["token"]);
-            if (loggedIn)
-            {
-                html = html.Replace("{html}", "<a href=\"/dash\">dashboard</a>");
-            }
-            else
-            {
-                html = html.Replace("{html}", "<a href=\"/login\">login</a> <a href=\"/sign-up\">sign up</a>");
-            }
-
-            int pageNumber;
-            if (!int.TryParse(page, out pageNumber) || pageNumber <= 0)
-            {
-                pageNumber = 1;
-            }
-            int pastesPerPage = 50;
-            int skipCount = (pageNumber - 1) * pastesPerPage;
-
-            using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
-            {
-                await connection.OpenAsync();
-                var command = connection.CreateCommand();
-                command.CommandText = $"SELECT * FROM pastes WHERE Visibility != 'Private' AND Visibility != 'Unlisted' ORDER BY UID DESC LIMIT {pastesPerPage} OFFSET {skipCount}";
-                var reader = await command.ExecuteReaderAsync();
-                string pastes = string.Empty;
-                while (await reader.ReadAsync())
-                {
-                    var paste = new Paste
-                    {
-                        Title = reader.GetString(1),
-                        UnixDate = long.Parse(reader.GetString(2)),
-                        Size = reader.GetString(3),
-                        Visibility = reader.GetString(4),
-                        Id = reader.GetString(5),
-                    };
-
-                    string title = paste.Title;
-                    if (paste.Visibility == "Private" || paste.Visibility == "Unlisted")
-                    {
-                        continue;
-                    }
-                    if (paste.Title == "" || string.IsNullOrEmpty(paste.Title))
-                    {
-                        title = $"Untitled {reader.GetString(0)}";
-                    }
-                    if (paste.Title.Length > 40)
-                    {
-                        title = paste.Title.Substring(0, 40) + "...";
-                    }
-                    var difference = GetTimeDifference(DateTimeOffset.FromUnixTimeSeconds(paste.UnixDate ?? 0), DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.Now.ToUnixTimeSeconds()));
-                    pastes += $"<a title=\"{paste.Title}\" href=\"/{paste.Id}\"><li>{title} {difference} {ConvertToBytes(paste.Size)}</li></a>";
-                }
-                
-                var findCountCommand = connection.CreateCommand();
-                findCountCommand.CommandText = "SELECT COUNT(*) FROM pastes WHERE Visibility != 'Private' AND Visibility != 'Unlisted'";
-                int totalPastes = Convert.ToInt32(await findCountCommand.ExecuteScalarAsync());
-                int totalPages = (int)Math.Ceiling((double)totalPastes / pastesPerPage);
-
-                if (pageNumber > totalPages && totalPages != 0)
-                {
-                    context.Response.Redirect($"/archive?page={totalPages}");
-                    return;
-                }
-                if (string.IsNullOrEmpty(pastes))
-                {
-                    pastes = "<h2>No pastes found</h1>";
-                    html = html.Replace("</style>", "");
-                    html = html.Replace("</html>", "");
-                    html += ".buttons-wrapper{\r\n    display: none !important;\r\n}";
-                    html += "</style>\n</html>";
-                }
-                html = html.Replace("{pastes}", pastes);
-                html = html.Replace("{backpagenum}", $"{pageNumber - 1}");
-                html = html.Replace("{pagenum}", $"{pageNumber + 1}");
-                html = html.Replace("{currentpagenum}", $"{pageNumber}");
-                html = html.Replace("{totalpages}", $"{totalPages}");
-                context.Response.ContentType = "text/html";
-                await context.Response.WriteAsync(html);
-                return;
-            }
         }).RequireRateLimiting("fixed-bigger");
         app.MapGet("/u/{username}", async (HttpContext context) =>
         {
@@ -1680,7 +1603,14 @@ class Program
             }
             else
             {
-                paste = await CreatePaste(content, title, visibility, uploaderUUID);
+                var pasteData = new Paste
+                {
+                    Content = content,
+                    Title = title,
+                    Visibility = visibility,
+                    Uploader = uploaderUUID
+                };
+                paste = await CreatePaste(pasteData);
             }
             
 
@@ -2047,6 +1977,92 @@ class Program
             }
 
         }).RequireRateLimiting("fixed-bigger");
+        app.MapPost("/api/pastes/get", async (HttpContext context) =>
+        {
+            var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+            if (string.IsNullOrEmpty(body))
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync(new JObject { ["error"] = "No data uploaded" }.ToString());
+                return;
+            }
+            try
+            {
+                JObject.Parse(body);
+            }
+            catch
+            {
+                context.Response.StatusCode = 400;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync(new JObject { ["error"] = "Invalid JSON" }.ToString());
+                return;
+            }
+            var data = JObject.Parse(body);
+            var page = data["page"]?.ToObject<int>() ?? 1;
+
+            using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
+            {
+                await connection.OpenAsync();
+                long pages = 1;
+                var pagesCommand = connection.CreateCommand();
+                pagesCommand.CommandText = "SELECT COUNT(*) FROM pastes WHERE Visibility != 'Private' AND Visibility != 'Untitled'";
+                var pagesReader = await pagesCommand.ExecuteReaderAsync();
+                await pagesReader.ReadAsync();
+                if (pagesReader.HasRows)
+                {
+                    pages = (long)Math.Ceiling(pagesReader.GetInt32(0) / 50.0);
+                }
+                var command = connection.CreateCommand();
+                if (page <= 1)
+                {
+                    command.CommandText = "SELECT * FROM pastes WHERE Visibility != 'Private' AND Visibility != 'Untitled' ORDER BY UID DESC LIMIT 50";
+                }
+                else
+                {
+                    command.CommandText = "SELECT * FROM pastes WHERE Visibility != 'Private' AND Visibility != 'Untitled' ORDER BY UID DESC LIMIT 50 OFFSET @Offset";
+                    command.Parameters.AddWithValue("@Offset", (page - 1) * 50);
+                }
+                var reader = await command.ExecuteReaderAsync();
+                JArray pastes = new JArray();
+                while (await reader.ReadAsync())
+                {
+                    var paste = new Paste
+                    {
+                        Title = reader.GetString(1),
+                        UnixDate = long.Parse(reader.GetString(2)),
+                        Size = reader.GetString(3),
+                        Visibility = reader.GetString(4),
+                        Id = reader.GetString(5),
+                    };
+                    if (paste.Title == "")
+                    {
+                        paste.Title = $"Untitled {reader.GetString(0)}";
+                    }
+                    var difference = GetTimeDifference(DateTimeOffset.FromUnixTimeSeconds(paste.UnixDate ?? 0), DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.Now.ToUnixTimeSeconds()));
+                    if (paste.Visibility == "Private" || paste.Visibility == "Unlisted")
+                    {
+                        continue;
+                    }
+                    var _paste = new JObject();
+                    _paste["title"] = paste.Title;
+                    _paste["id"] = paste.Id;    
+                    _paste["size"] = ConvertToBytes(paste.Size);
+                    _paste["date"] = difference;
+                    _paste["visibility"] = paste.Visibility;
+                    pastes.Add(_paste);
+                }
+                await connection.CloseAsync();
+                JObject resdata = new JObject();
+                resdata["pages"] = pages;
+                resdata["page"] = page;
+                resdata["pastes"] = pastes;
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync(resdata.ToString());
+            }
+
+        }).RequireRateLimiting("fixed-xl");
         app.MapGet("/api/pastes/info", async (HttpContext context) =>
         {
             var query = context.Request.Query;
@@ -2496,27 +2512,29 @@ class Program
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsync(responseJson.ToString());
-        })).RequireRateLimiting("fixed-xl"); ;
+        })).RequireRateLimiting("fixed-xl"); 
 
         #endregion
 
         await app.RunAsync();
     }
 
-    public static async Task<Paste> CreatePaste(string content, string title, string visibility, string UUID)
+    public static async Task<Paste> CreatePaste(Paste paste)
     {
-        var paste = new Paste
-        {
-            Content = content,
-            Title = title,
-            UnixDate = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            Size = content.Length.ToString(),
-            Visibility = visibility,
-            Id = GenerateRandomString(12),
-            Uploader = UUID
-        };
+        paste.Id = GenerateRandomString(12);
+        paste.UnixDate = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        paste.Size = paste.Content.Length.ToString();
+
         var compressedText = await Compression.CompressString(paste.Content);
-        await File.WriteAllBytesAsync($"pastes/{paste.Id}.txt", compressedText);
+        if (compressedText.LongLength < paste.Content.Length)
+        {
+            await File.WriteAllBytesAsync($"pastes/{paste.Id}.txt", compressedText);
+        }
+        else
+        {
+            await File.WriteAllTextAsync($"pastes/{paste.Id}.txt", paste.Content);
+        }
+        
         using (var connection = new SqliteConnection("Data Source=pastes.sqlite"))
         {
             await connection.OpenAsync();

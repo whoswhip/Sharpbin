@@ -92,11 +92,12 @@
             .then(response => response.json())
             .then(json => {
                 info = json;
+                title = json.title.length > 40 ? json.title.substring(0, 40) + '...' : json.title;
                 document.getElementById('uploader-username').innerText = json.uploader || 'Anonymous';
                 document.getElementById('creationdate').innerText = localizeDateTime(json.date);
                 document.getElementById('paste-size').innerText = json.size;
                 document.getElementById('paste-size').title = `Compressed Size: ${json.compressedSize}`;
-                document.getElementById('paste-title').innerText = json.title;
+                document.getElementById('paste-title').innerText = title;
                 document.getElementById('paste-title').title = json.title;
                 if (json.title == "") {
                     document.getElementById('paste-title').innerText = `Untitled ${json.uid}`;
