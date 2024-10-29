@@ -9,8 +9,6 @@ using Sharpbin;
 
 class Program
 {
-    private static string salt = string.Empty;
-    private static string smallerSalt = string.Empty;
     private static string cfTurnstileSiteKey = string.Empty;
     public static string cfTurnstileSecret = string.Empty;
 
@@ -522,10 +520,10 @@ class Program
                         Visibility = reader.GetString(4),
                         Id = id,
                         Uploader = reader.GetString(6),
-                        Password = reader.GetString(7),
+                        PasswordHash = reader.GetString(7),
                     };
-                    string hashedPassword = BCrypt.Net.BCrypt.HashPassword(password, salt);
-                    if (hashedPassword != paste.Password && paste.Visibility != "Private")
+                    var salt = BCrypt.Net.BCrypt.GenerateSalt(12);
+                    if (BCrypt.Net.BCrypt.Verify(password,paste.PasswordHash) && paste.Visibility != "Private")
                     {
                         context.Response.StatusCode = 401;
                         var json = new JObject
@@ -2186,10 +2184,10 @@ class Program
                     Size = reader.GetString(3),
                     UnixDate = long.Parse(reader.GetString(2)),
                     Visibility = reader.GetString(4),
-                    Password = reader.GetString(7),
+                    PasswordHash = reader.GetString(7),
                 };
-                string passwordHash = BCrypt.Net.BCrypt.HashPassword(password, salt);
-                if (paste.Password != passwordHash)
+                var salt = BCrypt.Net.BCrypt.GenerateSalt(12);
+                if (!BCrypt.Net.BCrypt.Verify(password, paste.PasswordHash))
                 {
                     context.Response.StatusCode = 401;
                     context.Response.ContentType = "application/json";
@@ -2304,7 +2302,8 @@ class Program
                 {
                     reader.Close();
                 }
-
+                var smallerSalt = BCrypt.Net.BCrypt.GenerateSalt(8);
+                var salt = BCrypt.Net.BCrypt.GenerateSalt(12);
                 ip = Convert.ToBase64String(Encoding.UTF8.GetBytes(BCrypt.Net.BCrypt.HashPassword(log.IP, smallerSalt)));
                 token = Convert.ToBase64String(Encoding.UTF8.GetBytes(BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString(), smallerSalt)));
                 passwordHash = BCrypt.Net.BCrypt.HashPassword(password, salt);
@@ -2409,7 +2408,8 @@ class Program
                 await context.Response.WriteAsync(new JObject { ["error"] = "Invalid username or password" }.ToString());
                 return;
             }
-
+            var smallerSalt = BCrypt.Net.BCrypt.GenerateSalt(8);
+            var salt = BCrypt.Net.BCrypt.GenerateSalt(12);
             string ip = Convert.ToBase64String(Encoding.UTF8.GetBytes(BCrypt.Net.BCrypt.HashPassword(log.IP, smallerSalt)));
             string passwordHash = BCrypt.Net.BCrypt.HashPassword(password, salt);
 
@@ -2552,6 +2552,7 @@ class Program
     }
     public static async Task<PrivatePaste> CreatePrivatePaste(string title, string content, string password, string UUID)
     {
+        var salt = BCrypt.Net.BCrypt.GenerateSalt(12);
         string encryptedText = Encryption.EncryptString(content, password);
         var compressedEncryptedText = await Compression.CompressString(encryptedText);
         string passwordHash = BCrypt.Net.BCrypt.HashPassword(password, salt);
@@ -2562,7 +2563,7 @@ class Program
             Size = content.Length.ToString(),
             Id = GenerateRandomString(24),
             Uploader = UUID,
-            Password = passwordHash
+            PasswordHash = passwordHash
         };
 
         await File.WriteAllBytesAsync($"pastes/{paste.Id}.txt", compressedEncryptedText);
@@ -2577,7 +2578,7 @@ class Program
             command.Parameters.AddWithValue("@Visibility", "Private");
             command.Parameters.AddWithValue("@ID", paste.Id);
             command.Parameters.AddWithValue("@Uploader", paste.Uploader);
-            command.Parameters.AddWithValue("@PasswordHash", paste.Password);
+            command.Parameters.AddWithValue("@PasswordHash", paste.PasswordHash);
             await command.ExecuteNonQueryAsync();
         }
         return paste;
@@ -2807,22 +2808,9 @@ class Program
         if (File.Exists("config.json"))
         {
             var config = JObject.Parse(File.ReadAllText("config.json"));
-            salt = config["Salt"]?.ToString() ?? BCrypt.Net.BCrypt.GenerateSalt(13);
-            smallerSalt = config["SmallerSalt"]?.ToString() ?? BCrypt.Net.BCrypt.GenerateSalt(8);
             cfTurnstileSecret = config["CF_TurnstileSecret"]?.ToString() ?? "";
             cfTurnstileSiteKey = config["CF_TurnstileSiteKey"]?.ToString() ?? "";
 
-            config["Salt"] = salt;
-            config["SmallerSalt"] = smallerSalt;
-            File.WriteAllText("config.json", config.ToString());
-        }
-        else
-        {
-            var config = new JObject();
-            config["Salt"] = BCrypt.Net.BCrypt.GenerateSalt(13);
-            config["SmallerSalt"] = BCrypt.Net.BCrypt.GenerateSalt(8);
-            salt = config["Salt"]?.ToString() ?? BCrypt.Net.BCrypt.GenerateSalt(13);
-            smallerSalt = config["SmallerSalt"]?.ToString() ?? BCrypt.Net.BCrypt.GenerateSalt(8);
             File.WriteAllText("config.json", config.ToString());
         }
         if (cfTurnstileSiteKey == "" || cfTurnstileSecret == "")
@@ -2865,7 +2853,7 @@ public class Paste
 }
 public class PrivatePaste : Paste
 {
-    public string? Password { get; set; }
+    public string? PasswordHash { get; set; }
 }
 public class User
 {
