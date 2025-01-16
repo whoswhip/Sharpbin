@@ -1,6 +1,5 @@
 # Sharpbin is currently being re-written.
 Quite frankly the current code base is quite messy, I also am just bored and would like to improve this since it's a pretty fun thing to make.
-The new sharpbin(SharpbinV2) will be using asp.net for the backend, and react for the frontend using vite.
 # Sharpbin  
 Sharpbin is a Pastebin type website completely in C#, except for the frontend, being pure HTML & CSS. 
 Sharpbin can be used for sharing large amounts of text.
