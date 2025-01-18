@@ -9,6 +9,7 @@ using System.Text;
 using Bcrypt = BCrypt.Net.BCrypt;
 using System.IO.Compression;
 using System.Threading.Tasks;
+using System.Security.Cryptography;
 
 namespace SharpbinV2.Server
 {
@@ -18,15 +19,15 @@ namespace SharpbinV2.Server
         public static long MaxFileSize = 5000000; // 5MB
         public static string[] ValidSyntaxLanguages =
         {
-            "None",
-            "AutoHotkey",
-            "AutoIt",
+            "none",
+            "autoHotkey",
+            "autoIt",
             "bash",
             "c",
             "cpp",
             "csharp",
             "css",
-            "Dart",
+            "dart",
             "html",
             "java",
             "javascript",
@@ -43,6 +44,7 @@ namespace SharpbinV2.Server
             "toml",
             "xml"
         };
+        public static string HMACSecret = "thisneedstobechanged";
 
         static async Task Main(string[] args)
         {
@@ -52,6 +54,16 @@ namespace SharpbinV2.Server
             builder.Configuration.AddEnvironmentVariables();
             builder.WebHost.UseUrls($"https://*:{Environment.GetEnvironmentVariable("HTTPS_Port") ?? "5820"}", $"http://*:{Environment.GetEnvironmentVariable("HTTP_Port") ?? "5810"}");
             MaxFileSize = Environment.GetEnvironmentVariable("MAX_FILE_SIZE") != null ? Convert.ToInt64(Environment.GetEnvironmentVariable("MAX_FILE_SIZE")) : MaxFileSize;
+            HMACSecret = Environment.GetEnvironmentVariable("HMAC_SECRET") ?? HMACSecret;
+            if (HMACSecret == "thisneedstobechanged")
+                logger.LogWarning("HMAC_SECRET is still set to default. Please change this in your .env file.");
+            if (HMACSecret.Length < 32 && HMACSecret != "thisneedstobechanged")
+                logger.LogWarning("HMAC_SECRET is less than 32 characters. Please change this in your .env file.");
+            if (HMACSecret.Length < 6 || HMACSecret.Length <= 0)
+            {
+                logger.LogError("HMAC_SECRET is less than 6 characters. Please change this in your .env file.");
+                Environment.Exit(1);
+            }
 
             builder.WebHost.ConfigureKestrel(options =>
             {
@@ -90,7 +102,7 @@ namespace SharpbinV2.Server
             app.UseResponseCompression();
 
             #region Static Endpoints
-            app.MapGet("/", async (HttpContext context) =>
+            app.MapGet("/", (HttpContext context) =>
             {
                 context.Response.Redirect("/index.html");
             });
@@ -201,7 +213,7 @@ namespace SharpbinV2.Server
                     await context.Response.SendFileAsync(paste.FilePath);
                 }
             });
-            app.MapGet("/paste.html", async (HttpContext context) =>
+            app.MapGet("/paste.html", (HttpContext context) =>
             {
                 context.Response.Redirect("/");
             });
@@ -280,7 +292,7 @@ namespace SharpbinV2.Server
                         command.Parameters.AddWithValue("@Token", token);
                         command.Parameters.AddWithValue("@Created", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                         command.Parameters.AddWithValue("@Expirary", DateTimeOffset.UtcNow.AddDays(7).ToUnixTimeSeconds());
-                        command.Parameters.AddWithValue("@Ip", Bcrypt.HashPassword(requestdetails.Ip, Bcrypt.GenerateSalt(10)));
+                        command.Parameters.AddWithValue("@Ip", HMAC256HASH(requestdetails.Ip));
                         command.Parameters.AddWithValue("@UserAgent", requestdetails.UserAgent);
                         await command.ExecuteNonQueryAsync();
                     }
@@ -369,7 +381,7 @@ namespace SharpbinV2.Server
                         command.Parameters.AddWithValue("@Token", token);
                         command.Parameters.AddWithValue("@Created", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                         command.Parameters.AddWithValue("@Expirary", DateTimeOffset.UtcNow.AddDays(7).ToUnixTimeSeconds());
-                        command.Parameters.AddWithValue("@Ip", Bcrypt.HashPassword(requestdetails.Ip, Bcrypt.GenerateSalt(10)));
+                        command.Parameters.AddWithValue("@Ip", HMAC256HASH(requestdetails.Ip));
                         command.Parameters.AddWithValue("@UserAgent", requestdetails.UserAgent);
                         await command.ExecuteNonQueryAsync();
                     }
@@ -393,6 +405,35 @@ namespace SharpbinV2.Server
                 context.Response.StatusCode = 200;
                 await context.Response.WriteAsJsonAsync(new { success = true, message = "Logged in." });
                 logger.LogInfo($"User {user.UUID} logged in.");
+                return;
+            });
+            app.MapGet("/api/accounts/authorized", async (HttpContext context) =>
+            {
+                var requestdetails = GetRequestDetails(context);
+                if (string.IsNullOrEmpty(requestdetails.Token))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Not authorized." });
+                    return;
+                }
+                var user = await Database.UserFromToken(requestdetails.Token);
+                if (user == null)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Not authorized." });
+                    return;
+                }
+                var cleanuser = new User
+                {
+                    UID = user.UID,
+                    UUID = user.UUID,
+                    Username = user.Username,
+                    DisplayName = user.DisplayName,
+                    Created = user.Created,
+                    LastLogin = user.LastLogin
+                };
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsJsonAsync(new { success = true, user = cleanuser });
                 return;
             });
 
@@ -431,7 +472,7 @@ namespace SharpbinV2.Server
                 paste.Views = 0;
                 paste.Syntax = queries.ContainsKey("syntax") ? queries["syntax"].ToString() : null;
 
-                if (!string.IsNullOrEmpty(paste.Syntax) && !ValidSyntaxLanguages.Contains(paste.Syntax))
+                if (!string.IsNullOrEmpty(paste.Syntax) && !ValidSyntaxLanguages.Contains(paste.Syntax.ToLower()))
                 {
                     context.Response.StatusCode = 400;
                     await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid syntax language." });
@@ -614,6 +655,14 @@ namespace SharpbinV2.Server
                 len = len / 1024;
             }
             return $"{len:0.##} {sizes[order]}";
+        }
+        public static string HMAC256HASH(string data)
+        {
+            using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(HMACSecret)))
+            {
+                byte[] hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
+                return Convert.ToBase64String(hashBytes);
+            }
         }
         #endregion
         static async Task Initialize()
@@ -868,7 +917,7 @@ namespace SharpbinV2.Server
                 using (var command = connection.CreateCommand())
                 {
                     command.CommandText = "SELECT * FROM views WHERE Ip = @Ip AND UserAgent = @UserAgent;";
-                    command.Parameters.AddWithValue("@Ip", Bcrypt.HashPassword(details.Ip, Bcrypt.GenerateSalt(10)));
+                    command.Parameters.AddWithValue("@Ip", Program.HMAC256HASH(details.Ip));
                     command.Parameters.AddWithValue("@UserAgent", details.UserAgent);
                     using (var reader = await command.ExecuteReaderAsync())
                     {
@@ -906,7 +955,7 @@ namespace SharpbinV2.Server
                     command.CommandText = "INSERT INTO views (UserUUID, PasteUUID, Ip, UserAgent, Created) VALUES (@UserUUID, @PasteUUID, @Ip, @UserAgent, @Created);";
                     command.Parameters.AddWithValue("@UserUUID", _user.UUID);
                     command.Parameters.AddWithValue("@PasteUUID", paste.UUID);
-                    command.Parameters.AddWithValue("@Ip", Bcrypt.HashPassword(details.Ip, Bcrypt.GenerateSalt(10)));
+                    command.Parameters.AddWithValue("@Ip", Program.HMAC256HASH(details.Ip));
                     command.Parameters.AddWithValue("@UserAgent", details.UserAgent);
                     command.Parameters.AddWithValue("@Created", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                     await command.ExecuteNonQueryAsync();

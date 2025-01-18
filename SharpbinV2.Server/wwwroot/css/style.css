@@ -125,6 +125,15 @@ select {
     font-size: 1rem;
 }
 
+select:hover {
+    outline: none;
+    border: 1px solid var(--neutral-600);
+}
+select:focus {
+    outline: none;
+    border: 1px solid var(--neutral-600);
+}
+
 #syntax {
     padding-left: 14rem;
 }

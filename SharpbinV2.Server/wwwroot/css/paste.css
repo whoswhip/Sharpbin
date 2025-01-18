@@ -63,6 +63,7 @@
     border-radius: 0px;
     border-bottom-right-radius: 5px;
     border-bottom-left-radius: 5px;
+    display: block !important;
 }
 
 .paste-actions {
@@ -103,7 +104,7 @@ button {
 }
 
 pre code.hljs {
-    display: block;
+    display: block !important;
     overflow-x: auto;
     padding: 1em
 }
