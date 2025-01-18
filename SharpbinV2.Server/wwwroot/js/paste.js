@@ -71,19 +71,20 @@ function addInfo(paste) {
 }
 
 function addContent(content, syntax) {
-    if (syntax === "none" || syntax === "" || syntax === null) {
-        document.getElementById("paste-content").innerText = content;
-    } else {
-        var code = document.createElement("code");
-        code.innerText = content;
-        var pre = document.getElementById("paste-content");
-        pre.innerText = "";
-        pre.appendChild(code);
-        pre.removeAttribute("id");
-        code.id = "paste-content";
-        code.classList.add("language-" + syntax);
+    var code = document.createElement("code");
+    code.textContent = content;
+    var pre = document.getElementById("paste-content");
+    pre.innerText = "";
+    pre.appendChild(code);
+    pre.removeAttribute("id");
+    code.id = "paste-content";
+    code.classList.add("language-" + syntax === "plaintext" ? "none" : syntax);
+    if (syntax !== "plaintext" && syntax !== "none" && syntax !== "" && syntax !== null) {
+        console.log(syntax);
         hljs.highlightElement(code);
     }
+    hljs.lineNumbersBlock(code);
+
 }
 
 async function decryptAES(content, password) {

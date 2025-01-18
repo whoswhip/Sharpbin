@@ -7,3 +7,4 @@ SharpbinV2 is a re-write to the original messy code base. Instead of using html 
 - Raw Text Serving
 - Paste Compression at Rest and on Response Transit (Files are only compressed when there is a considerable file size decrease)
 - Cleaner Code Base
+- Paste Analytics (Views etc.)

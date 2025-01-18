@@ -16,6 +16,34 @@ namespace SharpbinV2.Server
     {
         public static string MainDatabaseConnection = "Data Source=data.db";
         public static long MaxFileSize = 5000000; // 5MB
+        public static string[] ValidSyntaxLanguages =
+        {
+            "None",
+            "AutoHotkey",
+            "AutoIt",
+            "bash",
+            "c",
+            "cpp",
+            "csharp",
+            "css",
+            "Dart",
+            "html",
+            "java",
+            "javascript",
+            "json",
+            "lua",
+            "markdown",
+            "php",
+            "python",
+            "ruby",
+            "rust",
+            "sql",
+            "swift",
+            "typescript",
+            "toml",
+            "xml"
+        };
+
         static async Task Main(string[] args)
         {
             await Initialize();
@@ -115,18 +143,25 @@ namespace SharpbinV2.Server
                     context.Response.Redirect("/error?error=400&message=Paste not found.");
                     return;
                 }
-                paste.Views++;
-                using (var connection = new SqliteConnection(MainDatabaseConnection))
+                var requestdetails = GetRequestDetails(context);
+                var user = await Database.UserFromToken(requestdetails.Token);
+
+                if (user != null)
                 {
-                    await connection.OpenAsync();
-                    using (var command = connection.CreateCommand())
+                    if (user.UUID != paste.AuthorUUID)
                     {
-                        command.CommandText = "UPDATE pastes SET Views = @Views WHERE UUID = @UUID;";
-                        command.Parameters.AddWithValue("@Views", paste.Views);
-                        command.Parameters.AddWithValue("@UUID", paste.UUID);
-                        await command.ExecuteNonQueryAsync();
+                        if (!await Database.HasAlreadyViewedFromUserDetails(user))
+                        {
+                            await Database.AddViewToPaste(user, paste, requestdetails);
+                        }
                     }
-                    await connection.CloseAsync();
+                }
+                else
+                {
+                    if (!await Database.HasAlreadyViewedFromRqDetails(requestdetails))
+                    {
+                        await Database.AddViewToPaste(null, paste, requestdetails);
+                    }
                 }
                 context.Response.StatusCode = 200;
                 context.Response.Headers.Add("Content-Type", "text/html");
@@ -165,6 +200,10 @@ namespace SharpbinV2.Server
                 {
                     await context.Response.SendFileAsync(paste.FilePath);
                 }
+            });
+            app.MapGet("/paste.html", async (HttpContext context) =>
+            {
+                context.Response.Redirect("/");
             });
             #endregion
 
@@ -392,7 +431,12 @@ namespace SharpbinV2.Server
                 paste.Views = 0;
                 paste.Syntax = queries.ContainsKey("syntax") ? queries["syntax"].ToString() : null;
 
-                Console.WriteLine(paste.Syntax);
+                if (!string.IsNullOrEmpty(paste.Syntax) && !ValidSyntaxLanguages.Contains(paste.Syntax))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid syntax language." });
+                    return;
+                } 
 
                 bool shouldCompress = await Compression.ShouldCompress(body);
                 if (shouldCompress)
@@ -621,6 +665,14 @@ namespace SharpbinV2.Server
 	                            UserAgent	TEXT NOT NULL
                             );";
                         await command.ExecuteNonQueryAsync();
+                        command.CommandText = @"CREATE TABLE IF NOT EXISTS views (
+                                UserUUID	TEXT NOT NULL,
+                                PasteUUID	INTEGER NOT NULL,
+                                Ip	TEXT NOT NULL,
+                                UserAgent	TEXT NOT NULL,
+                                Created	INTEGER NOT NULL
+                            );";
+                        await command.ExecuteNonQueryAsync();
                         await connection.CloseAsync();
                     }
                 }
@@ -806,6 +858,63 @@ namespace SharpbinV2.Server
                         };
                     }
                 }
+            }
+        }
+        public static async Task<bool> HasAlreadyViewedFromRqDetails(RequestDetails details)
+        {
+            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "SELECT * FROM views WHERE Ip = @Ip AND UserAgent = @UserAgent;";
+                    command.Parameters.AddWithValue("@Ip", Bcrypt.HashPassword(details.Ip, Bcrypt.GenerateSalt(10)));
+                    command.Parameters.AddWithValue("@UserAgent", details.UserAgent);
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        return reader.HasRows;
+                    }
+                }
+            }
+        }
+        public static async Task<bool> HasAlreadyViewedFromUserDetails(User user)
+        {
+            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "SELECT * FROM views WHERE UserUUID = @UserUUID;";
+                    command.Parameters.AddWithValue("@UserUUID", user.UUID);
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        return reader.HasRows;
+                    }
+                }
+            }
+        }
+        public static async Task AddViewToPaste(User user, Paste paste, RequestDetails details)
+        {
+            if (paste == null || details == null)
+                return;
+            var _user = user ?? new User { UUID = "0" };
+            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "INSERT INTO views (UserUUID, PasteUUID, Ip, UserAgent, Created) VALUES (@UserUUID, @PasteUUID, @Ip, @UserAgent, @Created);";
+                    command.Parameters.AddWithValue("@UserUUID", _user.UUID);
+                    command.Parameters.AddWithValue("@PasteUUID", paste.UUID);
+                    command.Parameters.AddWithValue("@Ip", Bcrypt.HashPassword(details.Ip, Bcrypt.GenerateSalt(10)));
+                    command.Parameters.AddWithValue("@UserAgent", details.UserAgent);
+                    command.Parameters.AddWithValue("@Created", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                    await command.ExecuteNonQueryAsync();
+                    command.CommandText = "UPDATE pastes SET Views = Views + 1 WHERE UUID = @UUID;";
+                    command.Parameters.AddWithValue("@UUID", paste.UUID);
+                    await command.ExecuteNonQueryAsync();
+                }
+                await connection.CloseAsync();
             }
         }
     }
