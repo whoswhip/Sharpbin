@@ -48,6 +48,7 @@ namespace SharpbinV2.Server
 
             //app.UseHttpsRedirection();
             app.UseRouting();
+            app.UseStaticFiles();
 
             //app.UseRateLimiter();
 
@@ -63,9 +64,107 @@ namespace SharpbinV2.Server
             #region Static Endpoints
             app.MapGet("/", async (HttpContext context) =>
             {
+                context.Response.Redirect("/index.html");
+            });
+            app.MapGet("/{pasteid}", async (HttpContext context, IWebHostEnvironment env) =>
+            {
+                var pasteid = context.Request.RouteValues["pasteid"].ToString() ?? null;
+                if (string.IsNullOrEmpty(pasteid))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Redirect("/error?error=400&message=Invalid paste id.");
+                    return;
+                }
+
+                var filePath = Path.Combine(env.WebRootPath, pasteid);
+                if (File.Exists(filePath))
+                {
+                    context.Response.StatusCode = 200;
+                    switch (Path.GetExtension(filePath))
+                    {
+                        case "html":
+                            context.Response.Headers.Add("Content-Type", "text/html");
+                            break;
+                        case "css":
+                            context.Response.Headers.Add("Content-Type", "text/css");
+                            break;
+                        case "js":
+                            context.Response.Headers.Add("Content-Type", "text/javascript");
+                            break;
+                        case "json":
+                            context.Response.Headers.Add("Content-Type", "application/json");
+                            break;
+                        case "png":
+                            context.Response.Headers.Add("Content-Type", "image/png");
+                            break;
+                        case "jpg":
+                        case "jpeg":
+                            context.Response.Headers.Add("Content-Type", "image/jpeg");
+                            break;
+                        case "ico":
+                            context.Response.Headers.Add("Content-Type", "image/x-icon");
+                            break;
+                    }
+                    await context.Response.SendFileAsync(filePath);
+                    return;
+                }
+                var paste = await Database.GetPasteFromID(pasteid);
+                if (paste == null)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Redirect("/error?error=400&message=Paste not found.");
+                    return;
+                }
+                paste.Views++;
+                using (var connection = new SqliteConnection(MainDatabaseConnection))
+                {
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "UPDATE pastes SET Views = @Views WHERE UUID = @UUID;";
+                        command.Parameters.AddWithValue("@Views", paste.Views);
+                        command.Parameters.AddWithValue("@UUID", paste.UUID);
+                        await command.ExecuteNonQueryAsync();
+                    }
+                    await connection.CloseAsync();
+                }
                 context.Response.StatusCode = 200;
                 context.Response.Headers.Add("Content-Type", "text/html");
-                await context.Response.SendFileAsync("assets/index.html");
+                await context.Response.SendFileAsync("wwwroot/paste.html");
+            });
+            app.MapGet("/error", async (HttpContext context) =>
+            {
+                context.Response.StatusCode = 400;
+                context.Response.Headers.Add("Content-Type", "text/html");
+                await context.Response.SendFileAsync("wwwroot/error.html");
+            });
+            app.MapGet("/raw/{pasteid}", async (HttpContext context) =>
+            {
+                var pasteid = context.Request.RouteValues["pasteid"].ToString() ?? null;
+                if (string.IsNullOrEmpty(pasteid))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Redirect("/error?error=400&message=Invalid paste id.");
+                    return;
+                }
+                var paste = await Database.GetPasteFromID(pasteid);
+                if (paste == null)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Redirect("/error?error=400&message=Paste not found.");
+                    return;
+                }
+                context.Response.StatusCode = 200;
+                context.Response.Headers.Add("Content-Type", "text/plain");
+                if (paste.FilePath.EndsWith(".gz"))
+                {
+                    context.Response.Headers.Add("Content-Encoding", "gzip");
+                    await context.Response.SendFileAsync(paste.FilePath);
+                }
+                else
+                {
+                    await context.Response.SendFileAsync(paste.FilePath);
+                }
             });
             #endregion
 
@@ -290,6 +389,10 @@ namespace SharpbinV2.Server
                 paste.Visibility = queries.ContainsKey("visibility") ? Convert.ToInt32(queries["visibility"]) : 0;
                 paste.Title = queries.ContainsKey("title") ? queries["title"].ToString() : $"Untitled-{await Database.EnumeratePastes()}";
                 paste.Edited = 0;
+                paste.Views = 0;
+                paste.Syntax = queries.ContainsKey("syntax") ? queries["syntax"].ToString() : null;
+
+                Console.WriteLine(paste.Syntax);
 
                 bool shouldCompress = await Compression.ShouldCompress(body);
                 if (shouldCompress)
@@ -310,7 +413,7 @@ namespace SharpbinV2.Server
                     await connection.OpenAsync();
                     using (var command = connection.CreateCommand())
                     {
-                        command.CommandText = "INSERT INTO pastes (UUID, ID, Visibility, Title, AuthorUUID, FilePath, Created, Edited, Size, TrueSize, Views) VALUES (@UUID, @ID, @Visibility, @Title, @AuthorUUID, @FilePath, @Created, @Edited, @Size, @TrueSize, @Views);";
+                        command.CommandText = "INSERT INTO pastes (UUID, ID, Visibility, Title, AuthorUUID, FilePath, Created, Edited, Size, TrueSize, Views, Syntax) VALUES (@UUID, @ID, @Visibility, @Title, @AuthorUUID, @FilePath, @Created, @Edited, @Size, @TrueSize, @Views, @Syntax);";
                         command.Parameters.AddWithValue("@UUID", paste.UUID);
                         command.Parameters.AddWithValue("@ID", paste.ID);
                         command.Parameters.AddWithValue("@Visibility", paste.Visibility);
@@ -322,11 +425,12 @@ namespace SharpbinV2.Server
                         command.Parameters.AddWithValue("@Size", paste.Size);
                         command.Parameters.AddWithValue("@TrueSize", paste.TrueSize);
                         command.Parameters.AddWithValue("@Views", paste.Views);
+                        command.Parameters.AddWithValue("@Syntax", paste.Syntax);
                         await command.ExecuteNonQueryAsync();
                     }
                     await connection.CloseAsync();
                 }
-
+                paste.FilePath = null;
                 context.Response.StatusCode = 200;
                 await context.Response.WriteAsJsonAsync(new { success = true, message = "Paste created.", paste = paste });
                 logger.LogInfo($"A Paste of {FormatBytes(paste.Size)} was created by {paste.UUID}");
@@ -348,6 +452,16 @@ namespace SharpbinV2.Server
                     await context.Response.WriteAsJsonAsync(new { success = false, message = "Paste not found." });
                     return;
                 }
+                if (paste.AuthorUUID != "0")
+                {
+                    var user = await Database.UserFromUUID(paste.AuthorUUID);
+                    paste.AuthorUUID = user.Username;
+                }
+                else
+                {
+                    paste.AuthorUUID = "Anonymous";
+                }
+                paste.FilePath = null;
                 context.Response.StatusCode = 200;
                 await context.Response.WriteAsJsonAsync(new { success = true, paste = paste });
             });
@@ -493,6 +607,7 @@ namespace SharpbinV2.Server
 	                            Size	INTEGER NOT NULL,
                                 TrueSize	INTEGER NOT NULL,
                                 Views	INTEGER NOT NULL DEFAULT 0,
+                                Syntax TEXT,
 	                            PRIMARY KEY(UID AUTOINCREMENT)
                             );";
                         await command.ExecuteNonQueryAsync();
@@ -686,7 +801,8 @@ namespace SharpbinV2.Server
                             Edited = reader.GetInt64(8),
                             Size = reader.GetInt32(9),
                             TrueSize = reader.GetInt32(10),
-                            Views = reader.GetInt32(11)
+                            Views = reader.GetInt32(11),
+                            Syntax = reader.IsDBNull(12) ? null : reader.GetString(12)
                         };
                     }
                 }
@@ -839,6 +955,7 @@ namespace SharpbinV2.Server
         public int Size { get; set; }
         public int TrueSize { get; set; }
         public int Views { get; set; }
+        public string Syntax { get; set; }
     }
     class Session
     {

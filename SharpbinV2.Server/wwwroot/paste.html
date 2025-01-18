@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preload" href="css/style.css" as="style">
+    <link rel="preload" href="css/paste.css" as="style">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/paste.css">
+    <link rel="preload" href="js/paste.js" as="script">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Noto+Sans+Mono:wght@100..900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+</head>
+
+<body>
+    <div class="main-container">
+        <div class="paste-header">
+            <h1 id="paste-title">Title</h1>
+            <div class="paste-information">
+                <p id="paste-syntax">Syntax</p>
+                <p id="paste-date">Date</p>
+            </div>
+        </div>
+        <div class="paste-content">
+            <div class="paste-actions">
+                <button id="copy-button">Copy</button>
+                <button id="download-button">Download</button>
+                <button id="raw-button">Raw</button>
+            </div>
+            <pre id="paste-content">Content</pre>
+        </div>
+    </div>
+</body>
+<script src="js/paste.js"></script>
+
+</html>

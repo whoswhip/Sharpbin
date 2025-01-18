@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sharpbin</title>
+    <link rel="preload" href="css/style.css" as="style">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preload" href="js/index.js" as="script">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Noto+Sans+Mono:wght@100..900&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="main-container">
+        <form class="create-form" id="create-form">
+            <input type="text" name="title" id="title" placeholder="Title">
+            <textarea name="content" id="content" placeholder="Content"></textarea>
+            <label style="margin-bottom: -2.3rem; margin-top: 1.1rem; z-index: 2; align-self: flex-start; margin-left: 1rem; pointer-events: none;">Syntax Highlighting -</label>
+            <select name="syntax" id="syntax">
+                <option value="none">None</option>
+                <option value="bash">Bash</option>
+                <option value="c">C</option>
+                <option value="cpp">C++</option>
+                <option value="csharp">C#</option>
+                <option value="css">CSS</option>
+                <option value="html">HTML</option>
+                <option value="java">Java</option>
+                <option value="javascript">JavaScript</option>
+                <option value="json">JSON</option>
+                <option value="lua">Lua</option>
+                <option value="markdown">Markdown</option>
+                <option value="php">PHP</option>
+                <option value="python">Python</option>
+                <option value="ruby">Ruby</option>
+                <option value="rust">Rust</option>
+                <option value="sql">SQL</option>
+                <option value="swift">Swift</option>
+                <option value="typescript">TypeScript</option>
+                <option value="xml">XML</option>
+            </select>
+            <select name="visibility" id="visibility" onchange="changeVisibility()">
+                <option value="0">Public</option>
+                <option value="1">Unlisted</option>
+                <option value="2">Private</option>
+            </select>
+            <input type="text" name="password" id="password" placeholder="Password" style="display: none;">
+            <button type="submit">Create Paste</button>
+        </form>
+    </div>
+</body>
+<script src="js/index.js"></script>
+
+</html>
