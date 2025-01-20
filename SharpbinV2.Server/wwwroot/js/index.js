@@ -15,7 +15,6 @@ document.getElementById("create-form").addEventListener("submit", async function
 
     if (visibility === "2" && password !== "" && password.length >= 6) {
         content = await encryptAES(content, password);
-        console.log(content);
     }
     else if (visibility === "2") {
         alert("Password must be at least 6 characters long");

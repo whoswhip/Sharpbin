@@ -28,3 +28,8 @@ README.md
 !.git/config
 !.git/packed-refs
 !.git/refs/heads/**
+
+SharpbinV2.Server/*.db
+SharpbinV2.Server/logs
+SharpbinV2.Server/pastes
+SharpbinV2.Server/.env

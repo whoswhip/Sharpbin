@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paste Archives - Sharpbin</title>
+    <link rel="preload" href="css/style.css" as="style">
+    <link rel="preload" href="css/archive.css" as="style">
+    <link rel="preload" href="js/archive.js" as="script">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/archive.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Noto+Sans+Mono:wght@100..900&display=swap"
+        rel="stylesheet">
+</head>
+<body>
+    <div class="main-container">
+        <h1 id="archive-header">Paste Archives</h1>
+        <div class="archive-information">
+            <p id="archive-title">Title</p>
+            <p id="archive-date">Date</p>
+            <p id="archive-syntax">Syntax</p>
+        </div>
+        <ol class="archive-list" id="archives">
+            <!-- <li>
+                <a href="paste.html?id=1">
+                    <p id="archive-title">Title</p>
+                    <p id="archive-date">Date</p>
+                    <p id="archive-syntax">Syntax</p>
+                </a>
+            </li> -->
+        </ol>
+        <div class="paste-actions">
+            <button id="previous-button" onclick="previousPage()">&lt;</button>
+            <p id="paste-pages">0/0</p>
+            <button id="next-button" onclick="nextPage()">></button>
+        </div>
+    </div>
+</body>
+<script src="js/archive.js"></script>
+<script src="js/navbar.js"></script>
+</html>

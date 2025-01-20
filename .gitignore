@@ -70,29 +70,7 @@ artifacts/
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
 
-# StyleCop
-StyleCopReport.xml
-
-# Files built by Visual Studio
-*_i.c
-*_p.c
-*_h.h
-*.ilk
-*.meta
-*.obj
-*.iobj
-*.pch
-*.pdb
-*.ipdb
-*.pgc
-*.pgd
-*.rsp
-*.sbr
-*.tlb
-*.tli
-*.tlh
-*.tmp
-*.tmp_proj
+# StyleCop6
 *_wpftmp.csproj
 *.log
 *.vspscc
@@ -204,22 +182,7 @@ PublishScripts/
 **/[Pp]ackages/*
 # except build/, which is used as an MSBuild target.
 !**/[Pp]ackages/build/
-# Uncomment if necessary however generally it will be regenerated when needed
-#!**/[Pp]ackages/repositories.config
-# NuGet v3's project.json files produces more ignorable files
-*.nuget.props
-*.nuget.targets
-
-# Microsoft Azure Build Output
-csx/
-*.build.csdef
-
-# Microsoft Azure Emulator
-ecf/
-rcf/
-
-# Windows Store app package directories and files
-AppPackages/
+# Uncomment if necessar6
 BundleArtifacts/
 Package.StoreAssociation.xml
 _pkginfo.txt
@@ -320,18 +283,7 @@ paket-files/
 __pycache__/
 *.pyc
 
-# Cake - Uncomment if you are using it
-# tools/**
-# !tools/packages.config
-
-# Tabs Studio
-*.tss
-
-# Telerik's JustMock configuration file
-*.jmconfig
-
-# BizTalk build output
-*.btp.cs
+# Cake - Uncomment i6
 *.btm.cs
 *.odx.cs
 *.xsd.cs

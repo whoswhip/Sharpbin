@@ -16,7 +16,7 @@ namespace SharpbinV2.Server
     class Program
     {
         public static string MainDatabaseConnection = "Data Source=data.db";
-        public static long MaxFileSize = 5000000; // 5MB
+        public static long MaxFileSize = 1_000_000; // 1MB
         public static string[] ValidSyntaxLanguages =
         {
             "none",
@@ -104,7 +104,9 @@ namespace SharpbinV2.Server
             #region Static Endpoints
             app.MapGet("/", (HttpContext context) =>
             {
-                context.Response.Redirect("/index.html");
+                context.Response.StatusCode = 200;
+                context.Response.Headers.Add("Content-Type", "text/html");
+                return context.Response.SendFileAsync("wwwroot/index.html");
             });
             app.MapGet("/{pasteid}", async (HttpContext context, IWebHostEnvironment env) =>
             {
@@ -185,6 +187,10 @@ namespace SharpbinV2.Server
                 context.Response.Headers.Add("Content-Type", "text/html");
                 await context.Response.SendFileAsync("wwwroot/error.html");
             });
+            app.MapGet("/error.html", (HttpContext context) =>
+            {
+                context.Response.Redirect("/error");
+            });
             app.MapGet("/raw/{pasteid}", async (HttpContext context) =>
             {
                 var pasteid = context.Request.RouteValues["pasteid"].ToString() ?? null;
@@ -216,6 +222,12 @@ namespace SharpbinV2.Server
             app.MapGet("/paste.html", (HttpContext context) =>
             {
                 context.Response.Redirect("/");
+            });
+            app.MapGet("/archive", async (HttpContext context) =>
+            {
+                context.Response.StatusCode = 200;
+                context.Response.Headers.Add("Content-Type", "text/html");
+                await context.Response.SendFileAsync("wwwroot/archive.html");
             });
             #endregion
 
@@ -458,6 +470,13 @@ namespace SharpbinV2.Server
                 var user = await Database.UserFromToken(requestdetails.Token);
                 var queries = context.Request.Query;
 
+                if (queries.ContainsKey("title") && queries["title"].ToString().Length > 500)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Title too long." });
+                    return;
+                }
+
 
                 paste.Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                 paste.Size = body.Length;
@@ -467,7 +486,7 @@ namespace SharpbinV2.Server
                 paste.AuthorUUID = user?.UUID ?? "0"; // 0 means the user is anonymous
                 paste.FilePath = $"pastes/{paste.ID}.txt";
                 paste.Visibility = queries.ContainsKey("visibility") ? Convert.ToInt32(queries["visibility"]) : 0;
-                paste.Title = queries.ContainsKey("title") ? queries["title"].ToString() : $"Untitled-{await Database.EnumeratePastes()}";
+                paste.Title = queries.ContainsKey("title") && !string.IsNullOrEmpty(queries["title"].ToString()) ? queries["title"].ToString() : $"Untitled-{await Database.EnumeratePastes()}";
                 paste.Edited = 0;
                 paste.Views = 0;
                 paste.Syntax = queries.ContainsKey("syntax") ? queries["syntax"].ToString() : null;
@@ -572,6 +591,74 @@ namespace SharpbinV2.Server
                     await context.Response.SendFileAsync(paste.FilePath);
                 }
                 return;
+            });
+            app.MapGet("/api/pastes/archive", async (HttpContext context) =>
+            {
+                var queries = context.Request.Query;
+                if (!queries.ContainsKey("page") && !queries.ContainsKey("limit"))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Missing required fields." });
+                    return;
+                }
+                var page = queries.ContainsKey("page") ? Convert.ToInt32(queries["page"]) : 0;
+                var limit = queries.ContainsKey("limit") ? Convert.ToInt32(queries["limit"]) : 10;
+                int pages = await Database.EnumeratePastes() / limit;
+
+                if (page < 0 || limit <= 0 || limit > 25)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid page or limit." });
+                    return;
+                }
+                if (page > pages)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Page out of range.", pages });
+                    return;
+                }
+
+                using (var connection = new SqliteConnection(MainDatabaseConnection))
+                {
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "SELECT * FROM pastes WHERE Visibility NOT IN (1, 2) ORDER BY Created DESC LIMIT @Limit OFFSET @Offset;";
+                        command.Parameters.AddWithValue("@Limit", limit);
+                        command.Parameters.AddWithValue("@Offset", page * limit);
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (!reader.HasRows)
+                            {
+                                context.Response.StatusCode = 400;
+                                await context.Response.WriteAsJsonAsync(new { success = false, message = "No pastes found." });
+                                return;
+                            }
+                            var pastes = new List<Paste>();
+                            while (await reader.ReadAsync())
+                            {
+                                pastes.Add(new Paste
+                                {
+                                    UUID = reader.GetString(1),
+                                    ID = reader.GetString(2),
+                                    Visibility = reader.GetInt32(3),
+                                    Title = reader.IsDBNull(4) ? null : reader.GetString(4),
+                                    AuthorUUID = reader.GetString(5),
+                                    Created = reader.GetInt64(7),
+                                    Edited = reader.GetInt64(8),
+                                    Size = reader.GetInt32(9),
+                                    TrueSize = reader.GetInt32(10),
+                                    Views = reader.GetInt32(11),
+                                    Syntax = reader.IsDBNull(12) ? null : reader.GetString(12)
+                                });
+                            }
+
+                            context.Response.StatusCode = 200;
+                            await context.Response.WriteAsJsonAsync(new { success = true, pastes, pages });
+                            return;
+                        }
+                    }
+                }
             });
 
             #endregion
