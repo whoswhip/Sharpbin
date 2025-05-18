@@ -2,17 +2,19 @@ const visibility = [{ id: 0, name: "Public" }, { id: 1, name: "Unlisted" }, { id
 
 document.addEventListener("DOMContentLoaded", async function () {
     const id = window.location.pathname.split("/")[1];
-    const content = await (await fetch(`/api/pastes/${id}`)).text();
-    const info = await (await fetch(`/api/pastes/${id}/info`)).json();
-    const paste = info.paste;
+    const contentPromise = fetch(`/api/pastes/${id}`).then(response => response.text());
+    const infoPromise = fetch(`/api/pastes/${id}/info`).then(response => response.json());
+
     const blur = document.createElement("div");
     blur.id = "blur";
     blur.dataset.decrypted = "false";
     document.body.appendChild(blur);
     const blur2 = document.getElementById("blur");
 
-    if (paste.visibility === 2) {
+    const [content, info] = await Promise.all([contentPromise, infoPromise]);
+    const paste = info.paste;
 
+    if (paste.visibility === 2) {
         const password = prompt("Enter the password");
         try {
             const decrypted = await decryptAES(content, password);
@@ -21,53 +23,37 @@ document.addEventListener("DOMContentLoaded", async function () {
         } catch (error) {
             alert("Failed to decrypt, invalid password, or invalid data.");
         }
-
-
     } else {
         blur2.dataset.decrypted = "true";
         addContent(content, paste.syntax);
     }
     document.title = `${paste.title} - Sharpbin`;
     addInfo(paste);
-
 });
 
 function addInfo(paste) {
     document.getElementById("paste-title").innerText = paste.title;
     document.getElementById("paste-date").innerText = convertUnixToLocal(paste.created);
     document.getElementById("paste-syntax").innerText = paste.syntax === "none" ? "" : paste.syntax || "";
+    document.getElementById("info-throbber").style.display = "none";
     document.getElementById("copy-button").addEventListener("click", function () {
         navigator.clipboard.writeText(window.location.href);
     });
     document.getElementById("download-button").addEventListener("click", function () {
-        if (paste.visibility === 2) {
-            const content = document.getElementById("paste-content").innerText;
-            const blob = new Blob([content], { type: "text/plain" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `${paste.title}.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-        else {
-            const blob = new Blob([document.getElementById("paste-content").innerText], { type: "text/plain" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `${paste.title}.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
+        const content = document.getElementById("paste-content").innerText;
+        const blob = new Blob([content], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${paste.title}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     });
     document.getElementById("raw-button").addEventListener("click", function () {
         window.location.href = `/raw/${paste.id}`;
     });
-
 }
 
 function addContent(content, syntax) {
@@ -80,11 +66,10 @@ function addContent(content, syntax) {
     code.id = "paste-content";
     code.classList.add("language-" + syntax === "plaintext" ? "none" : syntax);
     if (syntax !== "plaintext" && syntax !== "none" && syntax !== "" && syntax !== null) {
-        console.log(syntax);
         hljs.highlightElement(code);
     }
     hljs.lineNumbersBlock(code);
-
+    document.getElementById("content-throbber").style.display = "none";
 }
 
 async function decryptAES(content, password) {

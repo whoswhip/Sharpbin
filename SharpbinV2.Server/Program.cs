@@ -45,6 +45,7 @@ namespace SharpbinV2.Server
             "xml"
         };
         public static string HMACSecret = "thisneedstobechanged";
+        public static JObject Configuration { get; set; }
 
         static async Task Main(string[] args)
         {
@@ -52,7 +53,14 @@ namespace SharpbinV2.Server
             var logger = new Logging();
             var builder = WebApplication.CreateBuilder(args);
             builder.Configuration.AddEnvironmentVariables();
-            builder.WebHost.UseUrls($"https://*:{Environment.GetEnvironmentVariable("HTTPS_Port") ?? "5820"}", $"http://*:{Environment.GetEnvironmentVariable("HTTP_Port") ?? "5810"}");
+            if (Environment.GetEnvironmentVariable("HTTPS") == "true")
+            {
+                builder.WebHost.UseUrls($"https://*:{Environment.GetEnvironmentVariable("HTTPS_Port") ?? "5820"}");
+            }
+            else
+            {
+                builder.WebHost.UseUrls($"http://*:{Environment.GetEnvironmentVariable("HTTP_Port") ?? "5810"}");
+            }
             MaxFileSize = Environment.GetEnvironmentVariable("MAX_FILE_SIZE") != null ? Convert.ToInt64(Environment.GetEnvironmentVariable("MAX_FILE_SIZE")) : MaxFileSize;
             HMACSecret = Environment.GetEnvironmentVariable("HMAC_SECRET") ?? HMACSecret;
             if (HMACSecret == "thisneedstobechanged")
@@ -229,6 +237,29 @@ namespace SharpbinV2.Server
                 context.Response.Headers.Add("Content-Type", "text/html");
                 await context.Response.SendFileAsync("wwwroot/archive.html");
             });
+            app.MapGet("/dash", async (HttpContext context) =>
+            {
+                context.Response.StatusCode = 200;
+                context.Response.Headers.Add("Content-Type", "text/html");
+                await context.Response.SendFileAsync("wwwroot/dash.html");
+            });
+            app.MapGet("/dash.html", (HttpContext context) =>
+            {
+                context.Response.Redirect("/dash");
+            });
+            app.MapGet("/login", async (HttpContext context) =>
+            {
+                context.Response.StatusCode = 200;
+                context.Response.Headers.Add("Content-Type", "text/html");
+                await context.Response.SendFileAsync("wwwroot/login.html");
+            });
+            app.MapGet("/register", async (HttpContext context) =>
+            {
+                context.Response.StatusCode = 200;
+                context.Response.Headers.Add("Content-Type", "text/html");
+                await context.Response.SendFileAsync("wwwroot/register.html");
+            });
+
             #endregion
 
             #region API
@@ -324,15 +355,17 @@ namespace SharpbinV2.Server
                 logger.LogInfo($"Account {username} has been created.");
                 return;
             });
-            app.MapGet("/api/accounts/login", async (HttpContext context) =>
+            app.MapPost("/api/accounts/login", async (HttpContext context) =>
             {
                 var requestdetails = GetRequestDetails(context);
-                if (!string.IsNullOrEmpty(requestdetails.Token) && Database.UserFromToken(requestdetails.Token) != null)
+                var __user = await Database.UserFromToken(requestdetails.Token);
+                if (!string.IsNullOrEmpty(requestdetails.Token) && __user != null)
                 {
-                    context.Response.StatusCode = 200;
-                    await context.Response.WriteAsJsonAsync(new { success = true, message = "Already logged in." });
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Already logged in." });
                     return;
                 }
+
                 var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
                 if (body == null)
                 {
@@ -425,14 +458,14 @@ namespace SharpbinV2.Server
                 if (string.IsNullOrEmpty(requestdetails.Token))
                 {
                     context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Not authorized." });
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "No token provided, not authorized." });
                     return;
                 }
                 var user = await Database.UserFromToken(requestdetails.Token);
                 if (user == null)
                 {
                     context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Not authorized." });
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid token." });
                     return;
                 }
                 var cleanuser = new User
@@ -440,6 +473,7 @@ namespace SharpbinV2.Server
                     UID = user.UID,
                     UUID = user.UUID,
                     Username = user.Username,
+                    Email = user.Email,
                     DisplayName = user.DisplayName,
                     Created = user.Created,
                     LastLogin = user.LastLogin
@@ -447,6 +481,74 @@ namespace SharpbinV2.Server
                 context.Response.StatusCode = 200;
                 await context.Response.WriteAsJsonAsync(new { success = true, user = cleanuser });
                 return;
+            });
+            app.MapPost("/api/accounts/delete", async (HttpContext context) =>
+            {
+                var requestdetails = GetRequestDetails(context);
+                if (string.IsNullOrEmpty(requestdetails.Token))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "No token provided, not authorized." });
+                    return;
+                }
+                var user = await Database.UserFromToken(requestdetails.Token);
+                if (user == null)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid token." });
+                    return;
+                }
+                using (var connection = new SqliteConnection(MainDatabaseConnection))
+                {
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "DELETE FROM users WHERE UUID = @UUID;";
+                        command.Parameters.AddWithValue("@UUID", user.UUID);
+                        await command.ExecuteNonQueryAsync();
+                    }
+                    await connection.CloseAsync();
+                }
+
+                using (var connection = new SqliteConnection(MainDatabaseConnection))
+                {
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "DELETE FROM pastes WHERE AuthorUUID = @AuthorUUID;";
+                        command.Parameters.AddWithValue("@AuthorUUID", user.UUID);
+                        await command.ExecuteNonQueryAsync();
+                    }
+                    await connection.CloseAsync();
+                }
+
+                using (var connection = new SqliteConnection(MainDatabaseConnection))
+                {
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "DELETE FROM sessions WHERE UserUUID = @UserUUID;";
+                        command.Parameters.AddWithValue("@UserUUID", user.UUID);
+                        await command.ExecuteNonQueryAsync();
+                    }
+                    await connection.CloseAsync();
+                }
+
+                using (var connection = new SqliteConnection(MainDatabaseConnection))
+                {
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "UPDATE views SET UserUUID = @UserUUID WHERE UserUUID = @OldUserUUID;";
+                        command.Parameters.AddWithValue("@UserUUID", "0");
+                        command.Parameters.AddWithValue("@OldUserUUID", user.UUID);
+                        await command.ExecuteNonQueryAsync();
+                    }
+                    await connection.CloseAsync();
+                }
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsJsonAsync(new { success = true, message = "Account deleted." });
+
             });
 
             app.MapPost("/api/pastes/create", async (HttpContext context) =>
@@ -537,59 +639,7 @@ namespace SharpbinV2.Server
                 paste.FilePath = null;
                 context.Response.StatusCode = 200;
                 await context.Response.WriteAsJsonAsync(new { success = true, message = "Paste created.", paste = paste });
-                logger.LogInfo($"A Paste of {FormatBytes(paste.Size)} was created by {paste.UUID}");
-                return;
-            });
-            app.MapGet("/api/pastes/{pasteid}/info", async (HttpContext context) =>
-            {
-                var pasteid = context.Request.RouteValues["pasteid"].ToString() ?? null;
-                if (string.IsNullOrEmpty(pasteid))
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid Paste ID." });
-                    return;
-                }
-                var paste = await Database.GetPasteFromID(pasteid);
-                if (paste == null)
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Paste not found." });
-                    return;
-                }
-                if (paste.AuthorUUID != "0")
-                {
-                    var user = await Database.UserFromUUID(paste.AuthorUUID);
-                    paste.AuthorUUID = user.Username;
-                }
-                else
-                {
-                    paste.AuthorUUID = "Anonymous";
-                }
-                paste.FilePath = null;
-                context.Response.StatusCode = 200;
-                await context.Response.WriteAsJsonAsync(new { success = true, paste = paste });
-            });
-            app.MapGet("/api/pastes/{pasteid}", async (HttpContext context) =>
-            {
-                var pasteid = context.Request.RouteValues["pasteid"].ToString() ?? null;
-                if (string.IsNullOrEmpty(pasteid))
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid Paste ID." });
-                    return;
-                }
-                var paste = await Database.GetPasteFromID(pasteid);
-                context.Response.StatusCode = 200;
-                context.Response.Headers.Add("Content-Type", "text/plain");
-                if (paste.FilePath.EndsWith(".gz"))
-                {
-                    context.Response.Headers.Add("Content-Encoding", "gzip");
-                    await context.Response.SendFileAsync(paste.FilePath);
-                }
-                else
-                {
-                    await context.Response.SendFileAsync(paste.FilePath);
-                }
+                logger.LogInfo($"A Paste of {FormatBytes(paste.Size ?? 0)} was created by {paste.UUID}");
                 return;
             });
             app.MapGet("/api/pastes/archive", async (HttpContext context) =>
@@ -660,6 +710,142 @@ namespace SharpbinV2.Server
                     }
                 }
             });
+            app.MapGet("/api/pastes/my", async (HttpContext context) =>
+            {
+                var requestdetails = GetRequestDetails(context);
+                if (string.IsNullOrEmpty(requestdetails.Token))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Not authorized." });
+                    return;
+                }
+
+                var user = await Database.UserFromToken(requestdetails.Token);
+                if (user == null)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid token." });
+                    return;
+                }
+                var queries = context.Request.Query;
+                if (!queries.ContainsKey("page") && !queries.ContainsKey("limit"))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Missing required fields." });
+                    return;
+                }
+                var page = queries.ContainsKey("page") ? Convert.ToInt32(queries["page"]) : 0;
+                var limit = queries.ContainsKey("limit") ? Convert.ToInt32(queries["limit"]) : 10;
+                if (page < 0 || limit <= 0 || limit > 25)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid page or limit." });
+                    return;
+                }
+                int pages = await Database.EnumerateUserPastes(user) / limit;
+                if (page > pages)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Page out of range.", pages });
+                    return;
+                }
+                using (var connection = new SqliteConnection(MainDatabaseConnection))
+                {
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "SELECT * FROM pastes WHERE AuthorUUID = @AuthorUUID ORDER BY Created DESC LIMIT @Limit OFFSET @Offset;";
+                        command.Parameters.AddWithValue("@AuthorUUID", user.UUID);
+                        command.Parameters.AddWithValue("@Limit", limit);
+                        command.Parameters.AddWithValue("@Offset", page * limit);
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (!reader.HasRows)
+                            {
+                                context.Response.StatusCode = 400;
+                                await context.Response.WriteAsJsonAsync(new { success = false, error = true, message = "No pastes found." });
+                                return;
+                            }
+                            var pastes = new List<Paste>();
+                            while (await reader.ReadAsync())
+                            {
+                                pastes.Add(new Paste
+                                {
+                                    UUID = reader.GetString(1),
+                                    ID = reader.GetString(2),
+                                    Visibility = reader.GetInt32(3),
+                                    Title = reader.IsDBNull(4) ? null : reader.GetString(4),
+                                    AuthorUUID = reader.GetString(5),
+                                    Created = reader.GetInt64(7),
+                                    Edited = reader.GetInt64(8),
+                                    Size = reader.GetInt32(9),
+                                    TrueSize = reader.GetInt32(10),
+                                    Views = reader.GetInt32(11),
+                                    Syntax = reader.IsDBNull(12) ? null : reader.GetString(12)
+                                });
+                            }
+
+                            context.Response.StatusCode = 200;
+                            await context.Response.WriteAsJsonAsync(new { success = true, pastes, pages });
+                            return;
+                        }
+                    }
+                }
+
+            });
+            app.MapGet("/api/pastes/{pasteid}/info", async (HttpContext context) =>
+            {
+                var pasteid = context.Request.RouteValues["pasteid"].ToString() ?? null;
+                if (string.IsNullOrEmpty(pasteid))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid Paste ID." });
+                    return;
+                }
+                var paste = await Database.GetPasteFromID(pasteid);
+                if (paste == null)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Paste not found." });
+                    return;
+                }
+                if (paste.AuthorUUID != "0")
+                {
+                    var user = await Database.UserFromUUID(paste.AuthorUUID);
+                    paste.AuthorUUID = user.Username;
+                }
+                else
+                {
+                    paste.AuthorUUID = "Anonymous";
+                }
+                paste.FilePath = null;
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsJsonAsync(new { success = true, paste = paste });
+            });
+            app.MapGet("/api/pastes/{pasteid}", async (HttpContext context) =>
+            {
+                var pasteid = context.Request.RouteValues["pasteid"].ToString() ?? null;
+                if (string.IsNullOrEmpty(pasteid))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid Paste ID." });
+                    return;
+                }
+                var paste = await Database.GetPasteFromID(pasteid);
+                context.Response.StatusCode = 200;
+                context.Response.Headers.Add("Content-Type", "text/plain");
+                if (paste.FilePath.EndsWith(".gz"))
+                {
+                    context.Response.Headers.Add("Content-Encoding", "gzip");
+                    await context.Response.SendFileAsync(paste.FilePath);
+                }
+                else
+                {
+                    await context.Response.SendFileAsync(paste.FilePath);
+                }
+                return;
+            });
+
 
             #endregion
 
@@ -933,7 +1119,6 @@ namespace SharpbinV2.Server
                 return null;
             using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
             {
-
                 await connection.OpenAsync();
                 using (var command = connection.CreateCommand())
                 {
@@ -944,7 +1129,7 @@ namespace SharpbinV2.Server
                         if (!reader.HasRows)
                             return null;
                         await reader.ReadAsync();
-                        return await UserFromUUID(reader.GetString(2));
+                        return await UserFromUUID(reader.GetString(1));
                     }
                 }
             }
@@ -957,6 +1142,21 @@ namespace SharpbinV2.Server
                 using (var command = connection.CreateCommand())
                 {
                     command.CommandText = "SELECT COUNT(*) FROM pastes;";
+                    return Convert.ToInt32(await command.ExecuteScalarAsync());
+                }
+            }
+        }
+        public static async Task<int> EnumerateUserPastes(User user)
+        {
+            if (user == null)
+                return 0;
+            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "SELECT COUNT(*) FROM pastes WHERE AuthorUUID = @AuthorUUID;";
+                    command.Parameters.AddWithValue("@AuthorUUID", user.UUID);
                     return Convert.ToInt32(await command.ExecuteScalarAsync());
                 }
             }
@@ -1053,6 +1253,45 @@ namespace SharpbinV2.Server
                 await connection.CloseAsync();
             }
         }
+        public static async Task <List<Paste>> PastesFromUser(User user)
+        {
+           if (user == null)
+                return null;
+            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "SELECT * FROM pastes WHERE AuthorUUID = @AuthorUUID;";
+                    command.Parameters.AddWithValue("@AuthorUUID", user.UUID);
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        if (!reader.HasRows)
+                            return null;
+                        var pastes = new List<Paste>();
+                        while (await reader.ReadAsync())
+                        {
+                            pastes.Add(new Paste
+                            {
+                                UUID = reader.GetString(1),
+                                ID = reader.GetString(2),
+                                Visibility = reader.GetInt32(3),
+                                Title = reader.IsDBNull(4) ? null : reader.GetString(4),
+                                AuthorUUID = reader.GetString(5),
+                                FilePath = reader.GetString(6),
+                                Created = reader.GetInt64(7),
+                                Edited = reader.GetInt64(8),
+                                Size = reader.GetInt32(9),
+                                TrueSize = reader.GetInt32(10),
+                                Views = reader.GetInt32(11),
+                                Syntax = reader.IsDBNull(12) ? null : reader.GetString(12)
+                            });
+                        }
+                        return pastes;
+                    }
+                }
+            }
+        }
     }
     public class Logging
     {
@@ -1122,7 +1361,6 @@ namespace SharpbinV2.Server
             }
             return compressedBytes;
         }
-
         public static async Task<string> DecompressByteArrayToString(byte[] compressedBytes)
         {
             string decompressedText;
@@ -1138,7 +1376,6 @@ namespace SharpbinV2.Server
             }
             return decompressedText;
         }
-
         public static async Task<byte[]> DecompressByteArray(byte[] compressedBytes)
         {
             byte[] decompressedBytes;
@@ -1169,7 +1406,6 @@ namespace SharpbinV2.Server
 
             return compressionRatio < ratioThreshold;
         }
-
         public static bool IsCompressed(byte[] data)
         {
             return data.Length >= 2 && data[0] == 0x1F && data[1] == 0x8B;
@@ -1177,45 +1413,45 @@ namespace SharpbinV2.Server
     }
     class User
     {
-        public int UID { get; set; }
-        public string UUID { get; set; }
-        public int Type { get; set; }
-        public string Email { get; set; }
-        public string Username { get; set; }
-        public string DisplayName { get; set; }
-        public string Password { get; set; }
-        public long Created { get; set; }
-        public long LastLogin { get; set; }
+        public int? UID { get; set; }
+        public string? UUID { get; set; }
+        public int? Type { get; set; }
+        public string? Email { get; set; }
+        public string? Username { get; set; }
+        public string? DisplayName { get; set; }
+        public string? Password { get; set; }
+        public long? Created { get; set; }
+        public long? LastLogin { get; set; }
     }
     class Paste
     {
-        public string UUID { get; set; }
-        public string ID { get; set; }
-        public int Visibility { get; set; }
-        public string Title { get; set; }
-        public string AuthorUUID { get; set; }
-        public string FilePath { get; set; }
-        public long Created { get; set; }
-        public long Edited { get; set; }
-        public int Size { get; set; }
-        public int TrueSize { get; set; }
-        public int Views { get; set; }
-        public string Syntax { get; set; }
+        public string? UUID { get; set; }
+        public string? ID { get; set; }
+        public int? Visibility { get; set; }
+        public string? Title { get; set; }
+        public string? AuthorUUID { get; set; }
+        public string? FilePath { get; set; }
+        public long? Created { get; set; }
+        public long? Edited { get; set; }
+        public int? Size { get; set; }
+        public int? TrueSize { get; set; }
+        public int? Views { get; set; }
+        public string? Syntax { get; set; }
     }
     class Session
     {
-        public string UUID { get; set; }
-        public string UserUUID { get; set; }
-        public string Token { get; set; }
-        public long Created { get; set; }
-        public long Expirary { get; set; }
-        public string Ip { get; set; }
-        public string UserAgent { get; set; }
+        public string? UUID { get; set; }
+        public string? UserUUID { get; set; }
+        public string? Token { get; set; }
+        public long? Created { get; set; }
+        public long? Expirary { get; set; }
+        public string? Ip { get; set; }
+        public string? UserAgent { get; set; }
     }
     class RequestDetails
     {
-        public string Ip { get; set; }
-        public string UserAgent { get; set; }
-        public string Token { get; set; }
+        public string? Ip { get; set; }
+        public string? UserAgent { get; set; }
+        public string? Token { get; set; }
     }
 }

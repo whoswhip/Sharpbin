@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Sharpbin</title>
+    <link rel="preload" href="css/style.css" as="style">
+    <link rel="preload" href="css/dash.css" as="style">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dash.css">
+    <link rel="preload" href="js/dash.js" as="script">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Noto+Sans+Mono:wght@100..900&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="main-container">
+        <div class="account-info">
+            <h1 id="account-header">Account Information</h1>
+            <p id="account-username">Username: </p>
+            <p id="account-email">Email: </p>
+            <p id="account-joindate">Joined: </p>
+            <p id="account-lastlogin">Last Login: </p>
+            <p id="account-pastes">Pastes: </p>
+            <button id="logout-button" onclick="logout()">Logout</button>
+            <button id="delete-account-button" onclick="deleteAccount()">Delete Account</button>
+        </div>
+        <div class="paste-list">
+            <h1 id="paste-header">Your Pastes</h1>
+            <div class="paste-information">
+                <p id="paste-title">Title</p>
+                <p id="paste-date">Date</p>
+                <p id="paste-syntax">Syntax</p>
+            </div>
+            <ol class="pastes" id="pastes">
+
+            </ol>
+            <div class="paste-actions">
+                <button id="previous-button" onclick="previousPage()">&lt;</button>
+                <p id="paste-pages">0/0</p>
+                <button id="next-button" onclick="nextPage()">></button>
+            </div>
+        </div>
+    </div>
+</body>
+<script src="js/dash.js"></script>
+<script src="js/navbar.js"></script>
+</html>
