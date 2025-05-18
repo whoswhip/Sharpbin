@@ -139,7 +139,7 @@ function displayPastes() {
 
 
         const pasteLink = document.createElement('a');
-        pasteLink.href = `/paste/${paste.id}`;
+        pasteLink.href = `/${paste.id}`;
 
         pasteLink.style.display = 'grid';
         pasteLink.style.gridTemplateColumns = '2fr 1fr 1fr';
@@ -212,7 +212,7 @@ function logout() {
 
     document.getElementById('confirm-logout').onclick = async function () {
         try {
-            await fetch('/api/accounts/logout', { method: 'POST', credentials: 'include' });
+            await fetch('/api/accounts/logout', { method: 'POST'});
         } catch { }
         window.location.href = '/login';
     };
@@ -264,7 +264,7 @@ function deleteAccount() {
     confirmBtn.onclick = async function () {
         if (confirmBtn.disabled) return;
         try {
-            await fetch('/api/accounts/delete', { method: 'POST', credentials: 'include' });
+            await fetch('/api/accounts/delete', { method: 'POST'});
         } catch { }
         window.location.href = '/register';
     };
