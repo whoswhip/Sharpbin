@@ -228,3 +228,76 @@ code.hljs {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* Minimal, clean style for paste information card */
+.paste-information-card {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0 0 8px 0;
+    margin: 0 0 8px 0;
+    border-bottom: 1px solid var(--neutral-700);
+    min-width: 0;
+}
+.paste-info-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 1rem;
+    color: var(--neutral-100);
+    font-weight: 400;
+    background: none;
+    border-radius: 0;
+    padding: 0 6px;
+    transition: none;
+}
+.info-icon {
+    font-size: 1em;
+    opacity: 0.7;
+    margin-right: 2px;
+}
+#author-link {
+    color: var(--neutral-100);
+    text-decoration: underline dotted;
+    font-weight: 400;
+    transition: color 0.2s;
+}
+#author-link:hover {
+    color: #4ea1f7;
+}
+.paste-header h1#paste-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--neutral-50);
+    letter-spacing: 0.2px;
+}
+
+.info-icon {
+    display: inline-block;
+    width: 1.1em;
+    height: 1.1em;
+    margin-right: 4px;
+    vertical-align: middle;
+    opacity: 0.7;
+}
+.syntax-icon {
+    background: url('data:image/svg+xml;utf8,<svg fill="none" stroke="%23aaa" stroke-width="2" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M7 7l-4 3 4 3M13 7l4 3-4 3"/></svg>') no-repeat center/1em 1em;
+}
+.date-icon {
+    background: url('data:image/svg+xml;utf8,<svg fill="none" stroke="%23aaa" stroke-width="2" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="8"/><path d="M10 6v4l2 2"/></svg>') no-repeat center/1em 1em;
+}
+.size-icon {
+    background: url('data:image/svg+xml;utf8,<svg fill="none" stroke="%23aaa" stroke-width="2" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="3" width="12" height="14" rx="2"/><path d="M10 7v5m0 0l-2-2m2 2l2-2"/></svg>') no-repeat center/1em 1em;
+}
+.views-icon {
+    background: url('data:image/svg+xml;utf8,<svg fill="none" stroke="%23aaa" stroke-width="2" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><ellipse cx="10" cy="10" rx="8" ry="5"/><circle cx="10" cy="10" r="2.5"/></svg>') no-repeat center/1em 1em;
+}
+.author-icon {
+    background: url('data:image/svg+xml;utf8,<svg fill="none" stroke="%23aaa" stroke-width="2" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="7.5" r="3.5"/><path d="M3 17c0-3.3 3.1-6 7-6s7 2.7 7 6"/></svg>') no-repeat center/1em 1em;
+}

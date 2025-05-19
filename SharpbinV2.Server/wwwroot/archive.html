@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,7 +15,10 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Noto+Sans+Mono:wght@100..900&display=swap"
         rel="stylesheet">
+
+    
 </head>
+
 <body>
     <div class="main-container">
         <h1 id="archive-header">Paste Archives</h1>
@@ -26,13 +30,14 @@
         <ol class="archive-list" id="archives">
         </ol>
         <div class="paste-actions">
-            <button id="previous-button">&larr; Previous</button>
+            <button id="previous-button"><span id="previous-button-svg"></span></button>
             <p id="paste-pages">0/0</p>
-            <button id="next-button">Next &rarr;</button>
+            <button id="next-button"><span id="next-button-svg"></span></button>
         </div>
     </div>
 
     <script src="js/archive.js"></script>
     <script src="js/main.js"></script>
 </body>
+
 </html>

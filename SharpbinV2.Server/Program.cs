@@ -259,6 +259,27 @@ namespace SharpbinV2.Server
                 context.Response.Headers.Add("Content-Type", "text/html");
                 await context.Response.SendFileAsync("wwwroot/register.html");
             });
+            app.MapGet("/u/{username}", async (HttpContext context) =>
+            {
+                var username = context.Request.RouteValues["username"].ToString() ?? null;
+                if (string.IsNullOrEmpty(username))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Redirect("/error?error=400&message=Invalid username.");
+                    return;
+                }
+                string html = File.ReadAllText("wwwroot/user.html");
+                context.Response.StatusCode = 200;
+                context.Response.Headers.Add("Content-Type", "text/html");
+                context.Response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate");
+                context.Response.Headers.Add("Pragma", "no-cache");
+                context.Response.Headers.Add("Expires", "0");
+
+
+                context.Response.WriteAsync(html);
+
+            });
+
 
             #endregion
 
@@ -903,6 +924,152 @@ namespace SharpbinV2.Server
                     await context.Response.SendFileAsync(paste.FilePath);
                 }
                 return;
+            });
+
+            app.MapGet("/api/users/uuid/{uuid}", async (HttpContext context) =>
+            {
+                var uuid = context.Request.RouteValues["uuid"].ToString() ?? null;
+                if (string.IsNullOrEmpty(uuid))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid UUID." });
+                    return;
+                }
+                var user = await Database.UserFromUUID(uuid);
+                if (user == null)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "User not found." });
+                    return;
+                }
+                
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    success = true,
+                    user = new
+                    {
+                        user.UID,
+                        user.UUID,
+                        user.Username,
+                        user.DisplayName,
+                        user.Created,
+                        user.LastLogin
+                    }
+                });
+            });
+            app.MapGet("/api/users/{username}", async (HttpContext context) =>
+            {
+                var username = context.Request.RouteValues["username"].ToString() ?? null;
+                if (string.IsNullOrEmpty(username))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid Username." });
+                    return;
+                }
+                var user = await Database.UserFromUsername(username);
+                if (user == null)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "User not found." });
+                    return;
+                }
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    success = true,
+                    user = new
+                    {
+                        user.UID,
+                        user.UUID,
+                        user.Username,
+                        user.DisplayName,
+                        user.Created,
+                        user.LastLogin
+                    }
+                });
+            });
+            app.MapGet("/api/users/{uuid}/pastes", async (HttpContext context) =>
+            {
+                var uuid = context.Request.RouteValues["uuid"].ToString() ?? null;
+                if (string.IsNullOrEmpty(uuid))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid UUID." });
+                    return;
+                }
+                var user = await Database.UserFromUUID(uuid);
+                if (user == null)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "User not found." });
+                    return;
+                }
+                var queries = context.Request.Query;
+                if (!queries.ContainsKey("page") && !queries.ContainsKey("limit"))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Missing required fields." });
+                    return;
+                }
+                var page = queries.ContainsKey("page") ? Convert.ToInt32(queries["page"]) : 0;
+                var limit = queries.ContainsKey("limit") ? Convert.ToInt32(queries["limit"]) : 10;
+                if (page < 0 || limit <= 0 || limit > 25)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid page or limit." });
+                    return;
+                }
+                int pages = await Database.EnumerateUserPastes(user) / limit;
+                if (page > pages)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Page out of range.", pages });
+                    return;
+                }
+                using (var connection = new SqliteConnection(MainDatabaseConnection))
+                {
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "SELECT * FROM pastes WHERE AuthorUUID = @AuthorUUID AND Visibility NOT IN (1, 2) ORDER BY Created DESC LIMIT @Limit OFFSET @Offset;";
+                        command.Parameters.AddWithValue("@AuthorUUID", user.UUID);
+                        command.Parameters.AddWithValue("@Limit", limit);
+                        command.Parameters.AddWithValue("@Offset", page * limit);
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (!reader.HasRows)
+                            {
+                                context.Response.StatusCode = 400;
+                                await context.Response.WriteAsJsonAsync(new { success = false, error = true, message = "No pastes found." });
+                                return;
+                            }
+                            var pastes = new List<Paste>();
+                            while (await reader.ReadAsync())
+                            {
+                                pastes.Add(new Paste
+                                {
+                                    UUID = reader.GetString(1),
+                                    ID = reader.GetString(2),
+                                    Visibility = reader.GetInt32(3),
+                                    Title = reader.IsDBNull(4) ? null : reader.GetString(4),
+                                    AuthorUUID = reader.GetString(5),
+                                    Created = reader.GetInt64(7),
+                                    Edited = reader.GetInt64(8),
+                                    Size = reader.GetInt32(9),
+                                    TrueSize = reader.GetInt32(10),
+                                    Views = reader.GetInt32(11),
+                                    Syntax = reader.IsDBNull(12) ? null : reader.GetString(12)
+                                });
+                            }
+
+                            context.Response.StatusCode = 200;
+                            await context.Response.WriteAsJsonAsync(new { success = true, pastes, pages });
+                            return;
+                        }
+                    }
+
+                }
             });
 
 

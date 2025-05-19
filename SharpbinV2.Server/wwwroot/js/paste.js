@@ -33,8 +33,20 @@ document.addEventListener("DOMContentLoaded", async function () {
 
 function addInfo(paste) {
     document.getElementById("paste-title").innerText = paste.title;
-    document.getElementById("paste-date").innerText = convertUnixToLocal(paste.created);
-    document.getElementById("paste-syntax").innerText = paste.syntax === "none" ? "" : paste.syntax || "";
+    document.getElementById("paste-date").innerText = `${convertUnixToLocal(paste.created)}`;
+    document.getElementById("paste-syntax").innerText = paste.syntax;
+    document.getElementById("paste-size").innerText = paste.size === 0 ? "" : formatSize(paste.size);
+    document.getElementById("paste-author").innerText = paste.username;
+    document.getElementById("author-link").href = paste.username === "Anonymous" ? "" : `/u/${paste.username}`;
+    if (paste.username === "Anonymous") {
+        document.getElementById("author-link").innerText = "Anonymous";
+        document.getElementById("author-link").href = "";
+        document.getElementById("author-link").style.pointerEvents = "none";
+        document.getElementById("author-link").style.cursor = "not-allowed";
+        document.getElementById("author-link").style.color = "var(--text-color)";
+        document.getElementById("author-link").style.textDecoration = "none";
+    }
+    document.getElementById("paste-views").innerText = paste.views;
     document.getElementById("info-throbber").style.display = "none";
     document.getElementById("copy-button").addEventListener("click", function () {
         navigator.clipboard.writeText(window.location.href);
@@ -51,6 +63,7 @@ function addInfo(paste) {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+        showNotification("Paste downloaded!", "info", 2000);
     });
     document.getElementById("raw-button").addEventListener("click", function () {
         window.location.href = `/raw/${paste.id}`;
@@ -111,4 +124,10 @@ async function decryptAES(content, password) {
 
 function convertUnixToLocal(unix) {
     return new Date(unix * 1000).toLocaleString();
+}
+
+function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
 }

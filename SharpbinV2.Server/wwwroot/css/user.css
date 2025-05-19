@@ -1,23 +1,38 @@
+body, html {
+    height: 100%;
+    min-height: 100%;
+    box-sizing: border-box;
+}
 .main-container {
-    max-width: 80%;
-    max-height: 80vh;
-    margin: 2rem auto;
-    margin-top: calc(2rem + 55px);
-    padding: 1.5rem;
+    max-width: 600px;
+    margin: 2.5rem auto;
+    padding: 1.5rem 1.5rem 2.5rem 1.5rem;
     background-color: var(--neutral-900);
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
 }
-
-#archive-header {
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 1.5rem;
-    color: var(--neutral-50);
+.user-header {
     text-align: center;
-    letter-spacing: 0.5px;
+    margin-bottom: 2rem;
 }
-
+.user-header h1 {
+    font-size: 2.1rem;
+    font-weight: 700;
+    color: var(--neutral-50);
+    margin: 0 0 0.2rem 0;
+}
+.user-header p {
+    color: var(--neutral-400);
+    font-size: 1rem;
+    margin: 0;
+}
+.user-pastes-section {
+    margin-top: 0;
+}
 .archive-information {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr;
@@ -31,11 +46,9 @@
     border-bottom: 2px solid var(--neutral-700);
     width: 100%;
 }
-
 .archive-information p {
     margin: 0;
 }
-
 .archive-list {
     list-style-type: none;
     margin: 0;
@@ -47,30 +60,24 @@
     scrollbar-width: thin;
     scrollbar-color: var(--neutral-700) var(--neutral-900);
 }
-
 .archive-list::-webkit-scrollbar {
     width: 8px;
 }
-
 .archive-list::-webkit-scrollbar-track {
     background: var(--neutral-900);
     border-radius: 6px;
 }
-
 .archive-list::-webkit-scrollbar-thumb {
     background-color: var(--neutral-700);
     border-radius: 6px;
 }
-
 .archive-list li {
     margin: 0.75rem 0;
     transition: transform 0.2s ease;
 }
-
 .archive-list li:hover {
     transform: translateY(-2px);
 }
-
 .archive-list li a {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr;
@@ -84,128 +91,88 @@
     border: 1px solid var(--neutral-700);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
-
 .archive-list li a:hover {
     background-color: var(--neutral-750);
     border-color: var(--neutral-600);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
-
 .archive-list li a p {
     margin: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-
+.archive-list li a p:nth-child(2) {
+    padding-left: 1rem;
+    text-align: center;
+}
+.archive-list li a p:nth-child(3){
+    text-align: right;
+}
 #archive-title {
     font-weight: 500;
     color: var(--neutral-100);
 }
-
 #archive-date {
     color: var(--neutral-300);
     font-size: 0.9rem;
     text-align: center;
 }
-
 #archive-syntax {
     color: var(--neutral-300);
     font-size: 0.9rem;
     text-align: right;
 }
-
-.paste-actions {
-    width: 100%;
-    margin-top: 1.5rem;
+.user-pastes-throbber {
+    margin: 1.5rem auto;
+}
+.pastes-actions {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 1.5rem;
+    gap: 1.2rem;
+    margin-top: 1.2rem;
 }
 
-.paste-actions button {
-    padding: 0.4rem 0.8rem;
-    border-radius: 6px;
-    border: 1px solid var(--neutral-700);
-    background-color: var(--neutral-800);
-    color: var(--neutral-50);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 1rem;
-    min-width: 75px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.paste-actions button:hover:not(:disabled) {
-    background-color: var(--neutral-700);
-    transform: translateY(-2px);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
-}
-
-.paste-actions button:disabled {
+.pastes-actions button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
-
-#paste-pages {
-    font-weight: 500;
+.pastes-actions span {
     color: var(--neutral-300);
     font-size: 1.1rem;
-    margin: 0;
-    padding: 0.5rem 1rem;
-    background-color: var(--neutral-800);
-    border-radius: 6px;
-    min-width: 80px;
-    text-align: center;
+    font-weight: 500;
 }
-
 @media (max-width: 768px) {
+    .main-container {
+        max-width: 98vw;
+        min-width: 0;
+        padding: 0.5rem;
+        border-radius: 0;
+    }
     .archive-information,
     .archive-list li a {
         grid-template-columns: 3fr 2fr;
     }
-    
     #archive-syntax {
         display: none;
     }
-    
     .archive-information p:last-child {
         display: none;
     }
-    
-    .paste-actions button {
-        padding: 0.5rem 1rem;
-        min-width: 80px;
-    }
 }
-
 @media (max-width: 480px) {
     .main-container {
         padding: 1rem;
-        max-width: 95%;
+        margin: 1rem;
     }
-    
-    #archive-header {
+    .user-header h1 {
         font-size: 1.5rem;
     }
-    
     .archive-list {
         max-height: 60vh;
     }
-    
-    .paste-actions {
-        gap: 0.75rem;
-    }
-    
-    #paste-pages {
-        min-width: 60px;
-        font-size: 0.9rem;
-    }
 }
-
 #next-button-svg {
     background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.--><path d="M310.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-192 192c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L242.7 256 73.4 86.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l192 192z"/></svg>');
     color: white;
@@ -226,4 +193,19 @@
     background-repeat: no-repeat;
     background-position: center;
     filter: invert(100%);
+}
+
+.pastes-actions button {
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    border: 1px solid var(--neutral-700);
+    background-color: var(--neutral-800);
+    color: var(--neutral-50);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1rem;
+    min-width: 75px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
