@@ -843,6 +843,7 @@ namespace SharpbinV2.Server
                     return;
                 }
                 var paste = await Database.GetPasteFromID(pasteid);
+                string authorUsername = null;
                 if (paste == null)
                 {
                     context.Response.StatusCode = 400;
@@ -852,15 +853,33 @@ namespace SharpbinV2.Server
                 if (paste.AuthorUUID != "0")
                 {
                     var user = await Database.UserFromUUID(paste.AuthorUUID);
-                    paste.AuthorUUID = user.Username;
+                    authorUsername = user?.Username;
                 }
                 else
                 {
                     paste.AuthorUUID = "Anonymous";
+                    authorUsername = "Anonymous";
                 }
-                paste.FilePath = null;
                 context.Response.StatusCode = 200;
-                await context.Response.WriteAsJsonAsync(new { success = true, paste = paste });
+                await context.Response.WriteAsJsonAsync(new 
+                { 
+                    success = true, 
+                    paste = new
+                    {
+                        paste.UUID,
+                        paste.ID,
+                        paste.Visibility,
+                        paste.Title,
+                        paste.AuthorUUID,
+                        username = authorUsername,
+                        paste.Created,
+                        paste.Edited,
+                        paste.Size,
+                        paste.TrueSize,
+                        paste.Views,
+                        paste.Syntax
+                    } 
+                });
             });
             app.MapGet("/api/pastes/{pasteid}", async (HttpContext context) =>
             {

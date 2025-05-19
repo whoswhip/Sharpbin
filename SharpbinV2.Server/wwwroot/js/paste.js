@@ -38,6 +38,7 @@ function addInfo(paste) {
     document.getElementById("info-throbber").style.display = "none";
     document.getElementById("copy-button").addEventListener("click", function () {
         navigator.clipboard.writeText(window.location.href);
+        showNotification("Paste copied to clipboard!", "info", 2000);
     });
     document.getElementById("download-button").addEventListener("click", function () {
         const content = document.getElementById("paste-content").innerText;

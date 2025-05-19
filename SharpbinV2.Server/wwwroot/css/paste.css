@@ -80,8 +80,18 @@ button {
     background-color: var(--neutral-800);
     color: var(--neutral-50);
     cursor: pointer;
-    transition: background-color 0.3s;
+    transition: background-color 0.2s;
     font-size: 1rem;
+}
+
+button:hover {
+    background-color: var(--neutral-700);
+    border-color: var(--neutral-600);
+}
+
+button:active {
+    background-color: var(--neutral-600);
+    border-color: var(--neutral-500);
 }
 
 .hljs {

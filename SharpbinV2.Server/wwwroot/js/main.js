@@ -120,7 +120,7 @@ const navbarHTML = `
                 
                 .nav-links {
                     position: fixed;
-                    top: 60px;
+                    top: 55px;
                     left: 0;
                     right: 0;
                     background-color: var(--neutral-900);
@@ -134,25 +134,20 @@ const navbarHTML = `
                 }
                 
                 .nav-links.show {
-                    max-height: 300px;
+                    max-height: 350px;
                     padding: 1rem 0;
+                    padding-bottom: 2rem;
                 }
                 
                 .nav-link {
                     width: 90%;
+                    max-width: 90%;
                     text-align: center;
                     padding: 1rem;
-                    border-bottom: 1px solid var(--neutral-800);
                 }
                 
                 .home-link {
-                    border: none;
-                    border-bottom: 1px solid var(--neutral-800);
                     order: -1;
-                }
-                
-                .nav-link:last-child {
-                    border-bottom: none;
                 }
                 
                 .hamburger {
@@ -212,3 +207,98 @@ window.toggleMenu = function () {
     nav.classList.toggle('show');
     hamburger.classList.toggle('active');
 };
+
+function showNotification(message, type = 'info', duration = 3000) {
+    if (!document.getElementById('notification-style')) {
+        const style = document.createElement('style');
+        style.id = 'notification-style';
+        style.textContent = `
+        .notification-container {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.75rem;
+        }
+        .notification {
+            min-width: 240px;
+            max-width: 350px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: #ef4444;
+            font-size: 1rem;
+            font-weight: 500;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.28);
+            margin-top: 0.5rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: notification-in 0.3s forwards;
+            border: 1px solid rgba(220, 38, 38, 0.2);
+            background: rgba(220, 38, 38, 0.1);
+            letter-spacing: 0.01em;
+            display: flex;
+            align-items: center;
+            gap: 0.75em;
+        }
+        .notification-info {
+            color: #e5e7eb;
+            background: var(--neutral-900, #181a20);
+            border: 1px solid var(--neutral-800, #23272f);
+        }
+        .notification-warning {
+            color: #f59e42;
+            background: rgba(245, 158, 66, 0.10);
+            border: 1px solid rgba(245, 158, 66, 0.18);
+        }
+        .notification-error {
+            color: #ef4444;
+            background: rgba(220, 38, 38, 0.1);
+            border: 1px solid rgba(220, 38, 38, 0.2);
+        }
+        @keyframes notification-in {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @media (max-width: 600px) {
+            .notification-container {
+                right: 8px;
+                bottom: 8px;
+            }
+            .notification {
+                min-width: 160px;
+                max-width: 90vw;
+                padding: 0.75rem 1rem;
+            }
+        }
+        `;
+        document.head.appendChild(style);
+    }
+
+    let container = document.querySelector('.notification-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'notification-container';
+        document.body.appendChild(container);
+    }
+
+    const notif = document.createElement('div');
+    notif.className = `notification notification-${type}`;
+    notif.textContent = message;
+    container.appendChild(notif);
+
+    setTimeout(() => {
+        notif.style.opacity = '0';
+        notif.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            notif.remove();
+            if (container.childElementCount === 0) {
+                container.remove();
+            }
+        }, 300);
+    }, duration);
+}
