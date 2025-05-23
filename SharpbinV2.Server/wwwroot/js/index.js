@@ -1,6 +1,9 @@
+const siteInfo = [];
+
 document.addEventListener("DOMContentLoaded", async function () {
     var visibility = document.getElementById("visibility");
     visibility.value = "0";
+    getSiteInfo();
 });
 
 
@@ -13,11 +16,20 @@ document.getElementById("create-form").addEventListener("submit", async function
     var password = document.getElementById("password").value;
     var syntax = document.getElementById("syntax").value;
 
+    if (content.length > siteInfo.maxFileSize) {
+        showNotification("Content exceeds maximum size.", "error");
+        return;
+    }
+    if (content.length === 0) {
+        showNotification("Content cannot be empty.", "error");
+        return;
+    }
+
     if (visibility === "2" && password !== "" && password.length >= 6) {
         content = await encryptAES(content, password);
     }
     else if (visibility === "2") {
-        alert("Password must be at least 6 characters long");
+        showNotification("Password must be at least 6 characters long.", "error");
         return;
     }
 
@@ -40,6 +52,16 @@ function changeVisibility() {
     } else {
         password.style.display = "none";
     }
+}
+
+function getSiteInfo() {
+    fetch("/api/site/info")
+        .then(response => response.json())
+        .then(data => {
+            siteInfo = data.info;
+            var content = document.getElementById("content")
+            content.setAttribute("maxlength", siteInfo.maxFileSize);
+        });
 }
 
 async function encryptAES(content, password) {

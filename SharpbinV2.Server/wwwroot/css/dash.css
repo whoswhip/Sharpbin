@@ -14,7 +14,8 @@ body {
     gap: 25px;
 }
 
-.account-info, .paste-list {
+.account-info,
+.paste-list {
     width: 48%;
     border-radius: 8px;
     padding: 25px;
@@ -34,12 +35,14 @@ body {
     flex-direction: column;
 }
 
-.account-info:hover, .paste-list:hover {
+.account-info:hover,
+.paste-list:hover {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
     border-color: var(--neutral-700);
 }
 
-.account-info h1, .paste-list h1 {
+.account-info h1,
+.paste-list h1 {
     margin-bottom: 25px;
     color: var(--neutral-100);
     text-align: center;
@@ -126,6 +129,12 @@ body {
     color: var(--neutral-300);
     font-size: 0.9rem;
     text-align: center;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+    max-width: 80px;
+    text-align: left;
+    margin-right: -70px !important;
 }
 
 #paste-syntax {
@@ -134,20 +143,7 @@ body {
     text-align: right;
 }
 
-@media (max-width: 768px) {
-    #pastes li a {
-        grid-template-columns: 3fr 2fr;
-    }
-    #paste-syntax {
-        display: none;
-    }
-}
 
-@media (max-width: 576px) {
-    #pastes li a {
-        padding: 0.7rem 0.8rem;
-    }
-}
 
 .paste-actions {
     display: flex;
@@ -219,8 +215,9 @@ body {
     .main-container {
         padding: 15px;
     }
-    
-    .account-info, .paste-list {
+
+    .account-info,
+    .paste-list {
         padding: 20px;
     }
 }
@@ -230,8 +227,9 @@ body {
         flex-direction: column;
         gap: 20px;
     }
-    
-    .account-info, .paste-list {
+
+    .account-info,
+    .paste-list {
         width: 100%;
     }
 }
@@ -240,24 +238,28 @@ body {
     .main-container {
         padding: 10px;
     }
-    
-    .account-info, .paste-list {
+
+    .account-info,
+    .paste-list {
         padding: 15px;
     }
-    
-    .account-info h1, .paste-list h1 {
+
+    .account-info h1,
+    .paste-list h1 {
         font-size: 1.5rem;
     }
-    
+
     #pastes li {
         flex-direction: column;
         align-items: flex-start;
+        grid-template-columns: 1fr;
     }
-    
+
     #pastes li span {
         margin-top: 5px;
         font-size: 0.8rem;
     }
+
 }
 
 .logout-modal-overlay {
@@ -266,31 +268,35 @@ body {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0, 0, 0, 0.5);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 2000;
 }
+
 .logout-modal-box {
     background: var(--neutral-900);
     color: var(--neutral-100);
     padding: 2rem 2.5rem;
     border-radius: 10px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
     text-align: center;
     min-width: 300px;
     max-width: 90vw;
 }
+
 .logout-modal-box h2 {
     margin-bottom: 1rem;
     font-size: 1.4rem;
     color: var(--neutral-50);
 }
+
 .logout-modal-box p {
     margin-bottom: 2rem;
     color: var(--neutral-300);
 }
+
 .logout-modal-box button {
     margin: 0 0.5rem;
     padding: 0.7rem 1.5rem;
@@ -301,17 +307,21 @@ body {
     font-size: 1rem;
     transition: background 0.2s, color 0.2s;
 }
+
 #confirm-logout {
     background: #e74c3c;
     color: #fff;
 }
+
 #confirm-logout:hover {
     background: #c0392b;
 }
+
 #cancel-logout {
     background: var(--neutral-700);
     color: #fff;
 }
+
 #cancel-logout:hover {
     background: var(--neutral-600);
 }
@@ -327,15 +337,17 @@ body {
     font-weight: 500;
     cursor: pointer;
     transition: background 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     letter-spacing: 0.5px;
 }
+
 #logout-button:hover {
     background-color: var(--neutral-600);
     color: var(--neutral-10);
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.13);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.13);
 }
+
 #logout-button:active {
     background-color: var(--neutral-800);
     color: var(--neutral-200);
@@ -353,16 +365,18 @@ body {
     font-weight: 500;
     cursor: pointer;
     transition: background 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     letter-spacing: 0.5px;
     margin-top: 10px;
 }
+
 #delete-account-button:hover {
     background-color: #c0392b;
     color: #fff;
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.13);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.13);
 }
+
 #delete-account-button:active {
     background-color: #a93226;
     color: #fff;
@@ -376,31 +390,35 @@ body {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0, 0, 0, 0.5);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 2100;
 }
+
 .delete-modal-box {
     background: var(--neutral-900);
     color: var(--neutral-100);
     padding: 2rem 2.5rem;
     border-radius: 10px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
     text-align: center;
     min-width: 320px;
     max-width: 95vw;
 }
+
 .delete-modal-box h2 {
     margin-bottom: 1rem;
     font-size: 1.4rem;
     color: #e74c3c;
 }
+
 .delete-modal-box p {
     margin-bottom: 1.2rem;
     color: var(--neutral-300);
 }
+
 .delete-modal-box input {
     margin-bottom: 0.7rem;
     width: 90%;
@@ -413,9 +431,11 @@ body {
     outline: none;
     transition: border 0.2s;
 }
+
 .delete-modal-box input:focus {
     border: 1.5px solid #e74c3c;
 }
+
 .delete-modal-box button {
     margin: 0 0.5rem;
     padding: 0.7rem 1.5rem;
@@ -426,13 +446,16 @@ body {
     font-size: 1rem;
     transition: background 0.2s, color 0.2s;
 }
+
 #confirm-delete-account {
     background: #e74c3c;
     color: #fff;
 }
+
 #confirm-delete-account:hover {
     background: #c0392b;
 }
+
 #confirm-delete-account:disabled {
     background: var(--neutral-800);
     color: var(--neutral-500);
@@ -441,13 +464,16 @@ body {
     box-shadow: none;
     transform: none;
 }
+
 #cancel-delete-account {
     background: var(--neutral-700);
     color: #fff;
 }
+
 #cancel-delete-account:hover {
     background: var(--neutral-600);
 }
+
 #delete-error {
     color: #e74c3c;
     font-size: 1rem;

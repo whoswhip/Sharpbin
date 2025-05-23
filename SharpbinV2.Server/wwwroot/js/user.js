@@ -55,13 +55,13 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     await loadUserPastes(userData, 0);
     currentPage = 0;
-    document.getElementById("user-prev-page").onclick = async function () {
+    document.getElementById("previous-button").onclick = async function () {
         if (currentPage > 0) {
             currentPage--;
             await loadUserPastes(userData, currentPage);
         }
     };
-    document.getElementById("user-next-page").onclick = async function () {
+    document.getElementById("next-button").onclick = async function () {
         if (!lastPage) {
             currentPage++;
             await loadUserPastes(userData, currentPage);

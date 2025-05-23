@@ -14,14 +14,99 @@ document.addEventListener("DOMContentLoaded", async function () {
     const [content, info] = await Promise.all([contentPromise, infoPromise]);
     const paste = info.paste;
 
+    function showPasswordModal(errorMsg = "") {
+        return new Promise((resolve, reject) => {
+            const oldModal = document.getElementById("password-modal-bg");
+            if (oldModal) oldModal.remove();
+
+            const modalBg = document.createElement("div");
+            modalBg.id = "password-modal-bg";
+
+            const modal = document.createElement("div");
+            modal.id = "password-modal";
+
+            const title = document.createElement("div");
+            title.innerText = "Private Paste";
+            title.className = "modal-title";
+
+            const label = document.createElement("label");
+            label.innerText = "Enter the password to view this paste:";
+            label.htmlFor = "password-input";
+
+            const input = document.createElement("input");
+            input.type = "password";
+            input.id = "password-input";
+            input.autocomplete = "current-password";
+
+            if (errorMsg) {
+                showNotification(errorMsg, "error", 3000);
+            }
+
+            const btnRow = document.createElement("div");
+            btnRow.className = "modal-btn-row";
+
+            const okBtn = document.createElement("button");
+            okBtn.innerText = "Unlock";
+
+            const cancelBtn = document.createElement("button");
+            cancelBtn.innerText = "Cancel";
+
+            btnRow.appendChild(cancelBtn);
+            btnRow.appendChild(okBtn);
+
+            modal.appendChild(title);
+            modal.appendChild(label);
+            modal.appendChild(input);
+            modal.appendChild(btnRow);
+            modalBg.appendChild(modal);
+            document.body.appendChild(modalBg);
+
+            input.focus();
+
+            function cleanup() {
+                if (modalBg.parentNode) modalBg.parentNode.removeChild(modalBg);
+            }
+
+            okBtn.onclick = () => {
+                resolve(input.value);
+            };
+            cancelBtn.onclick = () => {
+                cleanup();
+                reject(new Error("User cancelled"));
+            };
+            input.addEventListener("keydown", e => {
+                if (e.key === "Enter") {
+                    okBtn.click();
+                } else if (e.key === "Escape") {
+                    cancelBtn.click();
+                }
+            });
+            modalBg.addEventListener("click", e => {
+                if (e.target === modalBg) {
+                    cancelBtn.click();
+                }
+            });
+        });
+    }
+
     if (paste.visibility === 2) {
-        const password = prompt("Enter the password");
-        try {
-            const decrypted = await decryptAES(content, password);
-            blur2.dataset.decrypted = "true";
-            addContent(decrypted, paste.syntax);
-        } catch (error) {
-            alert("Failed to decrypt, invalid password, or invalid data.");
+        let success = false;
+        let lastError = "";
+        while (!success) {
+            try {
+                const password = await showPasswordModal(lastError);
+                const decrypted = await decryptAES(content, password);
+                blur2.dataset.decrypted = "true";
+                addContent(decrypted, paste.syntax);
+                document.getElementById("password-modal-bg")?.remove();
+                success = true;
+            } catch (error) {
+                if (error.message === "User cancelled") {
+                    document.getElementById("password-modal-bg")?.remove();
+                    break;
+                }
+                lastError = "Failed to decrypt, invalid password, or invalid data.";
+            }
         }
     } else {
         blur2.dataset.decrypted = "true";
@@ -36,6 +121,16 @@ function addInfo(paste) {
     document.getElementById("paste-date").innerText = `${convertUnixToLocal(paste.created)}`;
     document.getElementById("paste-syntax").innerText = paste.syntax;
     document.getElementById("paste-size").innerText = paste.size === 0 ? "" : formatSize(paste.size);
+    if (paste.size !== paste.trueSize && paste.trueSize) {
+        const sizeElem = document.getElementById("paste-size");
+        sizeElem.classList.add("has-true-size-tooltip");
+        let tooltip = document.createElement("div");
+        tooltip.className = "true-size-tooltip";
+        tooltip.innerText = `True size: ${formatSize(paste.trueSize)}`;
+        sizeElem.appendChild(tooltip);
+        sizeElem.onmouseenter = () => { tooltip.style.opacity = 1; };
+        sizeElem.onmouseleave = () => { tooltip.style.opacity = 0; };
+    }
     document.getElementById("paste-author").innerText = paste.username;
     document.getElementById("author-link").href = paste.username === "Anonymous" ? "" : `/u/${paste.username}`;
     if (paste.username === "Anonymous") {
@@ -81,6 +176,7 @@ function addContent(content, syntax) {
     code.classList.add("language-" + syntax === "plaintext" ? "none" : syntax);
     if (syntax !== "plaintext" && syntax !== "none" && syntax !== "" && syntax !== null) {
         hljs.highlightElement(code);
+        document.getElementById("paste-content").style.padding = "0px"
     }
     hljs.lineNumbersBlock(code);
     document.getElementById("content-throbber").style.display = "none";

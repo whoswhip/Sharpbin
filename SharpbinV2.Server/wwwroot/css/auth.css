@@ -3,6 +3,7 @@
     justify-content: center;
     align-items: center;
     min-height: 100vh;
+    min-width: 100%;
     padding: 20px;
     background-color: var(--neutral-950);
 }
@@ -13,7 +14,7 @@
     padding: 30px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
     width: 100%;
-    max-width: 450px;
+    max-width: 650px;
     border: 1px solid var(--neutral-800);
 }
 
@@ -131,9 +132,17 @@
 }
 
 @media (max-width: 480px) {
+
+    .auth-container {
+        padding: 0px;
+    }
+
     .auth-form-container {
         padding: 20px;
+        max-width: 100%;
+        border-radius: 0;
     }
+
     
     .auth-title {
         font-size: 1.6rem;

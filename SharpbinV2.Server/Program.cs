@@ -1,22 +1,16 @@
-using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Logging.Configuration;
-using Microsoft.Extensions.Logging.EventSource;
 using Newtonsoft.Json.Linq;
-using System.Threading.RateLimiting;
 using System.Text;
 using Bcrypt = BCrypt.Net.BCrypt;
-using System.IO.Compression;
-using System.Threading.Tasks;
 using System.Security.Cryptography;
+using UAParser;
 
 namespace SharpbinV2.Server
 {
     class Program
     {
         public static string MainDatabaseConnection = "Data Source=data.db";
-        public static long MaxFileSize = 1_000_000; // 1MB
+        public static long MaxFileSize = 1_048_576; // 1MB
         public static string[] ValidSyntaxLanguages =
         {
             "none",
@@ -489,15 +483,16 @@ namespace SharpbinV2.Server
                     await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid token." });
                     return;
                 }
-                var cleanuser = new User
+                var cleanuser = new
                 {
-                    UID = user.UID,
-                    UUID = user.UUID,
-                    Username = user.Username,
-                    Email = user.Email,
-                    DisplayName = user.DisplayName,
-                    Created = user.Created,
-                    LastLogin = user.LastLogin
+                    user.UID,
+                    user.UUID,
+                    user.Username,
+                    user.Email,
+                    user.DisplayName,
+                    user.Created,
+                    user.LastLogin,
+                    user.Type,
                 };
                 context.Response.StatusCode = 200;
                 await context.Response.WriteAsJsonAsync(new { success = true, user = cleanuser });
@@ -745,10 +740,10 @@ namespace SharpbinV2.Server
                                 await context.Response.WriteAsJsonAsync(new { success = false, message = "No pastes found." });
                                 return;
                             }
-                            var pastes = new List<Paste>();
+                            var pastes = new List<object>();
                             while (await reader.ReadAsync())
                             {
-                                pastes.Add(new Paste
+                                pastes.Add(new
                                 {
                                     UUID = reader.GetString(1),
                                     ID = reader.GetString(2),
@@ -925,6 +920,86 @@ namespace SharpbinV2.Server
                 }
                 return;
             });
+            app.MapGet("/api/pastes/{pasteid}/views", async (HttpContext context) =>
+            {
+                var requestdetails = GetRequestDetails(context);
+                var pasteid = context.Request.RouteValues["pasteid"].ToString() ?? null;
+                if (string.IsNullOrEmpty(pasteid))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid Paste ID." });
+                    return;
+                }
+                if (string.IsNullOrEmpty(requestdetails.Token))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Not authorized. Please provide a token." });
+                    return;
+                }
+                var user = await Database.UserFromToken(requestdetails.Token);
+                if (user == null)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid token." });
+                    return;
+                }
+                var paste = await Database.GetPasteFromID(pasteid);
+                if (paste == null)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Paste not found." });
+                    return;
+                }
+                if (paste.AuthorUUID != user.UUID)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { success = false, message = "You are not the author of this paste." });
+                    return;
+                }
+                using (var connection = new SqliteConnection(MainDatabaseConnection))
+                {
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "SELECT * FROM views WHERE PasteUUID = @PasteUUID;";
+                        command.Parameters.AddWithValue("@PasteUUID", paste.UUID);
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (!reader.HasRows)
+                            {
+                                context.Response.StatusCode = 400;
+                                await context.Response.WriteAsJsonAsync(new { success = false, message = "No views found." });
+                                return;
+                            }
+                            var views = new List<object>();
+                            var uaparser = Parser.GetDefault();
+                            int viewcount = 0;
+
+                            while (await reader.ReadAsync())
+                            {
+                                viewcount++;
+                                string useragent = reader.GetString(3);
+                                var clientInfo = uaparser.Parse(useragent);
+                                views.Add(new
+                                {
+                                    PasteUUID = reader.GetString(1),
+                                    Created = reader.GetInt64(4),
+                                    UserAgent = new
+                                    {
+                                        browser = clientInfo.UA.Family,
+                                        platform = clientInfo.OS.Family,
+                                        device = clientInfo.Device.Family,
+                                    }
+                                });
+                            }
+                            context.Response.StatusCode = 200;
+                            await context.Response.WriteAsJsonAsync(new { success = true, views, viewcount  });
+
+                        }
+                    }
+                }
+
+            });
 
             app.MapGet("/api/users/uuid/{uuid}", async (HttpContext context) =>
             {
@@ -1070,6 +1145,16 @@ namespace SharpbinV2.Server
                     }
 
                 }
+            });
+
+            app.MapGet("/api/site/info", async (HttpContext context) =>
+            {
+                context.Response.StatusCode = 200;
+                var info = new
+                {
+                    MaxFileSize
+                };
+                await context.Response.WriteAsJsonAsync(new { success = true, info });
             });
 
 
@@ -1221,6 +1306,27 @@ namespace SharpbinV2.Server
                                 Created	INTEGER NOT NULL
                             );";
                         await command.ExecuteNonQueryAsync();
+                        command.CommandText = @"CREATE TABLE IF NOT EXISTS punishments (
+                                UID INTEGER NOT NULL UNIQUE,
+                                UUID TEXT NOT NULL UNIQUE,
+                                Type INTEGER NOT NULL DEFAULT 0,
+                                Reason TEXT,
+                                Created INTEGER NOT NULL,
+                                Expirary INTEGER NOT NULL,
+                                PRIMARY KEY(UID AUTOINCREMENT)
+                            );";
+                        await command.ExecuteNonQueryAsync();
+                        command.CommandText = @"CREATE TABLE IF NOT EXISTS passwordresets (
+                                UID INTEGER NOT NULL UNIQUE,
+                                UUID TEXT NOT NULL UNIQUE,
+                                USERUUID TEXT NOT NULL UNIQUE,
+                                URL TEXT NOT NULL UNIQUE,
+                                Token TEXT NOT NULL UNIQUE,
+                                Created INTEGER NOT NULL,
+                                Expirary INTEGER NOT NULL,
+                                PRIMARY KEY(UID AUTOINCREMENT)
+                            );";
+                        await command.ExecuteNonQueryAsync();
                         await connection.CloseAsync();
                     }
                 }
@@ -1241,311 +1347,8 @@ namespace SharpbinV2.Server
         }
     }
 
-    class Database
-    {
-        public static async Task<User> UserFromUsername(string username)
-        {
-            if (string.IsNullOrEmpty(username))
-                return null;
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
-            {
-                await connection.OpenAsync();
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = "SELECT * FROM users WHERE Username = @Username;";
-                    command.Parameters.AddWithValue("@Username", username);
-                    using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        if (!reader.HasRows)
-                            return null;
-                        await reader.ReadAsync();
-                        return new User
-                        {
-                            UID = reader.GetInt32(0),
-                            UUID = reader.GetString(1),
-                            Type = reader.GetInt32(2),
-                            Email = reader.IsDBNull(3) ? null : reader.GetString(3),
-                            Username = reader.GetString(4),
-                            DisplayName = reader.IsDBNull(5) ? null : reader.GetString(5),
-                            Password = reader.GetString(6),
-                            Created = reader.GetInt64(7),
-                            LastLogin = reader.GetInt64(8)
-                        };
-                    }
-                }
-            }
-        }
-        public static async Task<User> UserFromUUID(string uuid)
-        {
-            if (string.IsNullOrEmpty(uuid))
-                return null;
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
-            {
-                await connection.OpenAsync();
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = "SELECT * FROM users WHERE UUID = @UUID;";
-                    command.Parameters.AddWithValue("@UUID", uuid);
-                    using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        if (!reader.HasRows)
-                            return null;
-                        await reader.ReadAsync();
-                        return new User
-                        {
-                            UID = reader.GetInt32(0),
-                            UUID = reader.GetString(1),
-                            Type = reader.GetInt32(2),
-                            Email = reader.IsDBNull(3) ? null : reader.GetString(3),
-                            Username = reader.GetString(4),
-                            DisplayName = reader.IsDBNull(5) ? null : reader.GetString(5),
-                            Password = reader.GetString(6),
-                            Created = reader.GetInt64(7),
-                            LastLogin = reader.GetInt64(8)
-                        };
-                    }
-                }
-            }
-        }
-        public static async Task<User> UserFromEmail(string email)
-        {
-            if (string.IsNullOrEmpty(email))
-                return null;
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
-            {
-                await connection.OpenAsync();
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = "SELECT * FROM users WHERE Email = @Email;";
-                    command.Parameters.AddWithValue("@Email", email);
-                    using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        if (!reader.HasRows)
-                            return null;
-                        await reader.ReadAsync();
-                        return new User
-                        {
-                            UID = reader.GetInt32(0),
-                            UUID = reader.GetString(1),
-                            Type = reader.GetInt32(2),
-                            Email = reader.IsDBNull(3) ? null : reader.GetString(3),
-                            Username = reader.GetString(4),
-                            DisplayName = reader.IsDBNull(5) ? null : reader.GetString(5),
-                            Password = reader.GetString(6),
-                            Created = reader.GetInt64(7),
-                            LastLogin = reader.GetInt64(8)
-                        };
-                    }
-                }
-            }
-        }
-        public static async Task<User> UserFromToken(string token)
-        {
-            if (string.IsNullOrEmpty(token))
-                return null;
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
-            {
-                await connection.OpenAsync();
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = "SELECT * FROM sessions WHERE Token = @Token;";
-                    command.Parameters.AddWithValue("@Token", token);
-                    using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        if (!reader.HasRows)
-                            return null;
-                        await reader.ReadAsync();
-                        return await UserFromUUID(reader.GetString(1));
-                    }
-                }
-            }
-        }
-        public static async Task<int> EnumeratePastes()
-        {
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
-            {
-                await connection.OpenAsync();
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = "SELECT COUNT(*) FROM pastes;";
-                    return Convert.ToInt32(await command.ExecuteScalarAsync());
-                }
-            }
-        }
-        public static async Task<int> EnumerateUserPastes(User user)
-        {
-            if (user == null)
-                return 0;
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
-            {
-                await connection.OpenAsync();
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = "SELECT COUNT(*) FROM pastes WHERE AuthorUUID = @AuthorUUID;";
-                    command.Parameters.AddWithValue("@AuthorUUID", user.UUID);
-                    return Convert.ToInt32(await command.ExecuteScalarAsync());
-                }
-            }
-        }
-        public static async Task<Paste> GetPasteFromID(string id)
-        {
-            if (string.IsNullOrEmpty(id))
-                return null;
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
-            {
-                await connection.OpenAsync();
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = "SELECT * FROM pastes WHERE ID = @ID;";
-                    command.Parameters.AddWithValue("@ID", id);
-                    using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        if (!reader.HasRows)
-                            return null;
-                        await reader.ReadAsync();
-                        return new Paste
-                        {
-                            UUID = reader.GetString(1),
-                            ID = reader.GetString(2),
-                            Visibility = reader.GetInt32(3),
-                            Title = reader.IsDBNull(4) ? null : reader.GetString(4),
-                            AuthorUUID = reader.GetString(5),
-                            FilePath = reader.GetString(6),
-                            Created = reader.GetInt64(7),
-                            Edited = reader.GetInt64(8),
-                            Size = reader.GetInt32(9),
-                            TrueSize = reader.GetInt32(10),
-                            Views = reader.GetInt32(11),
-                            Syntax = reader.IsDBNull(12) ? null : reader.GetString(12)
-                        };
-                    }
-                }
-            }
-        }
-        public static async Task<bool> HasAlreadyViewedFromRqDetails(RequestDetails details)
-        {
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
-            {
-                await connection.OpenAsync();
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = "SELECT * FROM views WHERE Ip = @Ip AND UserAgent = @UserAgent;";
-                    command.Parameters.AddWithValue("@Ip", Program.HMAC256HASH(details.Ip));
-                    command.Parameters.AddWithValue("@UserAgent", details.UserAgent);
-                    using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        return reader.HasRows;
-                    }
-                }
-            }
-        }
-        public static async Task<bool> HasAlreadyViewedFromUserDetails(User user)
-        {
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
-            {
-                await connection.OpenAsync();
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = "SELECT * FROM views WHERE UserUUID = @UserUUID;";
-                    command.Parameters.AddWithValue("@UserUUID", user.UUID);
-                    using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        return reader.HasRows;
-                    }
-                }
-            }
-        }
-        public static async Task AddViewToPaste(User user, Paste paste, RequestDetails details)
-        {
-            if (paste == null || details == null)
-                return;
-            var _user = user ?? new User { UUID = "0" };
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
-            {
-                await connection.OpenAsync();
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = "INSERT INTO views (UserUUID, PasteUUID, Ip, UserAgent, Created) VALUES (@UserUUID, @PasteUUID, @Ip, @UserAgent, @Created);";
-                    command.Parameters.AddWithValue("@UserUUID", _user.UUID);
-                    command.Parameters.AddWithValue("@PasteUUID", paste.UUID);
-                    command.Parameters.AddWithValue("@Ip", Program.HMAC256HASH(details.Ip));
-                    command.Parameters.AddWithValue("@UserAgent", details.UserAgent);
-                    command.Parameters.AddWithValue("@Created", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-                    await command.ExecuteNonQueryAsync();
-                    command.CommandText = "UPDATE pastes SET Views = Views + 1 WHERE UUID = @UUID;";
-                    command.Parameters.AddWithValue("@UUID", paste.UUID);
-                    await command.ExecuteNonQueryAsync();
-                }
-                await connection.CloseAsync();
-            }
-        }
-        public static async Task <List<Paste>> PastesFromUser(User user)
-        {
-           if (user == null)
-                return null;
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
-            {
-                await connection.OpenAsync();
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = "SELECT * FROM pastes WHERE AuthorUUID = @AuthorUUID;";
-                    command.Parameters.AddWithValue("@AuthorUUID", user.UUID);
-                    using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        if (!reader.HasRows)
-                            return null;
-                        var pastes = new List<Paste>();
-                        while (await reader.ReadAsync())
-                        {
-                            pastes.Add(new Paste
-                            {
-                                UUID = reader.GetString(1),
-                                ID = reader.GetString(2),
-                                Visibility = reader.GetInt32(3),
-                                Title = reader.IsDBNull(4) ? null : reader.GetString(4),
-                                AuthorUUID = reader.GetString(5),
-                                FilePath = reader.GetString(6),
-                                Created = reader.GetInt64(7),
-                                Edited = reader.GetInt64(8),
-                                Size = reader.GetInt32(9),
-                                TrueSize = reader.GetInt32(10),
-                                Views = reader.GetInt32(11),
-                                Syntax = reader.IsDBNull(12) ? null : reader.GetString(12)
-                            });
-                        }
-                        return pastes;
-                    }
-                }
-            }
-        }
-    }
-    public class Logging
-    {
-        public Logging()
-        {
-            if (!Directory.Exists("logs"))
-                Directory.CreateDirectory("logs");
-        }
-        public void LogInfo(string message)
-        {
-            Console.WriteLine($"[{DateTime.Now} INFO] {message}");
-            File.AppendAllText($"logs/{DateTime.Now.ToString("yyyy-MM-dd")}.log", $"[{DateTime.Now} INFO] {message}\n");
-        }
-        public void LogWarning(string message)
-        {
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"[{DateTime.Now} WARNING] {message}");
-            File.AppendAllText($"logs/{DateTime.Now.ToString("yyyy-MM-dd")}.log", $"[{DateTime.Now} WARNING] {message}\n");
-            Console.ResetColor();
-        }
-        public void LogError(string message)
-        {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"[{DateTime.Now} ERROR] {message}");
-            File.AppendAllText($"logs/{DateTime.Now.ToString("yyyy-MM-dd")}.log", $"[{DateTime.Now} ERROR] {message}\n");
-            Console.ResetColor();
-        }
-    }
+    
+
 
     /// <summary>
     /// https://dusted.codes/dotenv-in-dotnet
@@ -1569,115 +1372,5 @@ namespace SharpbinV2.Server
                 Environment.SetEnvironmentVariable(parts[0], parts[1]);
             }
         }
-    }
-    public class Compression
-    {
-        // Taken from old branch
-        public static async Task<byte[]> CompressString(string text)
-        {
-            byte[] compressedBytes;
-            using (var ms = new MemoryStream())
-            {
-                using (var cs = new GZipStream(ms, CompressionMode.Compress))
-                {
-                    byte[] inputBytes = Encoding.UTF8.GetBytes(text);
-                    await cs.WriteAsync(inputBytes, 0, inputBytes.Length);
-                }
-                compressedBytes = ms.ToArray();
-            }
-            return compressedBytes;
-        }
-        public static async Task<string> DecompressByteArrayToString(byte[] compressedBytes)
-        {
-            string decompressedText;
-            using (var ms = new MemoryStream(compressedBytes))
-            {
-                using (var cs = new GZipStream(ms, CompressionMode.Decompress))
-                {
-                    using (var sr = new StreamReader(cs))
-                    {
-                        decompressedText = await sr.ReadToEndAsync();
-                    }
-                }
-            }
-            return decompressedText;
-        }
-        public static async Task<byte[]> DecompressByteArray(byte[] compressedBytes)
-        {
-            byte[] decompressedBytes;
-            using (var ms = new MemoryStream(compressedBytes))
-            {
-                using (var cs = new GZipStream(ms, CompressionMode.Decompress))
-                {
-                    using (var msDecompressed = new MemoryStream())
-                    {
-                        await cs.CopyToAsync(msDecompressed);
-                        decompressedBytes = msDecompressed.ToArray();
-                    }
-                }
-            }
-            return decompressedBytes;
-        }
-        public static async Task<bool> ShouldCompress(string text, int sizeThreshold = 512, double ratioThreshold = 0.8)
-        {
-            if (string.IsNullOrEmpty(text))
-                return false;
-
-            byte[] inputBytes = Encoding.UTF8.GetBytes(text);
-            if (inputBytes.Length < sizeThreshold)
-                return false;
-
-            byte[] compressedBytes = await CompressString(text).ConfigureAwait(false);
-            double compressionRatio = (double)compressedBytes.Length / inputBytes.Length;
-
-            return compressionRatio < ratioThreshold;
-        }
-        public static bool IsCompressed(byte[] data)
-        {
-            return data.Length >= 2 && data[0] == 0x1F && data[1] == 0x8B;
-        }
-    }
-    class User
-    {
-        public int? UID { get; set; }
-        public string? UUID { get; set; }
-        public int? Type { get; set; }
-        public string? Email { get; set; }
-        public string? Username { get; set; }
-        public string? DisplayName { get; set; }
-        public string? Password { get; set; }
-        public long? Created { get; set; }
-        public long? LastLogin { get; set; }
-    }
-    class Paste
-    {
-        public string? UUID { get; set; }
-        public string? ID { get; set; }
-        public int? Visibility { get; set; }
-        public string? Title { get; set; }
-        public string? AuthorUUID { get; set; }
-        public string? FilePath { get; set; }
-        public long? Created { get; set; }
-        public long? Edited { get; set; }
-        public int? Size { get; set; }
-        public int? TrueSize { get; set; }
-        public int? Views { get; set; }
-        public string? Syntax { get; set; }
-    }
-    class Session
-    {
-        public string? UUID { get; set; }
-        public string? UserUUID { get; set; }
-        public string? Token { get; set; }
-        public long? Created { get; set; }
-        public long? Expirary { get; set; }
-        public string? Ip { get; set; }
-        public string? UserAgent { get; set; }
-    }
-    class RequestDetails
-    {
-        public string? Ip { get; set; }
-        public string? UserAgent { get; set; }
-        public string? Token { get; set; }
     }
 }

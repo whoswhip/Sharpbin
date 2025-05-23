@@ -66,6 +66,7 @@ const navbarHTML = `
             }
             
             .nav-link {
+                background-color: #171717;
                 color: rgba(255, 255, 255, 0.85);
                 text-decoration: none;
                 font-size: 1.1rem;
@@ -217,7 +218,7 @@ function showNotification(message, type = 'info', duration = 3000) {
             position: fixed;
             bottom: 32px;
             right: 32px;
-            z-index: 2000;
+            z-index: 1000;
             display: flex;
             flex-direction: column;
             align-items: flex-end;
