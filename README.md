@@ -1,5 +1,5 @@
 # SharpbinV2
-SharpbinV2 is a re-write to the original messy code base. Instead of using html files and replacing variables it now is done with just apis and static html pages served from `wwwroot`.
+SharpbinV2 is a re-write to the original messy code base. Instead of using html files and replacing variables(Simple SSR) it now is done with just apis and static html pages served from `wwwroot`.
 ## Current Features
 - Account Systrem
 - Syntax Highlighting
