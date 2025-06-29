@@ -279,5 +279,56 @@ namespace SharpbinV2.Server
                 }
             }
         }
+
+        public static async Task<PasswordReset> GetPasswordReset(string url, string uuid, string token)
+        {
+            if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(uuid) || string.IsNullOrEmpty(token))
+                return null;
+            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            {
+                await connection.OpenAsync();
+                using (var command = new SqliteCommand(Program.MainDatabaseConnection))
+                {
+                    command.CommandText = "SELECT * FROM passwordresets WHERE URL = @URL AND UUID = @UUID AND Token = @Token;";
+                    command.Parameters.AddWithValue("@URL", url);
+                    command.Parameters.AddWithValue("@UUID", uuid);
+                    command.Parameters.AddWithValue("@Token", token);
+                    await command.ExecuteNonQueryAsync();
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        if (!reader.HasRows)
+                            return null;
+                        await reader.ReadAsync();
+                        return new PasswordReset
+                        {
+                            UID = reader.GetString(0),
+                            UUID = reader.GetString(1),
+                            USERUUID = reader.GetString(2),
+                            URL = reader.GetString(3),
+                            Token = reader.GetString(4),
+                            Created = reader.GetInt64(5),
+                            Expirary = reader.GetInt64(6)
+                        };
+                    }
+                }
+            }
+        }
+        public static async Task<bool> ResetPassword(string uuid, string password_hash)
+        {
+            if (string.IsNullOrEmpty(uuid) || string.IsNullOrEmpty(password_hash))
+                return false;
+            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            {
+                await connection.OpenAsync();
+                using (var command = new SqliteCommand(Program.MainDatabaseConnection))
+                {
+                    command.CommandText = "UPDATE users SET Password = @Password WHERE UUID = @UUID;";
+                    command.Parameters.AddWithValue("@Password", password_hash);
+                    command.Parameters.AddWithValue("@UUID", uuid);
+                    await command.ExecuteNonQueryAsync();
+                    return true;
+                }
+            }
+        }
     }
 }
