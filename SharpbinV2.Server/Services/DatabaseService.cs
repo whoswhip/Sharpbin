@@ -378,6 +378,52 @@ namespace SharpbinV2.Server.Services
             }
             return session;
         }
+        public async Task<Session?> GetSession(string token)
+        {
+            if (string.IsNullOrEmpty(token))
+                return null;
+            using (var connection = new SqliteConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "SELECT * FROM sessions WHERE Token = @Token;";
+                    command.Parameters.AddWithValue("@Token", token);
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        if (!reader.HasRows)
+                            return null;
+                        await reader.ReadAsync();
+                        return new Session
+                        {
+                            UUID = reader.GetString(0),
+                            UserUUID = reader.GetString(1),
+                            Token = reader.GetString(2),
+                            Created = reader.GetInt64(3),
+                            Expirary = reader.GetInt64(4),
+                            Ip = reader.GetString(5),
+                            UserAgent = reader.GetString(6)
+                        };
+                    }
+                }
+            }
+        }
+        public async Task<bool> DeleteSession(string token)
+        {
+            if (string.IsNullOrEmpty(token))
+                return false;
+            using (var connection = new SqliteConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "DELETE FROM sessions WHERE Token = @Token;";
+                    command.Parameters.AddWithValue("@Token", token);
+                    await command.ExecuteNonQueryAsync();
+                }
+                return true;
+            }
+        }
         public async Task<User?> CreateUser(string username, string email, string password_hash, string uuid)
         {
             if (string.IsNullOrEmpty(username) && string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password_hash))

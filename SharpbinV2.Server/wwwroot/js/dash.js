@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 async function fetchAccountInfo() {
     try {
-        const response = await fetch('/api/accounts/authorized');
+        const response = await fetch('/api/auth/authorized');
 
         const accountData = await response.json();
         if (accountData.success === false) {
@@ -212,7 +212,7 @@ function logout() {
 
     document.getElementById('confirm-logout').onclick = async function () {
         try {
-            await fetch('/api/accounts/logout', { method: 'POST'});
+            await fetch('/api/auth/logout', { method: 'POST'});
         } catch { }
         window.location.href = '/login';
     };

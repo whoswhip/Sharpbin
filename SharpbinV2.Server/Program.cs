@@ -382,45 +382,6 @@ namespace SharpbinV2.Server
                 await context.Response.WriteAsJsonAsync(new { success = true, message = "Account deleted." });
 
             }).RequireRateLimiting("auth");
-            app.MapPost("/api/accounts/logout", async (HttpContext context) =>
-            {
-                var requestdetails = GetRequestDetails(context);
-                if (string.IsNullOrEmpty(requestdetails.Token))
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "No token provided, not authorized." });
-                    return;
-                }
-                var user = await Database.UserFromToken(requestdetails.Token);
-                if (user == null)
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid token." });
-                    return;
-                }
-                using (var connection = new SqliteConnection(MainDatabaseConnection))
-                {
-                    await connection.OpenAsync();
-                    using (var command = connection.CreateCommand())
-                    {
-                        command.CommandText = "DELETE FROM sessions WHERE Token = @Token;";
-                        command.Parameters.AddWithValue("@Token", requestdetails.Token);
-                        await command.ExecuteNonQueryAsync();
-                    }
-                    await connection.CloseAsync();
-                }
-
-                var cookieOptions = new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = true,
-                    SameSite = SameSiteMode.Strict,
-                    Expires = DateTimeOffset.UtcNow.AddDays(-1)
-                };
-                context.Response.Cookies.Append("Authorization", "", cookieOptions);
-                context.Response.StatusCode = 200;
-                await context.Response.WriteAsJsonAsync(new { success = true, message = "Logged out." });
-            });
             app.MapPost("/api/accounts/reset-password", async (HttpContext context) =>
             {
                 var requestdetails = GetRequestDetails(context);

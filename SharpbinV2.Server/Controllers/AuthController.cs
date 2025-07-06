@@ -190,31 +190,66 @@ namespace SharpbinV2.Server.Controllers
                 var requestDetails = HelperService.GetRequestDetails(HttpContext);
                 if (string.IsNullOrWhiteSpace(requestDetails.Token))
                 {
-                    return Ok(new { success = false, message = "Not authenticated" });
+                    return Unauthorized(new { success = false, message = "Not authenticated" });
                 }
-                var session = await _databaseService.UserFromToken(requestDetails.Token);
-                if (session == null)
+                var user = await _databaseService.UserFromToken(requestDetails.Token);
+                if (user == null)
                 {
-                    return Ok(new { success = false, message = "Not authenticated" });
+                    return Unauthorized(new { success = false, message = "Not authenticated" });
                 }
+                var session = await _databaseService.GetSession(requestDetails.Token);
+                long currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                if (session == null || session.Expirary < currentTime)
+                {
+                    Response.Cookies.Delete("Authorization");
+                    return Unauthorized(new { success = false, message = "Session expired" });
+                }
+
                 return Ok(new
                 {
                     success = true,
                     message = "Authenticated",
+                    expires = session.Expirary,
                     user = new
                     {
-                        session.UID,
-                        session.UUID,
-                        session.Username,
-                        session.Email,
-                        session.DisplayName,
-                        session.Created
+                        user.UID,
+                        user.UUID,
+                        user.Username,
+                        user.Email,
+                        user.DisplayName,
+                        user.Created
                     }
                 });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error checking authentication status");
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            try
+            {
+                var requestDetails = HelperService.GetRequestDetails(HttpContext);
+                if (string.IsNullOrWhiteSpace(requestDetails.Token))
+                {
+                    return Unauthorized(new { success = false, message = "Not authenticated" });
+                }
+                var user = await _databaseService.UserFromToken(requestDetails.Token);
+                if (user == null)
+                {
+                    return Unauthorized(new { success = false, message = "Not authenticated" });
+                }
+                await _databaseService.DeleteSession(requestDetails.Token);
+                Response.Cookies.Delete("Authorization");
+                return Ok(new { success = true, message = "Logged out successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during logout attempt");
                 return StatusCode(500, "Internal server error");
             }
         }
