@@ -253,6 +253,33 @@ namespace SharpbinV2.Server.Controllers
                 return StatusCode(500, "Internal server error");
             }
         }
+
+        [HttpDelete("delete")]
+        public async Task<IActionResult> DeleteAccount()
+        {
+            try
+            {
+                var requestDetails = HelperService.GetRequestDetails(HttpContext);
+                if (string.IsNullOrWhiteSpace(requestDetails.Token))
+                {
+                    return Unauthorized(new { success = false, message = "Not authenticated" });
+                }
+                var user = await _databaseService.UserFromToken(requestDetails.Token);
+                if (user == null)
+                {
+                    return Unauthorized(new { success = false, message = "Not authenticated" });
+                }
+                await _databaseService.DeleteUser(user);
+                await _databaseService.DeleteSession(requestDetails.Token);
+                Response.Cookies.Delete("Authorization");
+                return Ok(new { success = true, message = "Account deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during account deletion attempt");
+                return StatusCode(500, "Internal server error");
+            }
+        }
     }
     public class AuthRequest
     {

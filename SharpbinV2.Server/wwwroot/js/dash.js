@@ -264,7 +264,7 @@ function deleteAccount() {
     confirmBtn.onclick = async function () {
         if (confirmBtn.disabled) return;
         try {
-            await fetch('/api/accounts/delete', { method: 'POST'});
+            await fetch('/api/auth/delete', { method: 'DELETE'});
         } catch { }
         window.location.href = '/register';
     };

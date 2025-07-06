@@ -459,5 +459,41 @@ namespace SharpbinV2.Server.Services
             }
             return user;
         }
+        public async Task<bool> DeleteUser(User user)
+        {
+            if (user == null)
+                return false;
+            using (var connection = new SqliteConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "DELETE FROM users WHERE UUID = @UUID;";
+                    command.Parameters.AddWithValue("@UUID", user.UUID);
+                    await command.ExecuteNonQueryAsync();
+                }
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "DELETE FROM pastes WHERE AuthorUUID = @AuthorUUID;";
+                    command.Parameters.AddWithValue("@AuthorUUID", user.UUID);
+                    await command.ExecuteNonQueryAsync();
+                }
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "DELETE FROM sessions WHERE UserUUID = @UserUUID;";
+                    command.Parameters.AddWithValue("@UserUUID", user.UUID);
+                    await command.ExecuteNonQueryAsync();
+                }
+                // anonymize all views by user
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "UPDATE views SET UserUUID = @UserUUID WHERE UserUUID = @OldUserUUID;";
+                    command.Parameters.AddWithValue("@UserUUID", "0");
+                    command.Parameters.AddWithValue("@OldUserUUID", user.UUID);
+                    await command.ExecuteNonQueryAsync();
+                }
+                return true;
+            }
+        }
     }
 }
