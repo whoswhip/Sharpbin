@@ -1,17 +1,22 @@
-﻿using BCrypt.Net;
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using SharpbinV2.Server.Models;
 using Bcrypt = BCrypt.Net.BCrypt;
 
-namespace SharpbinV2.Server
+namespace SharpbinV2.Server.Services
 {
-    public class Database
+    public class DatabaseService
     {
-        public static async Task<User> UserFromUsername(string username)
+        private readonly string _connectionString;
+        public DatabaseService(IConfiguration configuration)
+        {
+            _connectionString = configuration.GetConnectionString("DefaultConnection") ?? "Data Source=data.db";
+        }
+
+        public async Task<User?> UserFromUsername(string username)
         {
             if (string.IsNullOrEmpty(username))
                 return null;
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            using (var connection = new SqliteConnection(_connectionString))
             {
                 await connection.OpenAsync();
                 using (var command = connection.CreateCommand())
@@ -39,11 +44,11 @@ namespace SharpbinV2.Server
                 }
             }
         }
-        public static async Task<User> UserFromUUID(string uuid)
+        public async Task<User?> UserFromUUID(string uuid)
         {
             if (string.IsNullOrEmpty(uuid))
                 return null;
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            using (var connection = new SqliteConnection(_connectionString))
             {
                 await connection.OpenAsync();
                 using (var command = connection.CreateCommand())
@@ -71,11 +76,11 @@ namespace SharpbinV2.Server
                 }
             }
         }
-        public static async Task<User> UserFromEmail(string email)
+        public async Task<User?> UserFromEmail(string email)
         {
             if (string.IsNullOrEmpty(email))
                 return null;
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            using (var connection = new SqliteConnection(_connectionString))
             {
                 await connection.OpenAsync();
                 using (var command = connection.CreateCommand())
@@ -103,11 +108,11 @@ namespace SharpbinV2.Server
                 }
             }
         }
-        public static async Task<User> UserFromToken(string token)
+        public async Task<User?> UserFromToken(string token)
         {
             if (string.IsNullOrEmpty(token))
                 return null;
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            using (var connection = new SqliteConnection(_connectionString))
             {
                 await connection.OpenAsync();
                 using (var command = connection.CreateCommand())
@@ -124,9 +129,9 @@ namespace SharpbinV2.Server
                 }
             }
         }
-        public static async Task<int> EnumeratePastes()
+        public async Task<int> EnumeratePastes()
         {
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            using (var connection = new SqliteConnection(_connectionString))
             {
                 await connection.OpenAsync();
                 using (var command = connection.CreateCommand())
@@ -136,11 +141,11 @@ namespace SharpbinV2.Server
                 }
             }
         }
-        public static async Task<int> EnumerateUserPastes(User user)
+        public async Task<int> EnumerateUserPastes(User user)
         {
             if (user == null)
                 return 0;
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            using (var connection = new SqliteConnection(_connectionString))
             {
                 await connection.OpenAsync();
                 using (var command = connection.CreateCommand())
@@ -151,11 +156,11 @@ namespace SharpbinV2.Server
                 }
             }
         }
-        public static async Task<Paste> GetPasteFromID(string id)
+        public async Task<Paste?> GetPasteFromID(string id)
         {
             if (string.IsNullOrEmpty(id))
                 return null;
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            using (var connection = new SqliteConnection(_connectionString))
             {
                 await connection.OpenAsync();
                 using (var command = connection.CreateCommand())
@@ -186,9 +191,9 @@ namespace SharpbinV2.Server
                 }
             }
         }
-        public static async Task<bool> HasAlreadyViewedFromRqDetails(RequestDetails details)
+        public async Task<bool> AlreadyViewed(RequestDetails details)
         {
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            using (var connection = new SqliteConnection(_connectionString))
             {
                 await connection.OpenAsync();
                 using (var command = connection.CreateCommand())
@@ -203,9 +208,9 @@ namespace SharpbinV2.Server
                 }
             }
         }
-        public static async Task<bool> HasAlreadyViewedFromUserDetails(User user)
+        public async Task<bool> HasAlreadyViewedFromUserDetails(User user)
         {
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            using (var connection = new SqliteConnection(_connectionString))
             {
                 await connection.OpenAsync();
                 using (var command = connection.CreateCommand())
@@ -219,12 +224,12 @@ namespace SharpbinV2.Server
                 }
             }
         }
-        public static async Task AddViewToPaste(User user, Paste paste, RequestDetails details)
+        public async Task AddViewToPaste(User user, Paste paste, RequestDetails details)
         {
             if (paste == null || details == null)
                 return;
             var _user = user ?? new User { UUID = "0" };
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            using (var connection = new SqliteConnection(_connectionString))
             {
                 await connection.OpenAsync();
                 using (var command = connection.CreateCommand())
@@ -243,11 +248,11 @@ namespace SharpbinV2.Server
                 await connection.CloseAsync();
             }
         }
-        public static async Task<List<Paste>> PastesFromUser(User user)
+        public async Task<List<Paste?>?> PastesFromUser(User user)
         {
             if (user == null)
                 return null;
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            using (var connection = new SqliteConnection(_connectionString))
             {
                 await connection.OpenAsync();
                 using (var command = connection.CreateCommand())
@@ -258,7 +263,7 @@ namespace SharpbinV2.Server
                     {
                         if (!reader.HasRows)
                             return null;
-                        var pastes = new List<Paste>();
+                        var pastes = new List<Paste?>();
                         while (await reader.ReadAsync())
                         {
                             pastes.Add(new Paste
@@ -282,15 +287,14 @@ namespace SharpbinV2.Server
                 }
             }
         }
-
-        public static async Task<PasswordReset> GetPasswordReset(string url, string uuid, string token)
+        public async Task<PasswordReset?> GetPasswordReset(string url, string uuid, string token)
         {
             if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(uuid) || string.IsNullOrEmpty(token))
                 return null;
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            using (var connection = new SqliteConnection(_connectionString))
             {
                 await connection.OpenAsync();
-                using (var command = new SqliteCommand(Program.MainDatabaseConnection))
+                using (var command = connection.CreateCommand())
                 {
                     command.CommandText = "SELECT * FROM passwordresets WHERE URL = @URL AND UUID = @UUID AND Token = @Token;";
                     command.Parameters.AddWithValue("@URL", url);
@@ -314,16 +318,18 @@ namespace SharpbinV2.Server
                         };
                     }
                 }
+
+
             }
         }
-        public static async Task<bool> ResetPassword(string uuid, string password_hash)
+        public async Task<bool> ResetPassword(string uuid, string password_hash)
         {
             if (string.IsNullOrEmpty(uuid) || string.IsNullOrEmpty(password_hash))
                 return false;
-            using (var connection = new SqliteConnection(Program.MainDatabaseConnection))
+            using (var connection = new SqliteConnection(_connectionString))
             {
                 await connection.OpenAsync();
-                using (var command = new SqliteCommand(Program.MainDatabaseConnection))
+                using (var command = connection.CreateCommand())
                 {
                     command.CommandText = "UPDATE users SET Password = @Password WHERE UUID = @UUID;";
                     command.Parameters.AddWithValue("@Password", password_hash);
@@ -332,6 +338,80 @@ namespace SharpbinV2.Server
                     return true;
                 }
             }
+        }
+        public async Task<Session?> CreateSession(User user, RequestDetails details)
+        {
+            if (user == null || details == null)
+                return new Session { UUID = "0" };
+            var session = new Session
+            {
+                UUID = Guid.NewGuid().ToString(),
+                UserUUID = user.UUID,
+                Token = HelperService.GenerateToken(),
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Expirary = DateTimeOffset.UtcNow.AddDays(14).ToUnixTimeSeconds(),
+                Ip = Bcrypt.HashPassword(details.Ip, Bcrypt.GenerateSalt(8)),
+                UserAgent = details.UserAgent
+            };
+            using (var connection = new SqliteConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "INSERT INTO sessions (UUID, UserUUID, Token, Created, Expirary, Ip, UserAgent) VALUES (@UUID, @UserUUID, @Token, @Created, @Expirary, @Ip, @UserAgent);";
+                    command.Parameters.AddWithValue("@UUID", session.UUID);
+                    command.Parameters.AddWithValue("@UserUUID", session.UserUUID);
+                    command.Parameters.AddWithValue("@Token", session.Token);
+                    command.Parameters.AddWithValue("@Created", session.Created);
+                    command.Parameters.AddWithValue("@Expirary", session.Expirary);
+                    command.Parameters.AddWithValue("@Ip", session.Ip);
+                    command.Parameters.AddWithValue("@UserAgent", session.UserAgent);
+                    await command.ExecuteNonQueryAsync();
+                }
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "UPDATE users SET LastLogin = @LastLogin WHERE UUID = @UUID;";
+                    command.Parameters.AddWithValue("@LastLogin", session.Created);
+                    command.Parameters.AddWithValue("@UUID", user.UUID);
+                    await command.ExecuteNonQueryAsync();
+                }
+            }
+            return session;
+        }
+        public async Task<User?> CreateUser(string username, string email, string password_hash, string uuid)
+        {
+            if (string.IsNullOrEmpty(username) && string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password_hash))
+                return null;
+            var user = new User
+            {
+                UUID = uuid,
+                Type = 0,
+                Email = email,
+                Username = username,
+                DisplayName = username,
+                Password = password_hash,
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                LastLogin = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+            };
+            using (var connection = new SqliteConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "INSERT INTO users (UUID, Type, Email, Username, DisplayName, Password, Created, LastLogin) VALUES (@UUID, @Type, @Email, @Username, @DisplayName, @Password, @Created, @LastLogin);";
+                    command.Parameters.AddWithValue("@UUID", user.UUID);
+                    command.Parameters.AddWithValue("@Type", user.Type);
+                    command.Parameters.AddWithValue("@Email", user.Email ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@Username", user.Username);
+                    command.Parameters.AddWithValue("@DisplayName", user.DisplayName ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@Password", user.Password);
+                    command.Parameters.AddWithValue("@Created", user.Created);
+                    command.Parameters.AddWithValue("@LastLogin", user.LastLogin);
+                    var result = await command.ExecuteScalarAsync();
+                    user.UID = result != null ? Convert.ToInt32(result) : 0;
+                }
+            }
+            return user;
         }
     }
 }

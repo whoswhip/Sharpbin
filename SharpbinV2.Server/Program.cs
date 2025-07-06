@@ -2,9 +2,10 @@ using Microsoft.Data.Sqlite;
 using Newtonsoft.Json.Linq;
 using System.Text;
 using Bcrypt = BCrypt.Net.BCrypt;
-using System.Security.Cryptography;
 using UAParser;
 using Microsoft.AspNetCore.RateLimiting;
+using SharpbinV2.Server.Models;
+using SharpbinV2.Server.Services;
 
 namespace SharpbinV2.Server
 {
@@ -97,10 +98,13 @@ namespace SharpbinV2.Server
                 };
             });
 
+
             // Add services to the container.
             builder.Services.AddCors();
             builder.Services.AddResponseCaching();
             builder.Services.AddResponseCompression();
+            builder.Services.AddControllers();
+            builder.Services.AddScoped<DatabaseService>();
 
 
             var app = builder.Build();
@@ -310,225 +314,6 @@ namespace SharpbinV2.Server
 
             #region API
 
-            app.MapPost("/api/accounts/register", async (HttpContext context) =>
-            {
-                var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
-                if (body == null)
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid Body." });
-                    return;
-                }
-
-                var json = TryParse(body);
-                if (json == null)
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid JSON." });
-                    return;
-                }
-
-                var email = json["email"]?.ToString() ?? null;
-                var username = json["username"]?.ToString();
-                var password = json["password"]?.ToString();
-
-                if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Missing required fields." });
-                    return;
-                }
-
-                var testusername = await Database.UserFromUsername(username);
-                if (testusername != null)
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Username already taken." });
-                    return;
-                }
-                var testemail = await Database.UserFromEmail(email);
-                if (testemail != null)
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Email already in use." });
-                    return;
-                }
-
-                var passwordHashed = Bcrypt.HashPassword(password, Bcrypt.GenerateSalt(12));
-                string token = GenerateToken();
-                var requestdetails = GetRequestDetails(context);
-                string userUUID = Guid.NewGuid().ToString();
-
-                using (var connection = new SqliteConnection(MainDatabaseConnection))
-                {
-                    await connection.OpenAsync();
-                    using (var command = connection.CreateCommand())
-                    {
-                        command.CommandText = "INSERT INTO users (UUID, Username, Password, Email, Created, LastLogin) VALUES (@UUID, @Username, @Password, @Email, @Created, @LastLogin);";
-                        command.Parameters.AddWithValue("@UUID", userUUID);
-                        command.Parameters.AddWithValue("@Username", username);
-                        command.Parameters.AddWithValue("@Password", passwordHashed);
-                        command.Parameters.AddWithValue("@Email", (object)email ?? DBNull.Value);
-                        command.Parameters.AddWithValue("@Created", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-                        command.Parameters.AddWithValue("@LastLogin", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-                        await command.ExecuteNonQueryAsync();
-                    }
-                    using (var command = connection.CreateCommand())
-                    {
-                        command.CommandText = "INSERT INTO sessions (UUID, UserUUID, Token, Created, Expirary, Ip, UserAgent) VALUES (@UUID, @UserUUID, @Token, @Created, @Expirary, @Ip, @UserAgent);";
-                        command.Parameters.AddWithValue("@UUID", Guid.NewGuid().ToString());
-                        command.Parameters.AddWithValue("@UserUUID", userUUID);
-                        command.Parameters.AddWithValue("@Token", token);
-                        command.Parameters.AddWithValue("@Created", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-                        command.Parameters.AddWithValue("@Expirary", DateTimeOffset.UtcNow.AddDays(7).ToUnixTimeSeconds());
-                        command.Parameters.AddWithValue("@Ip", Bcrypt.HashPassword(requestdetails.Ip, Bcrypt.GenerateSalt(8)));
-                        command.Parameters.AddWithValue("@UserAgent", requestdetails.UserAgent);
-                        await command.ExecuteNonQueryAsync();
-                    }
-                    await connection.CloseAsync();
-                }
-
-                var cookieOptions = new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = true,
-                    SameSite = SameSiteMode.Strict,
-                    Expires = DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.AddDays(7).ToUnixTimeSeconds())
-                };
-                context.Response.Cookies.Append("Authorization", token, cookieOptions);
-                context.Response.StatusCode = 200;
-                await context.Response.WriteAsJsonAsync(new { success = true, message = "Account created." });
-                logger.LogInfo($"Account {username} has been created.");
-                return;
-            }).RequireRateLimiting("auth");
-            app.MapPost("/api/accounts/login", async (HttpContext context) =>
-            {
-                var requestdetails = GetRequestDetails(context);
-                var __user = await Database.UserFromToken(requestdetails.Token);
-                if (!string.IsNullOrEmpty(requestdetails.Token) && __user != null)
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Already logged in." });
-                    return;
-                }
-
-                var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
-                if (body == null)
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid Body." });
-                    return;
-                }
-                var json = TryParse(body);
-                if (json == null)
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid JSON." });
-                    return;
-                }
-                var username = json["username"]?.ToString();
-                var email = json["email"]?.ToString();
-                var password = json["password"]?.ToString();
-
-                if (string.IsNullOrEmpty(username) && string.IsNullOrEmpty(email))
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Missing required fields." });
-                    return;
-                }
-                if (string.IsNullOrEmpty(password))
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Missing required fields." });
-                    return;
-                }
-
-                User user = null;
-                if (!string.IsNullOrEmpty(username))
-                    user = await Database.UserFromUsername(username);
-                else if (!string.IsNullOrEmpty(email))
-                    user = await Database.UserFromEmail(email);
-                if (user == null)
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid credentials." });
-                    return;
-                }
-                if (!Bcrypt.Verify(password, user.Password))
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid credentials." });
-                    return;
-                }
-                string token = GenerateToken();
-                using (var connection = new SqliteConnection(MainDatabaseConnection))
-                {
-                    await connection.OpenAsync();
-                    using (var command = connection.CreateCommand())
-                    {
-                        command.CommandText = "INSERT INTO sessions (UUID, UserUUID, Token, Created, Expirary, Ip, UserAgent) VALUES (@UUID, @UserUUID, @Token, @Created, @Expirary, @Ip, @UserAgent);";
-                        command.Parameters.AddWithValue("@UUID", Guid.NewGuid().ToString());
-                        command.Parameters.AddWithValue("@UserUUID", user.UUID);
-                        command.Parameters.AddWithValue("@Token", token);
-                        command.Parameters.AddWithValue("@Created", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-                        command.Parameters.AddWithValue("@Expirary", DateTimeOffset.UtcNow.AddDays(7).ToUnixTimeSeconds());
-                        command.Parameters.AddWithValue("@Ip", Bcrypt.HashPassword(requestdetails.Ip, Bcrypt.GenerateSalt(8)));
-                        command.Parameters.AddWithValue("@UserAgent", requestdetails.UserAgent);
-                        await command.ExecuteNonQueryAsync();
-                    }
-                    using (var command = connection.CreateCommand())
-                    {
-                        command.CommandText = "UPDATE users SET LastLogin = @LastLogin WHERE UUID = @UUID;";
-                        command.Parameters.AddWithValue("@LastLogin", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-                        command.Parameters.AddWithValue("@UUID", user.UUID);
-                        await command.ExecuteNonQueryAsync();
-                    }
-                    await connection.CloseAsync();
-                }
-                var cookieOptions = new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = true,
-                    SameSite = SameSiteMode.Strict,
-                    Expires = DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.AddDays(7).ToUnixTimeSeconds())
-                };
-                context.Response.Cookies.Append("Authorization", token, cookieOptions);
-                context.Response.StatusCode = 200;
-                await context.Response.WriteAsJsonAsync(new { success = true, message = "Logged in." });
-                logger.LogInfo($"User {user.UUID} logged in.");
-                return;
-            }).RequireRateLimiting("auth");
-            app.MapGet("/api/accounts/authorized", async (HttpContext context) =>
-            {
-                var requestdetails = GetRequestDetails(context);
-                if (string.IsNullOrEmpty(requestdetails.Token))
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "No token provided, not authorized." });
-                    return;
-                }
-                var user = await Database.UserFromToken(requestdetails.Token);
-                if (user == null)
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { success = false, message = "Invalid token." });
-                    return;
-                }
-                var cleanuser = new
-                {
-                    user.UID,
-                    user.UUID,
-                    user.Username,
-                    user.Email,
-                    user.DisplayName,
-                    user.Created,
-                    user.LastLogin,
-                    user.Type,
-                };
-                context.Response.StatusCode = 200;
-                await context.Response.WriteAsJsonAsync(new { success = true, user = cleanuser });
-                return;
-            });
             app.MapPost("/api/accounts/delete", async (HttpContext context) =>
             {
                 var requestdetails = GetRequestDetails(context);
@@ -1345,6 +1130,8 @@ namespace SharpbinV2.Server
 
 
             #endregion
+
+            app.MapControllers();
 
             await app.RunAsync();
 
