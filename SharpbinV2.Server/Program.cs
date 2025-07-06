@@ -39,7 +39,6 @@ namespace SharpbinV2.Server
             "toml",
             "xml"
         };
-        public static string HMACSecret = "thisneedstobechanged";
         public static JObject Configuration { get; set; }
 
         static async Task Main(string[] args)
@@ -57,16 +56,6 @@ namespace SharpbinV2.Server
                 builder.WebHost.UseUrls($"http://*:{Environment.GetEnvironmentVariable("ASPNETCORE_HTTP_PORTS") ?? "5810"}");
             }
             MaxFileSize = Environment.GetEnvironmentVariable("MAX_FILE_SIZE") != null ? Convert.ToInt64(Environment.GetEnvironmentVariable("MAX_FILE_SIZE")) : MaxFileSize;
-            HMACSecret = Environment.GetEnvironmentVariable("HMAC_SECRET") ?? HMACSecret;
-            if (HMACSecret == "thisneedstobechanged")
-                logger.LogWarning("HMAC_SECRET is still set to default. Please change this in your .env file.");
-            if (HMACSecret.Length < 32 && HMACSecret != "thisneedstobechanged")
-                logger.LogWarning("HMAC_SECRET is less than 32 characters. Please change this in your .env file.");
-            if (HMACSecret.Length < 6 || HMACSecret.Length <= 0)
-            {
-                logger.LogError("HMAC_SECRET is less than 6 characters. Please change this in your .env file.");
-                Environment.Exit(1);
-            }
 
             builder.WebHost.ConfigureKestrel(options =>
             {
@@ -392,7 +381,7 @@ namespace SharpbinV2.Server
                         command.Parameters.AddWithValue("@Token", token);
                         command.Parameters.AddWithValue("@Created", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                         command.Parameters.AddWithValue("@Expirary", DateTimeOffset.UtcNow.AddDays(7).ToUnixTimeSeconds());
-                        command.Parameters.AddWithValue("@Ip", HMAC256HASH(requestdetails.Ip));
+                        command.Parameters.AddWithValue("@Ip", Bcrypt.HashPassword(requestdetails.Ip, Bcrypt.GenerateSalt(8)));
                         command.Parameters.AddWithValue("@UserAgent", requestdetails.UserAgent);
                         await command.ExecuteNonQueryAsync();
                     }
@@ -483,7 +472,7 @@ namespace SharpbinV2.Server
                         command.Parameters.AddWithValue("@Token", token);
                         command.Parameters.AddWithValue("@Created", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                         command.Parameters.AddWithValue("@Expirary", DateTimeOffset.UtcNow.AddDays(7).ToUnixTimeSeconds());
-                        command.Parameters.AddWithValue("@Ip", HMAC256HASH(requestdetails.Ip));
+                        command.Parameters.AddWithValue("@Ip", Bcrypt.HashPassword(requestdetails.Ip, Bcrypt.GenerateSalt(8)));
                         command.Parameters.AddWithValue("@UserAgent", requestdetails.UserAgent);
                         await command.ExecuteNonQueryAsync();
                     }
@@ -1436,14 +1425,6 @@ namespace SharpbinV2.Server
                 len = len / 1024;
             }
             return $"{len:0.##} {sizes[order]}";
-        }
-        public static string HMAC256HASH(string data)
-        {
-            using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(HMACSecret)))
-            {
-                byte[] hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
-                return Convert.ToBase64String(hashBytes);
-            }
         }
         #endregion
         static async Task Initialize()

@@ -1,4 +1,6 @@
-﻿using Microsoft.Data.Sqlite;
+﻿using BCrypt.Net;
+using Microsoft.Data.Sqlite;
+using Bcrypt = BCrypt.Net.BCrypt;
 
 namespace SharpbinV2.Server
 {
@@ -191,7 +193,7 @@ namespace SharpbinV2.Server
                 using (var command = connection.CreateCommand())
                 {
                     command.CommandText = "SELECT * FROM views WHERE Ip = @Ip AND UserAgent = @UserAgent;";
-                    command.Parameters.AddWithValue("@Ip", Program.HMAC256HASH(details.Ip));
+                    command.Parameters.AddWithValue("@Ip", Bcrypt.HashPassword(details.Ip, Bcrypt.GenerateSalt(8)));
                     command.Parameters.AddWithValue("@UserAgent", details.UserAgent);
                     using (var reader = await command.ExecuteReaderAsync())
                     {
@@ -229,7 +231,7 @@ namespace SharpbinV2.Server
                     command.CommandText = "INSERT INTO views (UserUUID, PasteUUID, Ip, UserAgent, Created) VALUES (@UserUUID, @PasteUUID, @Ip, @UserAgent, @Created);";
                     command.Parameters.AddWithValue("@UserUUID", _user.UUID);
                     command.Parameters.AddWithValue("@PasteUUID", paste.UUID);
-                    command.Parameters.AddWithValue("@Ip", Program.HMAC256HASH(details.Ip));
+                    command.Parameters.AddWithValue("@Ip", Bcrypt.HashPassword(details.Ip, Bcrypt.GenerateSalt(8)));
                     command.Parameters.AddWithValue("@UserAgent", details.UserAgent);
                     command.Parameters.AddWithValue("@Created", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                     await command.ExecuteNonQueryAsync();
