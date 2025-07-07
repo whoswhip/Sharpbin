@@ -529,5 +529,45 @@ namespace SharpbinV2.Server.Services
                 return false;
             }
         }
+        public async Task<List<View?>?> GetViewsFromPaste(string uuid, ILogger logger)
+        {
+            if (string.IsNullOrEmpty(uuid))
+                return null;
+            try
+            {
+                using (var connection = new SqliteConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "SELECT * FROM views WHERE PasteUUID = @PasteUUID;";
+                        command.Parameters.AddWithValue("@PasteUUID", uuid);
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (!reader.HasRows)
+                                return null;
+                            var views = new List<View>();
+                            while (await reader.ReadAsync())
+                            {
+                                views.Add(new View
+                                {
+                                    UserUUID = reader.GetString(0),
+                                    PasteUUID = reader.GetString(1),
+                                    IP = reader.GetString(2),
+                                    UserAgent = reader.GetString(3),
+                                    Created = reader.GetInt64(4)
+                                });
+                            }
+                            return views;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to get views from paste in database.");
+                return null;
+            }
+        }
     }
 }

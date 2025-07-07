@@ -3,7 +3,8 @@ using Microsoft.AspNetCore.RateLimiting;
 using SharpbinV2.Server.Services;
 using SharpbinV2.Server.Models;
 using System.Text;
-using System.IO;
+using IOFile = System.IO.File;
+using UAParser;
 
 namespace SharpbinV2.Server.Controllers
 {
@@ -47,12 +48,12 @@ namespace SharpbinV2.Server.Controllers
                     return BadRequest(new { success = false, message = "Invalid visibility option. Must be 0 (public), 1 (unlisted), or 2 (private)." });
                 if (!Program.ValidSyntaxLanguages.Contains(syntax.ToLower()))
                     return BadRequest(new { success = false, message = "Invalid syntax language specified." });
-                if (string.IsNullOrWhiteSpace(title)) 
+                if (string.IsNullOrWhiteSpace(title))
                     title = $"Untitled {await _databaseService.EnumeratePastes()}";
 
                 bool shouldCompress = await CompressionService.ShouldCompress(content);
-                byte[] compressedContent = shouldCompress 
-                    ? await CompressionService.CompressString(content) 
+                byte[] compressedContent = shouldCompress
+                    ? await CompressionService.CompressString(content)
                     : Encoding.UTF8.GetBytes(content);
                 User? user = await _databaseService.UserFromToken(requestDetails.Token ?? "");
                 string pasteId = HelperService.GenerateRandomString(8);
@@ -73,7 +74,7 @@ namespace SharpbinV2.Server.Controllers
                     Syntax = syntax.ToLower()
                 };
 
-                await System.IO.File.WriteAllBytesAsync(paste.FilePath, compressedContent);
+                await IOFile.WriteAllBytesAsync(paste.FilePath, compressedContent);
                 bool success = await _databaseService.CreatePaste(paste, _logger);
 
                 if (!success)
@@ -101,7 +102,134 @@ namespace SharpbinV2.Server.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating paste");
-                return StatusCode(500, new { error = "An error occurred while creating the paste."});
+                return StatusCode(500, new { error = "An error occurred while creating the paste." });
+            }
+        }
+
+        [HttpGet("{id}")]
+        [EnableRateLimiting("general")]
+        public async Task<IActionResult> GetPaste(string id)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(id))
+                    return BadRequest(new { success = false, message = "Invalid paste ID." });
+                Paste? paste = await _databaseService.GetPasteFromID(id);
+
+                if (paste == null || paste.FilePath == null || !IOFile.Exists(paste.FilePath))
+                    return NotFound(new { success = false, message = "Paste not found." });
+
+                if (paste.FilePath.EndsWith(".gz"))
+                    Response.Headers.Append("Content-Encoding", "gzip");
+
+                Response.Headers.Append("Content-Type", "text/plain; charset=utf-8");
+                Response.Headers.Append("Cache-Control", "public, max-age=3600");
+
+                return PhysicalFile(Path.GetFullPath(paste.FilePath), "text/plain");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving paste");
+                return StatusCode(500, new { error = "An error occurred while retrieving the paste." });
+            }
+        }
+
+        [HttpGet("{id}/info")]
+        [EnableRateLimiting("general")]
+        public async Task<IActionResult> GetPasteInfo(string id)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(id))
+                    return BadRequest(new { success = false, message = "Invalid paste ID." });
+                Paste? paste = await _databaseService.GetPasteFromID(id);
+                if (paste == null || string.IsNullOrWhiteSpace(paste.UUID))
+                    return NotFound(new { success = false, message = "Paste not found." });
+                User? author = null;
+                if (!string.IsNullOrWhiteSpace(paste.AuthorUUID))
+                    author = await _databaseService.UserFromUUID(paste.AuthorUUID ?? "");
+                return Ok(new
+                {
+                    success = true,
+                    paste = new
+                    {
+                        paste.ID,
+                        paste.UUID,
+                        paste.Title,
+                        paste.Syntax,
+                        paste.Views,
+                        paste.Visibility,
+                        paste.Created,
+                        paste.Size,
+                        paste.TrueSize,
+                        paste.AuthorUUID,
+                        username = author?.Username ?? "Anonymous",
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving paste info");
+                return StatusCode(500, new { error = "An error occurred while retrieving the paste info." });
+            }
+        }
+
+        [HttpGet("{id}/views")]
+        [EnableRateLimiting("general")]
+        public async Task<IActionResult> GetPasteViews(string id)
+        {
+            try
+            {
+                var requestDetails = HelperService.GetRequestDetails(HttpContext);
+                if (string.IsNullOrWhiteSpace(requestDetails.Token) || await _databaseService.GetSession(requestDetails.Token) == null)
+                    return Unauthorized(new { success = false, message = "Invalid or missing authentication token." });
+                if (string.IsNullOrWhiteSpace(id))
+                    return BadRequest(new { success = false, message = "Invalid paste ID." });
+                Paste? paste = await _databaseService.GetPasteFromID(id);
+                User? user = await _databaseService.UserFromToken(requestDetails.Token ?? "");
+                if (paste == null)
+                    return NotFound(new { success = false, message = "Paste not found." });
+                if (paste.AuthorUUID != user?.UUID)
+                    return Unauthorized(new { success = false, message = "You do not have permission to view this paste's views." });
+
+                List<View?>? views = await _databaseService.GetViewsFromPaste(paste.UUID ?? "", _logger);
+
+                if (views == null || views.Count == 0)
+                    return BadRequest(new { success = false, message = "No views found for this paste." });
+
+                var details = new List<object>();
+
+                foreach (var view in views)
+                {
+                    if (view == null)
+                        continue;
+                    var uaParser = Parser.GetDefault();
+                    ClientInfo clientInfo = uaParser.Parse(view.UserAgent ?? "");
+                    details.Add(new
+                    {
+                        view.PasteUUID,
+                        view.Created,
+                        UserAgent = new
+                        {
+                            Browser = clientInfo.UA.Family,
+                            Platform = clientInfo.OS.Family,
+                            Device = clientInfo.Device.Family
+                        }
+                    });
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    pasteID = paste.ID,
+                    pasteUUID = paste.UUID,
+                    views = details
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving paste views");
+                return StatusCode(500, new { error = "An error occurred while retrieving the paste views." });
             }
         }
     }

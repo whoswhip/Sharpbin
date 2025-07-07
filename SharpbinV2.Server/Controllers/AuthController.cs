@@ -284,6 +284,8 @@ namespace SharpbinV2.Server.Controllers
                 return StatusCode(500, "Internal server error");
             }
         }
+
+
     }
     public class AuthRequest
     {
