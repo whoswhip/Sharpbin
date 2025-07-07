@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function checkAuthStatus() {
         try {
-            const response = await fetch('/api/accounts/authorized');
+            const response = await fetch('/api/auth/authenticated');
             const data = await response.json();
 
             if (data.success) {

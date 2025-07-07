@@ -339,7 +339,7 @@ namespace SharpbinV2.Server.Services
                 }
             }
         }
-        public async Task<Session?> CreateSession(User user, RequestDetails details)
+        public async Task<Session?> CreateSession(User user, RequestDetails details, string token)
         {
             if (user == null || details == null)
                 return new Session { UUID = "0" };
@@ -347,7 +347,7 @@ namespace SharpbinV2.Server.Services
             {
                 UUID = Guid.NewGuid().ToString(),
                 UserUUID = user.UUID,
-                Token = HelperService.GenerateToken(),
+                Token = token,
                 Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 Expirary = DateTimeOffset.UtcNow.AddDays(14).ToUnixTimeSeconds(),
                 Ip = Bcrypt.HashPassword(details.Ip, Bcrypt.GenerateSalt(8)),
@@ -447,14 +447,13 @@ namespace SharpbinV2.Server.Services
                     command.CommandText = "INSERT INTO users (UUID, Type, Email, Username, DisplayName, Password, Created, LastLogin) VALUES (@UUID, @Type, @Email, @Username, @DisplayName, @Password, @Created, @LastLogin);";
                     command.Parameters.AddWithValue("@UUID", user.UUID);
                     command.Parameters.AddWithValue("@Type", user.Type);
-                    command.Parameters.AddWithValue("@Email", user.Email ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@Email", string.IsNullOrWhiteSpace(user.Email) ? DBNull.Value : user.Email);
                     command.Parameters.AddWithValue("@Username", user.Username);
                     command.Parameters.AddWithValue("@DisplayName", user.DisplayName ?? (object)DBNull.Value);
                     command.Parameters.AddWithValue("@Password", user.Password);
                     command.Parameters.AddWithValue("@Created", user.Created);
                     command.Parameters.AddWithValue("@LastLogin", user.LastLogin);
-                    var result = await command.ExecuteScalarAsync();
-                    user.UID = result != null ? Convert.ToInt32(result) : 0;
+                    await command.ExecuteNonQueryAsync();
                 }
             }
             return user;
@@ -493,6 +492,41 @@ namespace SharpbinV2.Server.Services
                     await command.ExecuteNonQueryAsync();
                 }
                 return true;
+            }
+        }
+        public async Task<bool> CreatePaste(Paste paste, ILogger logger)
+        {
+            try
+            {
+                if (paste == null || string.IsNullOrEmpty(paste.UUID) || string.IsNullOrEmpty(paste.ID) || paste.AuthorUUID == null)
+                    return false;
+                using (var connection = new SqliteConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "INSERT INTO pastes (UUID, ID, Visibility, Title, AuthorUUID, FilePath, Created, Edited, Size, TrueSize, Views, Syntax) VALUES (@UUID, @ID, @Visibility, @Title, @AuthorUUID, @FilePath, @Created, @Edited, @Size, @TrueSize, @Views, @Syntax);";
+                        command.Parameters.AddWithValue("@UUID", paste.UUID);
+                        command.Parameters.AddWithValue("@ID", paste.ID);
+                        command.Parameters.AddWithValue("@Visibility", paste.Visibility ?? 0);
+                        command.Parameters.AddWithValue("@Title", paste.Title ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@AuthorUUID", paste.AuthorUUID);
+                        command.Parameters.AddWithValue("@FilePath", paste.FilePath ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@Created", paste.Created ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                        command.Parameters.AddWithValue("@Edited", paste.Edited ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                        command.Parameters.AddWithValue("@Size", paste.Size ?? 0);
+                        command.Parameters.AddWithValue("@TrueSize", paste.TrueSize ?? 0);
+                        command.Parameters.AddWithValue("@Views", paste.Views ?? 0);
+                        command.Parameters.AddWithValue("@Syntax", paste.Syntax ?? (object)DBNull.Value);
+                        await command.ExecuteNonQueryAsync();
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to create paste in database.");
+                return false;
             }
         }
     }

@@ -1,4 +1,3 @@
-
 let currentPage = 1;
 let totalPages = 0;
 let pastesPerPage = 10;
@@ -6,29 +5,29 @@ let userPastes = [];
 
 
 document.addEventListener('DOMContentLoaded', function () {
-    fetchAccountInfo();
-    fetchUserPastes();
+    waitForAuthData().then(data => {
+        if (data.success === false) {
+            window.location.href = '/login';
+        } else {
+            updateAccountInfo(data.user);
+            fetchUserPastes();
+        }
+    }).catch(error => {
+        console.error('Error waiting for auth data:', error);
+        window.location.href = '/login';
+    });
 });
 
-
-async function fetchAccountInfo() {
-    try {
-        const response = await fetch('/api/auth/authorized');
-
-        const accountData = await response.json();
-        if (accountData.success === false) {
-            window.location.href = '/login';
-        }
-        updateAccountInfo(accountData.user);
-    } catch (error) {
-        console.error('Error fetching account information:', error);
-
-        if (error.message.includes('401')) {
-            window.location.href = '/login.html';
-        }
-    }
+function waitForAuthData() {
+    return new Promise(resolve => {
+        const interval = setInterval(() => {
+            if (authData) {
+                clearInterval(interval);
+                resolve(authData);
+            }
+        }, 100);
+    });
 }
-
 
 function updateAccountInfo(data) {
     document.getElementById('account-username').textContent = `Username: ${data.username}`;
@@ -49,30 +48,18 @@ function updateAccountInfo(data) {
 }
 
 
-function formatDate(date) {
+function formatDate(date, minutes = false) {
     if (isNaN(date.getTime())) {
         return 'Never';
     }
 
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    if (minutes) 
+    {
+        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { minute: '2-digit', hour: '2-digit' });
+    } else {
+        return date.toLocaleDateString([], { year: 'numeric', month: '2-digit', day: '2-digit' });
+    }
 }
-
-
-function getRelativeTime(date) {
-    const now = new Date();
-    const diff = now - date;
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    if (isNaN(date.getTime())) return '';
-    if (seconds < 60) return 'just now';
-    if (minutes < 60) return `${minutes} min ago`;
-    if (hours < 24) return `${hours} hr${hours > 1 ? 's' : ''} ago`;
-    if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
-    return date.toLocaleDateString();
-}
-
 
 async function fetchUserPastes() {
     try {
@@ -154,7 +141,7 @@ function displayPastes() {
         const dateP = document.createElement('p');
         dateP.id = 'paste-date';
         const createdDate = new Date(paste.created * 1000);
-        dateP.textContent = `${formatDate(createdDate)} (${getRelativeTime(createdDate)})`;
+        dateP.textContent = `${formatDate(createdDate)}`;
 
 
         const syntaxP = document.createElement('p');

@@ -132,7 +132,6 @@ body {
     overflow: hidden !important;
     text-overflow: clip !important;
     white-space: nowrap !important;
-    max-width: 80px;
     text-align: left;
     margin-right: -70px !important;
 }

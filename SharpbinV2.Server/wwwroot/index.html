@@ -18,8 +18,8 @@
 <body>
     <div class="main-container">
         <form class="create-form" id="create-form">
-            <input type="text" name="title" id="title" placeholder="Title" maxlength="500">
-            <textarea name="content" id="content" placeholder="Content"></textarea>
+            <input type="text" name="title" id="title" placeholder="Title" maxlength="500" autocomplete="off" spellcheck="false">
+            <textarea name="content" id="content" placeholder="Content" autocomplete="off" spellcheck="false"></textarea>
             <label id="syntax-label">Syntax Highlighting -</label>
             <select name="syntax" id="syntax">
                 <option value="none">None</option>
@@ -52,7 +52,7 @@
                 <option value="1">Unlisted</option>
                 <option value="2">Private</option>
             </select>
-            <input type="text" name="password" id="password" placeholder="Password" style="display: none;">
+            <input type="password" name="password" id="password" placeholder="Password" style="display: none;" autocomplete="off" spellcheck="false">
             <button type="submit">Create Paste</button>
         </form>
     </div>

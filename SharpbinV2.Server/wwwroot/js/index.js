@@ -35,6 +35,9 @@ document.getElementById("create-form").addEventListener("submit", async function
 
     fetch(`/api/pastes/create?title=${title}&visibility=${visibility}&syntax=${syntax}`, {
         method: "POST",
+        headers: {
+            'Content-Type': 'text/plain'
+        },
         body: content
     })
         .then(response => response.json())

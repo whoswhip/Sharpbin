@@ -171,6 +171,8 @@ const navbarHTML = `
     </div>
 `;
 
+let authData = null;
+
 document.addEventListener('DOMContentLoaded', async () => {
     document.body.insertAdjacentHTML('afterbegin', navbarHTML);
     var path = window.location.pathname;
@@ -178,8 +180,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     let accountHref = '/login';
     try {
-        const resp = await fetch('/api/accounts/authorized');
+        const resp = await fetch('/api/auth/authenticated');
         const data = await resp.json();
+        authData = data;
         if (data && data.success !== false) {
             accountHref = '/dash';
         }

@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json.Linq;
 using SharpbinV2.Server.Models;
 using System.Text;
+using System.Text.RegularExpressions;
 using Bcrypt = BCrypt.Net.BCrypt;
 
 namespace SharpbinV2.Server.Services
@@ -81,5 +82,10 @@ namespace SharpbinV2.Server.Services
             }
             return $"{len:0.##} {sizes[order]}";
         }
+        public static bool IsValidEmail(string email)
+        {
+            return Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+        }
+
     }
 }

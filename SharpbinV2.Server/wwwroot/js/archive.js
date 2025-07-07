@@ -49,7 +49,7 @@ async function renderArchive(page, limit) {
                     <li>
                         <a href="/${paste.id}">
                             <p id="archive-title" title="${paste.title}">${title}</p>
-                            <p id="archive-date">${formatDate(paste.created)}</p>
+                            <p id="archive-date" title="${formatDate(paste.created)}">${formatDate(paste.created, true)}</p>
                             <p id="archive-syntax">${paste.syntax || 'Plain Text'}</p>
                         </a>
                     </li>
@@ -88,25 +88,34 @@ async function getPastes(page, limit) {
     return data;
 }
 
-function formatDate(unix) {
+function getRelativeTime(date) {
+    const now = new Date();
+    const diff = now - date;
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    if (isNaN(date.getTime())) return '';
+    if (seconds < 60) return 'just now';
+    if (minutes < 60) return `${minutes} min ago`;
+    if (hours < 24) return `${hours} hr${hours > 1 ? 's' : ''} ago`;
+    if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString();
+}
+
+
+function formatDate(unix, relative = false) {
     if (typeof unix !== 'number' || isNaN(unix)) {
         return 'Invalid date';
     }
-    const nowunix = Math.floor(Date.now() / 1000);
-    const diff = nowunix - unix;
-
-    if (diff < 60) {
-        return `${diff} second${diff !== 1 ? 's' : ''} ago`;
-    } else if (diff < 3600) {
-        const minutes = Math.floor(diff / 60);
-        return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
-    } else if (diff < 86400) {
-        const hours = Math.floor(diff / 3600);
-        return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
-    } else {
-        const days = Math.floor(diff / 86400);
-        return `${days} day${days !== 1 ? 's' : ''} ago`;
+    const date = new Date(unix * 1000);
+    if (isNaN(date.getTime())) {
+        return 'Invalid date';
     }
+    if (relative) {
+        return getRelativeTime(date);
+    }
+    return date.toLocaleDateString([], { year: 'numeric', month: '2-digit', day: '2-digit' });
 }
 
 function nextPage() {

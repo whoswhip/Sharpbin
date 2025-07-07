@@ -63,7 +63,7 @@ namespace SharpbinV2.Server.Controllers
 
                 string token = HelperService.GenerateToken();
 
-                var session = await _databaseService.CreateSession(user, requestDetails) ?? new Session();
+                var session = await _databaseService.CreateSession(user, requestDetails, token) ?? new Session();
                 if (session.UUID == "0" || session == null)
                     return StatusCode(500, new { success = false, message = "Failed to create session" });
 
@@ -104,12 +104,15 @@ namespace SharpbinV2.Server.Controllers
                     return BadRequest(new { success = false, message = "Username or Email is required" });
                 if (request.Password.Length is < 8 or > 128)
                     return BadRequest(new { success = false, message = "Password must be between 8 and 128 characters" });
-                if (!string.IsNullOrWhiteSpace(request.Username) && request.Username.Length > 32)
-                    return BadRequest(new { success = false, message = "Username must be 32 characters or less" });
-                if (!string.IsNullOrWhiteSpace(request.Email) && request.Email.Length > 128)
+                if (request.Username.Length is < 3 or > 32)
+                    return BadRequest(new { success = false, message = "Username must be between 3 and 32 characters" });
+                if (request.Email.Length > 128)
                     return BadRequest(new { success = false, message = "Email must be 128 characters or less" });
+                if (!string.IsNullOrWhiteSpace(request.Email) && !HelperService.IsValidEmail(request.Email))
+                    return BadRequest(new { success = false, message = "Invalid email" });
                 if (!string.IsNullOrWhiteSpace(request.Username) && !string.IsNullOrWhiteSpace(request.Email))
                     return BadRequest(new { success = false, message = "Please provide either a username or an email, not both" });
+
 
                 if (!string.IsNullOrWhiteSpace(requestDetails.Token))
                 {
@@ -138,10 +141,10 @@ namespace SharpbinV2.Server.Controllers
                 string uuid = Guid.NewGuid().ToString();
 
                 User? user = await _databaseService.CreateUser(request.Username, request.Email, hashedPassword, uuid);
-                if (user == null || user.UID == 0)
+                if (user == null)
                     return StatusCode(500, new { success = false, message = "Failed to create user" });
 
-                var session = await _databaseService.CreateSession(user, requestDetails) ?? new Session();
+                var session = await _databaseService.CreateSession(user, requestDetails, token) ?? new Session();
 
                 if (session.UUID == "0" || session == null)
                     return StatusCode(500, new { success = false, message = "Failed to create session" });
@@ -190,12 +193,12 @@ namespace SharpbinV2.Server.Controllers
                 var requestDetails = HelperService.GetRequestDetails(HttpContext);
                 if (string.IsNullOrWhiteSpace(requestDetails.Token))
                 {
-                    return Unauthorized(new { success = false, message = "Not authenticated" });
+                    return Unauthorized(new { success = false, message = "Not authenticated, no token found" });
                 }
                 var user = await _databaseService.UserFromToken(requestDetails.Token);
                 if (user == null)
                 {
-                    return Unauthorized(new { success = false, message = "Not authenticated" });
+                    return Unauthorized(new { success = false, message = "Not authenticated, invalid token" });
                 }
                 var session = await _databaseService.GetSession(requestDetails.Token);
                 long currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -217,7 +220,8 @@ namespace SharpbinV2.Server.Controllers
                         user.Username,
                         user.Email,
                         user.DisplayName,
-                        user.Created
+                        user.Created,
+                        user.LastLogin
                     }
                 });
             }
