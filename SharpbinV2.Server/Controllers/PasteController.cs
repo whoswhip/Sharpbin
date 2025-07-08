@@ -40,7 +40,9 @@ namespace SharpbinV2.Server.Controllers
 
                 string title = queries.ContainsKey("title") ? queries["title"].ToString() : $"Untitled {await _databaseService.EnumeratePastes()}";
                 string syntax = queries.ContainsKey("syntax") ? queries["syntax"].ToString() : "none";
-                int visibility = queries.ContainsKey("visibility") ? int.Parse(queries["visibility"]) : 0;
+                int visibility = 0;
+                if (queries.ContainsKey("visibility") && int.TryParse(queries["visibility"], out int parsedVisibility))
+                    visibility = parsedVisibility;
 
                 if (title.Length > 500)
                     return BadRequest(new { success = false, message = "Title cannot exceed 500 characters." });
@@ -230,6 +232,114 @@ namespace SharpbinV2.Server.Controllers
             {
                 _logger.LogError(ex, "Error retrieving paste views");
                 return StatusCode(500, new { error = "An error occurred while retrieving the paste views." });
+            }
+        }
+
+        [HttpGet("archive")]
+        [EnableRateLimiting("general")]
+        public async Task<IActionResult> GetPastes(int page, int limit)
+        {
+            if (page < 1 || limit < 1 || limit > 25)
+                return BadRequest(new { success = false, message = "Invalid page or limit parameters." });
+            if (page == 1)
+                page = 0;
+
+            try
+            {
+                int pages = await _databaseService.EnumeratePastes() / limit;
+                if (page > pages)
+                    return BadRequest(new { success = false, message = "Page number exceeds available pages." });
+
+                List<Paste?>? pastes = await _databaseService.GetPastes(limit, page, _logger);
+
+                if (pastes == null || pastes.Count == 0)
+                    return NotFound(new { success = false, message = "No pastes found." });
+
+                var pasteList = new List<object>();
+                foreach (var paste in pastes)
+                {
+                    if (paste == null)
+                        continue;
+                    pasteList.Add(new
+                    {
+                        paste.ID,
+                        paste.UUID,
+                        paste.Title,
+                        paste.Syntax,
+                        paste.Visibility,
+                        paste.Created,
+                        paste.Size,
+                        paste.TrueSize,
+                        paste.AuthorUUID
+                    });
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    pages,
+                    pastes = pasteList
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving pastes archive");
+                return StatusCode(500, new { error = "An error occurred while retrieving the pastes archive." });
+            }
+        }
+
+        [HttpGet("my")]
+        [EnableRateLimiting("general")]
+        public async Task<IActionResult> GetMyPastes(int page, int limit)
+        {
+            var requestDetails = HelperService.GetRequestDetails(HttpContext);
+            if (string.IsNullOrWhiteSpace(requestDetails.Token) || await _databaseService.GetSession(requestDetails.Token) == null)
+                return Unauthorized(new { success = false, message = "Invalid or missing authentication token." });
+            User? user = await _databaseService.UserFromToken(requestDetails.Token ?? "");
+            if (user == null)
+                return Unauthorized(new { success = false, message = "User not found." });
+            if (page < 1 || limit < 1 || limit > 25)
+                return BadRequest(new { success = false, message = "Invalid page or limit parameters." });
+            if (page == 1)
+                page = 0;
+
+            try
+            {
+                int pages = await _databaseService.EnumerateUserPastes(user) / limit;
+                if (page > pages)
+                    return BadRequest(new { success = false, message = "Page number exceeds available pages." });
+                List<Paste?>? pastes = await _databaseService.GetPastesFromUser(user, limit, page, _logger);
+                if (pastes == null || pastes.Count == 0)
+                    return NotFound(new { success = false, message = "No pastes found for this user." });
+                var pasteList = new List<object>();
+                foreach (var paste in pastes)
+                {
+                    if (paste == null)
+                        continue;
+                    pasteList.Add(new
+                    {
+                        paste.ID,
+                        paste.UUID,
+                        paste.Title,
+                        paste.Syntax,
+                        paste.Visibility,
+                        paste.Created,
+                        paste.Size,
+                        paste.TrueSize,
+                        paste.AuthorUUID
+                    });
+                }
+                return Ok(new
+                {
+                    success = true,
+                    pages,
+                    pastes = pasteList
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving user's pastes");
+                return StatusCode(500, new { error = "An error occurred while retrieving the user's pastes." });
             }
         }
     }

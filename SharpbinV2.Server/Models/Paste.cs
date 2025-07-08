@@ -2,6 +2,7 @@
 {
     public class Paste
     {
+        public int UID { get; set; }
         public string? UUID { get; set; }
         public string? ID { get; set; }
         public int? Visibility { get; set; }

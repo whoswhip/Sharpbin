@@ -1,5 +1,5 @@
 let currentPage = 1;
-let totalPages = 0;
+let totalPages = 1;
 let pastesPerPage = 10;
 let userPastes = [];
 
@@ -63,7 +63,7 @@ function formatDate(date, minutes = false) {
 
 async function fetchUserPastes() {
     try {
-        const response = await fetch('/api/pastes/my?page=0&limit=15');
+        const response = await fetch('/api/pastes/my?page=1&limit=15');
         const pastesData = await response.json();
 
         if (pastesData.message === 'No pastes found.' || pastesData.message === 'Page out of range.') {

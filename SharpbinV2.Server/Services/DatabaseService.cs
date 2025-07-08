@@ -546,7 +546,7 @@ namespace SharpbinV2.Server.Services
                         {
                             if (!reader.HasRows)
                                 return null;
-                            var views = new List<View>();
+                            var views = new List<View?>();
                             while (await reader.ReadAsync())
                             {
                                 views.Add(new View
@@ -566,6 +566,105 @@ namespace SharpbinV2.Server.Services
             catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to get views from paste in database.");
+                return null;
+            }
+        }
+        public async Task<List<Paste?>?> GetPastes(int limit, int page, ILogger logger)
+        {
+            if (limit <= 0 || page < 0)
+                return null;
+            try
+            {
+                using (var connection = new SqliteConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "SELECT * FROM pastes WHERE Visibility NOT IN (1,2) ORDER BY Created DESC LIMIT @Limit OFFSET @Offset;";
+                        command.Parameters.AddWithValue("@Limit", limit);
+                        command.Parameters.AddWithValue("@Offset", limit * page);
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (!reader.HasRows)
+                                return null;
+                            var pastes = new List<Paste?>();
+                            while (await reader.ReadAsync())
+                            {
+                                pastes.Add(new Paste
+                                {
+                                    UID = reader.GetInt32(0),
+                                    UUID = reader.GetString(1),
+                                    ID = reader.GetString(2),
+                                    Visibility = reader.GetInt32(3),
+                                    Title = reader.IsDBNull(4) ? null : reader.GetString(4),
+                                    AuthorUUID = reader.GetString(5),
+                                    FilePath = reader.GetString(6),
+                                    Created = reader.GetInt64(7),
+                                    Edited = reader.GetInt64(8),
+                                    Size = reader.GetInt32(9),
+                                    TrueSize = reader.GetInt32(10),
+                                    Views = reader.GetInt32(11),
+                                    Syntax = reader.IsDBNull(12) ? null : reader.GetString(12)
+                                });
+                            }
+                            return pastes;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to get pastes from database.");
+                return null;
+            }
+        }
+        public async Task<List<Paste?>?> GetPastesFromUser(User user, int limit, int page, ILogger logger)
+        {
+            if (user == null || limit <= 0 || page < 0)
+                return null;
+            try
+            {
+                using (var connection = new SqliteConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "SELECT * FROM pastes WHERE AuthorUUID = @AuthorUUID ORDER BY Created DESC LIMIT @Limit OFFSET @Offset;";
+                        command.Parameters.AddWithValue("@AuthorUUID", user.UUID);
+                        command.Parameters.AddWithValue("@Limit", limit);
+                        command.Parameters.AddWithValue("@Offset", limit * page);
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (!reader.HasRows)
+                                return null;
+                            var pastes = new List<Paste?>();
+                            while (await reader.ReadAsync())
+                            {
+                                pastes.Add(new Paste
+                                {
+                                    UID = reader.GetInt32(0),
+                                    UUID = reader.GetString(1),
+                                    ID = reader.GetString(2),
+                                    Visibility = reader.GetInt32(3),
+                                    Title = reader.IsDBNull(4) ? null : reader.GetString(4),
+                                    AuthorUUID = reader.GetString(5),
+                                    FilePath = reader.GetString(6),
+                                    Created = reader.GetInt64(7),
+                                    Edited = reader.GetInt64(8),
+                                    Size = reader.GetInt32(9),
+                                    TrueSize = reader.GetInt32(10),
+                                    Views = reader.GetInt32(11),
+                                    Syntax = reader.IsDBNull(12) ? null : reader.GetString(12)
+                                });
+                            }
+                            return pastes;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to get user pastes from database.");
                 return null;
             }
         }

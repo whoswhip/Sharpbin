@@ -1,5 +1,5 @@
-let pages = 0;
-let currentPage = 0;
+let pages = 1;
+let currentPage = 1;
 let limit = 25;
 
 async function renderArchive(page, limit) {
@@ -35,9 +35,9 @@ async function renderArchive(page, limit) {
         pages = archiveData.pages;
         currentPage = page;
 
-        pagesElement.innerText = `${page + 1}/${pages}`;
-        previousButton.disabled = page <= 0;
-        nextButton.disabled = page + 1 >= pages;
+        pagesElement.innerText = `${page}/${pages}`;
+        previousButton.disabled = page <= 1;
+        nextButton.disabled = page >= pages;
 
         let archiveListHTML = "";
         if (pastes.length === 0) {
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let page = parseInt(queries.get("page"));
     limit = parseInt(queries.get("limit"));
 
-    if (isNaN(page) || page < 0) page = 0;
+    if (isNaN(page) || page < 1) page = 1;
     if (isNaN(limit) || limit < 1 || limit > 25) limit = 25;
 
     await renderArchive(page, limit);
@@ -119,13 +119,13 @@ function formatDate(unix, relative = false) {
 }
 
 function nextPage() {
-    if (currentPage + 1 >= pages) return;
+    if (currentPage >= pages) return;
     currentPage++;
     updateUrlAndRender();
 }
 
 function previousPage() {
-    if (currentPage <= 0) return;
+    if (currentPage <= 1) return;
     currentPage--;
     updateUrlAndRender();
 }
