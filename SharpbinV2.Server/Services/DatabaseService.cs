@@ -129,6 +129,38 @@ namespace SharpbinV2.Server.Services
                 }
             }
         }
+        public async Task<User?> UserFromUID(int uid)
+        {
+            if (uid <= 0)
+                return null;
+            using (var connection = new SqliteConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "SELECT * FROM users WHERE UID = @UID;";
+                    command.Parameters.AddWithValue("@UID", uid);
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        if (!reader.HasRows)
+                            return null;
+                        await reader.ReadAsync();
+                        return new User
+                        {
+                            UID = reader.GetInt32(0),
+                            UUID = reader.GetString(1),
+                            Type = reader.GetInt32(2),
+                            Email = reader.IsDBNull(3) ? null : reader.GetString(3),
+                            Username = reader.GetString(4),
+                            DisplayName = reader.IsDBNull(5) ? null : reader.GetString(5),
+                            Password = reader.GetString(6),
+                            Created = reader.GetInt64(7),
+                            LastLogin = reader.GetInt64(8)
+                        };
+                    }
+                }
+            }
+        }
         public async Task<int> EnumeratePastes()
         {
             using (var connection = new SqliteConnection(_connectionString))

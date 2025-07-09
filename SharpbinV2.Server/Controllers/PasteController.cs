@@ -310,7 +310,7 @@ namespace SharpbinV2.Server.Controllers
                     return BadRequest(new { success = false, message = "Page number exceeds available pages." });
                 List<Paste?>? pastes = await _databaseService.GetPastesFromUser(user, limit, page, _logger);
                 if (pastes == null || pastes.Count == 0)
-                    return NotFound(new { success = false, message = "No pastes found for this user." });
+                    return NotFound(new { success = false, message = "No pastes found." });
                 var pasteList = new List<object>();
                 foreach (var paste in pastes)
                 {
