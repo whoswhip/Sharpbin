@@ -12,9 +12,9 @@ Instead of using html files and replacing variables(Simple SSR) it is now done w
 - Paste Analytics (Views etc.)
 
 ## TODO
-- Password Resets
-- Switch to Controllers
-- Admin Panel 
-- Paste Editing
-- Paste Searching (maybe)
-- Paste Deletion
+- [ ] Password Resets
+- [x] Switch to Controllers
+- [ ] Admin Panel 
+- [ ] Paste Editing
+- [ ] Paste Searching (maybe)
+- [ ] Paste Deletion
