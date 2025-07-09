@@ -184,6 +184,12 @@ function addContent(content, syntax) {
 
 async function decryptAES(content, password) {
     const enc = new TextEncoder();
+    const rawData = atob(content);
+    const rawDataArray = Uint8Array.from(rawData, c => c.charCodeAt(0));
+    const salt = rawDataArray.slice(0, 16);
+    const iv = rawDataArray.slice(16, 28);
+    const ciphertext = rawDataArray.slice(28);
+
     const keyMaterial = await window.crypto.subtle.importKey(
         "raw",
         enc.encode(password),
@@ -194,7 +200,7 @@ async function decryptAES(content, password) {
     const key = await window.crypto.subtle.deriveKey(
         {
             name: "PBKDF2",
-            salt: enc.encode("salt"),
+            salt: salt,
             iterations: 100000,
             hash: "SHA-256"
         },
@@ -203,10 +209,8 @@ async function decryptAES(content, password) {
         false,
         ["decrypt"]
     );
-    const rawData = atob(content);
-    const rawDataArray = Uint8Array.from(rawData, c => c.charCodeAt(0));
-    const iv = rawDataArray.slice(0, 12);
-    const ciphertext = rawDataArray.slice(12);
+
+
     const decrypted = await window.crypto.subtle.decrypt(
         {
             name: "AES-GCM",

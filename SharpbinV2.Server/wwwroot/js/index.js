@@ -69,6 +69,9 @@ function getSiteInfo() {
 
 async function encryptAES(content, password) {
     const enc = new TextEncoder();
+
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+
     const keyMaterial = await window.crypto.subtle.importKey(
         "raw",
         enc.encode(password),
@@ -79,7 +82,7 @@ async function encryptAES(content, password) {
     const key = await window.crypto.subtle.deriveKey(
         {
             name: "PBKDF2",
-            salt: enc.encode("salt"),
+            salt: salt,
             iterations: 100000,
             hash: "SHA-256"
         },
@@ -97,7 +100,11 @@ async function encryptAES(content, password) {
         key,
         enc.encode(content)
     );
-    const encryptedArray = new Uint8Array(encryptedContent);
-    const encryptedString = btoa(String.fromCharCode(...iv) + String.fromCharCode(...encryptedArray));
-    return encryptedString;
+
+    const combined = new Uint8Array(salt.length + iv.length + encryptedContent.byteLength);
+    combined.set(salt, 0);
+    combined.set(iv, salt.length);
+    combined.set(new Uint8Array(encryptedContent), salt.length + iv.length);
+
+    return btoa(String.fromCharCode.apply(null, combined));
 }
