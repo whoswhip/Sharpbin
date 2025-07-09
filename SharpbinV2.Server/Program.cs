@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.RateLimiting;
 using SharpbinV2.Server.Models;
 using SharpbinV2.Server.Services;
+using System.Security.Cryptography;
 
 namespace SharpbinV2.Server
 {
@@ -36,13 +37,15 @@ namespace SharpbinV2.Server
             "toml",
             "xml"
         };
+        public static string SHA256Salt = RandomNumberGenerator.GetHexString(32);
 
         static async Task Main(string[] args)
         {
             await Initialize();
-            var logger = new Logging();
+
             var builder = WebApplication.CreateBuilder(args);
             builder.Configuration.AddEnvironmentVariables();
+
             if (Environment.GetEnvironmentVariable("HTTPS") == "true")
             {
                 builder.WebHost.UseUrls($"https://*:{Environment.GetEnvironmentVariable("ASPNETCORE_HTTPS_PORTS") ?? "5820"}");
@@ -51,7 +54,35 @@ namespace SharpbinV2.Server
             {
                 builder.WebHost.UseUrls($"http://*:{Environment.GetEnvironmentVariable("ASPNETCORE_HTTP_PORTS") ?? "5810"}");
             }
+
             MaxFileSize = Environment.GetEnvironmentVariable("MAX_FILE_SIZE") != null ? Convert.ToInt64(Environment.GetEnvironmentVariable("MAX_FILE_SIZE")) : MaxFileSize;
+
+            if (Environment.GetEnvironmentVariable("SHA256_SALT") != null)
+            {
+                SHA256Salt = Environment.GetEnvironmentVariable("SHA256_SALT") ?? SHA256Salt;
+            }
+            else
+            {
+                SHA256Salt = RandomNumberGenerator.GetHexString(32);
+                Environment.SetEnvironmentVariable("SHA256_SALT", SHA256Salt);
+
+                var dotenv = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+                if (File.Exists(dotenv))
+                {
+                    var lines = File.ReadAllLines(dotenv).ToList();
+                    var saltLine = $"SHA256_SALT={SHA256Salt}";
+                    if (lines.Any(line => line.StartsWith("SHA256_SALT=")))
+                    {
+                        lines[lines.FindIndex(line => line.StartsWith("SHA256_SALT="))] = saltLine;
+                    }
+                    else
+                    {
+                        lines.Add(saltLine);
+                    }
+                    File.WriteAllLines(dotenv, lines);
+                }
+            }
+
 
             builder.WebHost.ConfigureKestrel(options =>
             {
@@ -136,220 +167,12 @@ namespace SharpbinV2.Server
             app.UseResponseCaching();
             app.UseResponseCompression();
 
-            #region Static Endpoints
-            app.MapGet("/", (HttpContext context) =>
-            {
-                context.Response.StatusCode = 200;
-                context.Response.Headers.Append("Content-Type", "text/html");
-                return context.Response.SendFileAsync("wwwroot/index.html");
-            }).RequireRateLimiting("general");
-            app.MapGet("/{pasteid}", async (HttpContext context, IWebHostEnvironment env, string pasteid) =>
-            {
-                if (string.IsNullOrWhiteSpace(pasteid))
-                {
-                    context.Response.StatusCode = 400;
-                    context.Response.Redirect("/error?error=400&message=Invalid paste id.");
-                    return;
-                }
-
-                var filePath = Path.Combine(env.WebRootPath, pasteid);
-                if (File.Exists(filePath))
-                {
-                    context.Response.StatusCode = 200;
-                    switch (Path.GetExtension(filePath))
-                    {
-                        case "html":
-                            context.Response.Headers.Append("Content-Type", "text/html");
-                            break;
-                        case "css":
-                            context.Response.Headers.Append("Content-Type", "text/css");
-                            break;
-                        case "js":
-                            context.Response.Headers.Append("Content-Type", "text/javascript");
-                            break;
-                        case "json":
-                            context.Response.Headers.Append("Content-Type", "application/json");
-                            break;
-                        case "png":
-                            context.Response.Headers.Append("Content-Type", "image/png");
-                            break;
-                        case "jpg":
-                        case "jpeg":
-                            context.Response.Headers.Append("Content-Type", "image/jpeg");
-                            break;
-                        case "ico":
-                            context.Response.Headers.Append("Content-Type", "image/x-icon");
-                            break;
-                    }
-                    await context.Response.SendFileAsync(filePath);
-                    return;
-                }
-                var paste = await Database.GetPasteFromID(pasteid);
-                if (paste == null)
-                {
-                    context.Response.StatusCode = 400;
-                    context.Response.Redirect("/error?error=400&message=Paste not found.");
-                    return;
-                }
-                var requestdetails = GetRequestDetails(context);
-                var user = await Database.UserFromToken(requestdetails.Token);
-
-                if (user != null)
-                {
-                    if (user.UUID != paste.AuthorUUID)
-                    {
-                        if (!await Database.HasAlreadyViewedFromUserDetails(user))
-                        {
-                            await Database.AddViewToPaste(user, paste, requestdetails);
-                        }
-                    }
-                }
-                else
-                {
-                    if (!await Database.HasAlreadyViewedFromRqDetails(requestdetails))
-                    {
-                        await Database.AddViewToPaste(new User { UUID = "0" }, paste, requestdetails);
-                    }
-                }
-                context.Response.StatusCode = 200;
-                context.Response.Headers.Append("Content-Type", "text/html");
-                await context.Response.SendFileAsync("wwwroot/paste.html");
-            }).RequireRateLimiting("general");
-            app.MapGet("/error", async (HttpContext context) =>
-            {
-                context.Response.StatusCode = 400;
-                context.Response.Headers.Append("Content-Type", "text/html");
-                await context.Response.SendFileAsync("wwwroot/error.html");
-            });
-            app.MapGet("/error.html", (HttpContext context) =>
-            {
-                context.Response.Redirect("/error");
-            });
-            app.MapGet("/raw/{pasteid}", async (HttpContext context) =>
-            {
-                var pasteid = context.Request.RouteValues["pasteid"].ToString() ?? null;
-                if (string.IsNullOrEmpty(pasteid))
-                {
-                    context.Response.StatusCode = 400;
-                    context.Response.Redirect("/error?error=400&message=Invalid paste id.");
-                    return;
-                }
-                var paste = await Database.GetPasteFromID(pasteid);
-                if (paste == null)
-                {
-                    context.Response.StatusCode = 400;
-                    context.Response.Redirect("/error?error=400&message=Paste not found.");
-                    return;
-                }
-                context.Response.StatusCode = 200;
-                context.Response.Headers.Append("Content-Type", "text/plain");
-                if (paste.FilePath.EndsWith(".gz"))
-                {
-                    context.Response.Headers.Append("Content-Encoding", "gzip");
-                    await context.Response.SendFileAsync(paste.FilePath);
-                }
-                else
-                {
-                    await context.Response.SendFileAsync(paste.FilePath);
-                }
-            }).RequireRateLimiting("general");
-            app.MapGet("/paste.html", (HttpContext context) =>
-            {
-                context.Response.Redirect("/");
-            });
-            app.MapGet("/archive", async (HttpContext context) =>
-            {
-                context.Response.StatusCode = 200;
-                context.Response.Headers.Append("Content-Type", "text/html");
-                await context.Response.SendFileAsync("wwwroot/archive.html");
-            }).RequireRateLimiting("general");
-            app.MapGet("/dash", async (HttpContext context) =>
-            {
-                context.Response.StatusCode = 200;
-                context.Response.Headers.Append("Content-Type", "text/html");
-                await context.Response.SendFileAsync("wwwroot/dash.html");
-            }).RequireRateLimiting("general");
-            app.MapGet("/dash.html", (HttpContext context) =>
-            {
-                context.Response.Redirect("/dash");
-            });
-            app.MapGet("/login", async (HttpContext context) =>
-            {
-                context.Response.StatusCode = 200;
-                context.Response.Headers.Append("Content-Type", "text/html");
-                await context.Response.SendFileAsync("wwwroot/login.html");
-            }).RequireRateLimiting("general");
-            app.MapGet("/register", async (HttpContext context) =>
-            {
-                context.Response.StatusCode = 200;
-                context.Response.Headers.Append("Content-Type", "text/html");
-                await context.Response.SendFileAsync("wwwroot/register.html");
-            }).RequireRateLimiting("general");
-            app.MapGet("/u/{username}", async (HttpContext context) =>
-            {
-                var username = context.Request.RouteValues["username"].ToString() ?? null;
-                if (string.IsNullOrEmpty(username))
-                {
-                    context.Response.StatusCode = 400;
-                    context.Response.Redirect("/error?error=400&message=Invalid username.");
-                    return;
-                }
-                string html = File.ReadAllText("wwwroot/user.html");
-                context.Response.StatusCode = 200;
-                context.Response.Headers.Append("Content-Type", "text/html");
-                context.Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate");
-                context.Response.Headers.Append("Pragma", "no-cache");
-                context.Response.Headers.Append("Expires", "0");
-
-
-                await context.Response.WriteAsync(html);
-
-            }).RequireRateLimiting("general");
-            app.MapGet("/reset-password", async (HttpContext context) =>
-            {
-                context.Response.StatusCode = 200;
-                context.Response.Headers.Append("Content-Type", "text/html");
-                await context.Response.SendFileAsync("wwwroot/reset-password.html");
-            }).RequireRateLimiting("general");
-            #endregion
-
             app.MapControllers();
 
             await app.RunAsync();
 
         }
 
-        #region Helper Functions
-        static RequestDetails GetRequestDetails(HttpContext context)
-        {
-            var requestdetails = new RequestDetails();
-            var headers = context.Request.Headers;
-            if (headers.ContainsKey("User-Agent"))
-                requestdetails.UserAgent = headers["User-Agent"];
-
-            if (headers.ContainsKey("X-Forwarded-For"))
-                requestdetails.Ip = headers["X-Forwarded-For"];
-            else if (headers.ContainsKey("X-Real-IP"))
-                requestdetails.Ip = headers["X-Real-IP"];
-            else if (headers.ContainsKey("CF-Connecting-IP"))
-                requestdetails.Ip = headers["CF-Connecting-IP"];
-            else if (headers.ContainsKey("True-Client-IP"))
-                requestdetails.Ip = headers["True-Client-IP"];
-            else if (headers.ContainsKey("X-Cluster-Client-IP"))
-                requestdetails.Ip = headers["X-Cluster-Client-IP"];
-            else if (headers.ContainsKey("X-ProxyUser-IP"))
-                requestdetails.Ip = headers["X-ProxyUser-IP"];
-            else
-                requestdetails.Ip = context.Connection.RemoteIpAddress?.ToString();
-
-            if (headers.ContainsKey("Authorization"))
-                requestdetails.Token = headers["Authorization"];
-            else if (context.Request.Cookies.ContainsKey("Authorization"))
-                requestdetails.Token = context.Request.Cookies["Authorization"];
-
-            return requestdetails;
-        }
-        #endregion
         static async Task Initialize()
         {
             try
@@ -402,8 +225,8 @@ namespace SharpbinV2.Server
                         command.CommandText = @"CREATE TABLE IF NOT EXISTS views (
                                 UserUUID	TEXT NOT NULL,
                                 PasteUUID	INTEGER NOT NULL,
-                                Ip	TEXT NOT NULL,
-                                UserAgent	TEXT NOT NULL,
+                                Fingerprint	TEXT NOT NULL,
+                                UserAgent	TEXT,
                                 Created	INTEGER NOT NULL
                             );";
                         await command.ExecuteNonQueryAsync();

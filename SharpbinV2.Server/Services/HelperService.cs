@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 using SharpbinV2.Server.Models;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using Bcrypt = BCrypt.Net.BCrypt;
@@ -86,6 +87,20 @@ namespace SharpbinV2.Server.Services
         {
             return Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
         }
-
+        public static string SHA256Hash(string input, string salt = "")
+        {
+            using (SHA256 sha256Hash = SHA256.Create())
+            {
+                string combinedInput = input + salt;
+                byte[] bytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(combinedInput));
+                
+                StringBuilder builder = new StringBuilder();
+                foreach (byte b in bytes)
+                {
+                    builder.Append(b.ToString("x2"));
+                }
+                return builder.ToString();
+            }
+        }
     }
 }

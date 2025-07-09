@@ -230,9 +230,8 @@ namespace SharpbinV2.Server.Services
                 await connection.OpenAsync();
                 using (var command = connection.CreateCommand())
                 {
-                    command.CommandText = "SELECT * FROM views WHERE Ip = @Ip AND UserAgent = @UserAgent;";
-                    command.Parameters.AddWithValue("@Ip", Bcrypt.HashPassword(details.Ip, Bcrypt.GenerateSalt(8)));
-                    command.Parameters.AddWithValue("@UserAgent", details.UserAgent);
+                    command.CommandText = "SELECT * FROM views WHERE Fingerprint = @Fingerprint";
+                    command.Parameters.AddWithValue("@Fingerprint", HelperService.SHA256Hash(details.Ip + details.UserAgent, Program.SHA256Salt));
                     using (var reader = await command.ExecuteReaderAsync())
                     {
                         return reader.HasRows;
@@ -266,11 +265,11 @@ namespace SharpbinV2.Server.Services
                 await connection.OpenAsync();
                 using (var command = connection.CreateCommand())
                 {
-                    command.CommandText = "INSERT INTO views (UserUUID, PasteUUID, Ip, UserAgent, Created) VALUES (@UserUUID, @PasteUUID, @Ip, @UserAgent, @Created);";
+                    command.CommandText = "INSERT INTO views (UserUUID, PasteUUID, Fingerprint, UserAgent, Created) VALUES (@UserUUID, @PasteUUID, @Fingerprint, @UserAgent, @Created);";
                     command.Parameters.AddWithValue("@UserUUID", _user.UUID);
                     command.Parameters.AddWithValue("@PasteUUID", paste.UUID);
-                    command.Parameters.AddWithValue("@Ip", Bcrypt.HashPassword(details.Ip, Bcrypt.GenerateSalt(8)));
-                    command.Parameters.AddWithValue("@UserAgent", details.UserAgent);
+                    command.Parameters.AddWithValue("@Fingerprint", HelperService.SHA256Hash(details.Ip + details.UserAgent, Program.SHA256Salt));
+                    command.Parameters.AddWithValue("@UserAgent", details.UserAgent ?? (object)DBNull.Value);
                     command.Parameters.AddWithValue("@Created", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                     await command.ExecuteNonQueryAsync();
                     command.CommandText = "UPDATE pastes SET Views = Views + 1 WHERE UUID = @UUID;";
@@ -585,7 +584,7 @@ namespace SharpbinV2.Server.Services
                                 {
                                     UserUUID = reader.GetString(0),
                                     PasteUUID = reader.GetString(1),
-                                    IP = reader.GetString(2),
+                                    Fingerprint = reader.GetString(2),
                                     UserAgent = reader.GetString(3),
                                     Created = reader.GetInt64(4)
                                 });
