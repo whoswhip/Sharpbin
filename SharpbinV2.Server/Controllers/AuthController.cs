@@ -221,7 +221,8 @@ namespace SharpbinV2.Server.Controllers
                         user.Email,
                         user.DisplayName,
                         user.Created,
-                        user.LastLogin
+                        user.LastLogin,
+                        user.Type
                     }
                 });
             }

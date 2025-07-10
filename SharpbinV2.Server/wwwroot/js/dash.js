@@ -3,6 +3,10 @@ let totalPages = 1;
 let pastesPerPage = 10;
 let userPastes = [];
 
+const userTypes = {
+    "Admin": 255,
+    "User": 0
+};
 
 document.addEventListener('DOMContentLoaded', function () {
     waitForAuthData().then(data => {

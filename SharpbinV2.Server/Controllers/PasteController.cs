@@ -342,5 +342,108 @@ namespace SharpbinV2.Server.Controllers
                 return StatusCode(500, new { error = "An error occurred while retrieving the user's pastes." });
             }
         }
+
+        [HttpDelete("{id}")]
+        [EnableRateLimiting("general")]
+        public async Task<IActionResult> DeletePaste(string id)
+        {
+            var requestDetails = HelperService.GetRequestDetails(HttpContext);
+            if (string.IsNullOrWhiteSpace(requestDetails.Token) || await _databaseService.GetSession(requestDetails.Token) == null)
+                return Unauthorized(new { success = false, message = "Invalid or missing authentication token." });
+
+            User? user = await _databaseService.UserFromToken(requestDetails.Token ?? "");
+            if (user == null || user.UUID == "0")
+                return Unauthorized(new { success = false, message = "User not found." });
+
+            if (string.IsNullOrWhiteSpace(id))
+                return BadRequest(new { success = false, message = "Invalid paste ID." });
+            try
+            {
+                Paste? paste = await _databaseService.GetPasteFromID(id);
+                if (paste == null)
+                    return NotFound(new { success = false, message = "Paste not found." });
+
+                if (paste.AuthorUUID != user.UUID && user.Type != 255)
+                    return Unauthorized(new { success = false, message = "You do not have permission to delete this paste." });
+
+                bool success = await _databaseService.DeletePaste(paste, _logger);
+                if (!success)
+                    return StatusCode(500, new { success, message = "An error occurred while deleting the paste." });
+
+                if (IOFile.Exists(paste.FilePath))
+                    IOFile.Delete(paste.FilePath);
+
+                _logger.LogInformation($"Paste deleted successfully: {id}");
+                return Ok(new { success = true, message = "Paste deleted successfully." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting paste");
+                return StatusCode(500, new { error = "An error occurred while deleting the paste." });
+            }
+        }
+
+        [HttpPost("{id}/change-id")]
+        [EnableRateLimiting("general")]
+        public async Task<IActionResult> ChangePasteID(string id, string newId)
+        {
+            var requestDetails = HelperService.GetRequestDetails(HttpContext);
+
+            if (string.IsNullOrWhiteSpace(requestDetails.Token) || await _databaseService.GetSession(requestDetails.Token) == null)
+                return Unauthorized(new { success = false, message = "Invalid or missing authentication token." });
+            User? user = await _databaseService.UserFromToken(requestDetails.Token ?? "");
+            if (user == null || user.UUID == "0")
+                return Unauthorized(new { success = false, message = "User not found." });
+            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(newId))
+                return BadRequest(new { success = false, message = "Invalid paste ID." });
+            if (user.Type != 255)
+                return Unauthorized(new { success = false, message = "You do not have permission to change paste ID." });
+
+            try
+            {
+                var paste = await _databaseService.GetPasteFromID(id);
+                if (paste == null)
+                    return NotFound(new { success = false, message = "Paste not found." });
+
+                var newPaste = await _databaseService.UpdatePasteID(paste, newId, _logger);
+                if (newPaste == null)
+                    return StatusCode(500, new { success = false, message = "An error occurred while changing the paste ID." });
+
+                if (IOFile.Exists(paste.FilePath) && paste.ID != null)
+                {
+                    string newFilePath = paste.FilePath.Replace(paste.ID, newId);
+                    IOFile.Move(paste.FilePath, newFilePath);
+                    paste.FilePath = newFilePath;
+                }
+                else
+                {
+                    return StatusCode(500, new { success = false, message = "Paste file not found or invalid." });
+                }
+
+                
+                return Ok(new
+                {
+                    success = true,
+                    message = "Paste ID changed successfully.",
+                    paste = new
+                    {
+                        newPaste.ID,
+                        newPaste.UUID,
+                        newPaste.Title,
+                        newPaste.Syntax,
+                        newPaste.Visibility,
+                        newPaste.Created,
+                        newPaste.Size,
+                        newPaste.TrueSize,
+                        newPaste.AuthorUUID
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error changing paste ID");
+                return StatusCode(500, new { error = "An error occurred while changing the paste ID." });
+            }
+        }
     }
 }

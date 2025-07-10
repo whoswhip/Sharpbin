@@ -163,6 +163,37 @@ function addInfo(paste) {
     document.getElementById("raw-button").addEventListener("click", function () {
         window.location.href = `/raw/${paste.id}`;
     });
+
+    waitForAuthData().then(() => {
+        if (authData.user.uuid === paste.authorUUID || authData.user.type === 255) {
+            document.getElementById("delete-button").style.display = "inline-block";
+            document.getElementById("delete-button").addEventListener("click", function () {
+                if (confirm("Are you sure you want to delete this paste?")) {
+                    fetch(`/api/pastes/${paste.id}`, {
+                        method: "DELETE"
+                    }).then(response => {
+                        if (response.ok) {
+                            showNotification("Paste deleted!", "info", 2000);
+                            window.location.href = "/";
+                        } else {
+                            showNotification("Failed to delete paste.", "error", 2000);
+                        }
+                    });
+                }
+            });
+        }
+    });
+}
+
+function waitForAuthData() {
+    return new Promise((resolve) => {
+        const checkAuth = setInterval(() => {
+            if (authData) {
+                clearInterval(checkAuth);
+                resolve();
+            }
+        }, 100);
+    });
 }
 
 function addContent(content, syntax) {

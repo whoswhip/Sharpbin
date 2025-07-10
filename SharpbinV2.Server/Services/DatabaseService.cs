@@ -699,5 +699,69 @@ namespace SharpbinV2.Server.Services
                 return null;
             }
         }
+        public async Task<bool> DeletePaste(Paste paste, ILogger logger)
+        {
+            if (paste == null || string.IsNullOrEmpty(paste.UUID))
+                return false;
+            try
+            {
+                using (var connection = new SqliteConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "DELETE FROM pastes WHERE UUID = @UUID;";
+                        command.Parameters.AddWithValue("@UUID", paste.UUID);
+                        await command.ExecuteNonQueryAsync();
+                    }
+
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "DELETE FROM views WHERE PasteUUID = @PasteUUID;";
+                        command.Parameters.AddWithValue("@PasteUUID", paste.UUID);
+                        await command.ExecuteNonQueryAsync();
+                    }
+
+                    if (!string.IsNullOrEmpty(paste.FilePath) && File.Exists(paste.FilePath))
+                    {
+                        File.Delete(paste.FilePath);
+                    }
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to delete paste from database.");
+                return false;
+            }
+        }
+        public async Task<Paste?> UpdatePasteID(Paste paste, string newId, ILogger logger)
+        {
+            if (paste == null || string.IsNullOrEmpty(paste.UUID) || string.IsNullOrEmpty(newId))
+                return null;
+            try
+            {
+                using (var connection = new SqliteConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "UPDATE pastes SET ID = @NewID, Fileath = @FilePath WHERE UUID = @UUID;";
+                        command.Parameters.AddWithValue("@NewID", newId);
+                        command.Parameters.AddWithValue("@FilePath", $"pastes/{newId}" ?? paste.FilePath);
+                        command.Parameters.AddWithValue("@UUID", paste.UUID);
+                        await command.ExecuteNonQueryAsync();
+                    }
+                }
+                paste.ID = newId;
+                paste.FilePath = $"pastes/{newId}";
+                return paste;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to update paste ID in database.");
+                return null;
+            }
+        }
     }
 }

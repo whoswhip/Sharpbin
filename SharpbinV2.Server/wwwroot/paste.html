@@ -21,7 +21,10 @@
 <body>
     <div class="main-container">
         <div class="paste-header">
-            <h1 id="paste-title">Title</h1>
+            <div style="display: flex;">
+                <h1 id="paste-title">Title</h1>
+                <span class=" edit-icon" style="width: 32px; height: 32px;" id="edit-button" title="Edit Paste"></span>
+            </div>
             <div class="paste-information-card">
                 <div id="info-throbber" class="throbber"></div>
                 <div class="paste-info-item"><span class="info-icon syntax-icon"></span><span id="paste-syntax">Syntax</span></div>
@@ -36,6 +39,7 @@
                 <button id="copy-button">Copy</button>
                 <button id="download-button">Download</button>
                 <button id="raw-button">Raw</button>
+                <button id="delete-button" style="display: none;">Delete</button>
             </div>
             <div id="content-throbber" class="throbber"></div>
             <pre id="paste-content">Loading...</pre>
