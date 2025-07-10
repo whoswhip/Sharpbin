@@ -17,4 +17,4 @@ Instead of using html files and replacing variables(Simple SSR) it is now done w
 - [ ] Admin Panel 
 - [ ] Paste Editing
 - [ ] Paste Searching (maybe)
-- [ ] Paste Deletion
+- [x] Paste Deletion
