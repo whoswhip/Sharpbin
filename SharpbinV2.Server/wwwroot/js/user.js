@@ -41,7 +41,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         window.location.href = "/error?code=404&message=User not found";
         return;
     }
-    const userInfoRes = await fetch(`/api/users/${username}`);
+    const userInfoRes = await fetch(`/api/users/username/${username}`);
     if (!userInfoRes.ok) {
         document.getElementById("user-name").innerText = "User not found";
         document.getElementById("user-pastes-list").innerHTML = "<p style='color:var(--neutral-400)'>No user data.</p>";

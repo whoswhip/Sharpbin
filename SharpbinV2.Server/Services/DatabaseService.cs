@@ -649,7 +649,7 @@ namespace SharpbinV2.Server.Services
                 return null;
             }
         }
-        public async Task<List<Paste?>?> GetPastesFromUser(User user, int limit, int page, ILogger logger)
+        public async Task<List<Paste?>?> GetPastesFromUser(User user, int limit, int page, ILogger logger, bool _private = false)
         {
             if (user == null || limit <= 0 || page < 0)
                 return null;
@@ -660,10 +660,15 @@ namespace SharpbinV2.Server.Services
                     await connection.OpenAsync();
                     using (var command = connection.CreateCommand())
                     {
-                        command.CommandText = "SELECT * FROM pastes WHERE AuthorUUID = @AuthorUUID ORDER BY Created DESC LIMIT @Limit OFFSET @Offset;";
+                        if (_private)
+                            command.CommandText = "SELECT * FROM pastes WHERE AuthorUUID = @AuthorUUID ORDER BY Created DESC LIMIT @Limit OFFSET @Offset;";
+                        else
+                            command.CommandText = "SELECT * FROM pastes WHERE AuthorUUID = @AuthorUUID AND Visibility NOT IN (1,2) ORDER BY Created DESC LIMIT @Limit OFFSET @Offset;";
+
                         command.Parameters.AddWithValue("@AuthorUUID", user.UUID);
                         command.Parameters.AddWithValue("@Limit", limit);
                         command.Parameters.AddWithValue("@Offset", limit * page);
+
                         using (var reader = await command.ExecuteReaderAsync())
                         {
                             if (!reader.HasRows)

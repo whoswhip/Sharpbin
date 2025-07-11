@@ -179,84 +179,90 @@ function nextPage() {
 }
 
 
-function logout() {
-
-    if (document.querySelector('.logout-modal-overlay')) return;
-
-    const modalOverlay = document.createElement('div');
-    modalOverlay.className = 'logout-modal-overlay';
-
-    const modalBox = document.createElement('div');
-    modalBox.className = 'logout-modal-box';
-    modalBox.innerHTML = `
-        <h2>Confirm Logout</h2>
-        <p>Are you sure you want to log out?</p>
-        <button id="confirm-logout">Logout</button>
-        <button id="cancel-logout">Cancel</button>
-    `;
-    modalOverlay.appendChild(modalBox);
-    document.body.appendChild(modalOverlay);
-
-    document.getElementById('cancel-logout').onclick = function () {
-        document.body.removeChild(modalOverlay);
-    };
-
-    document.getElementById('confirm-logout').onclick = async function () {
+async function logout() {
+    const confirmed = await Modal.confirm(
+        "Are you sure you want to log out?",
+        "Confirm Logout",
+        "danger"
+    );
+    
+    if (confirmed) {
         try {
-            await fetch('/api/auth/logout', { method: 'POST'});
+            await fetch('/api/auth/logout', { method: 'POST' });
         } catch { }
         window.location.href = '/login';
-    };
+    }
 }
 
 
-function deleteAccount() {
-
-    if (document.querySelector('.delete-modal-overlay')) return;
-
+async function deleteAccount() {
     const username = document.getElementById('account-username').textContent.replace('Username: ', '').trim();
     const pasteCount = userPastes.length;
 
-    const modalOverlay = document.createElement('div');
-    modalOverlay.className = 'delete-modal-overlay';
-
-    const modalBox = document.createElement('div');
-    modalBox.className = 'delete-modal-box';
-    modalBox.innerHTML = `
-        <h2>Delete Account</h2>
-        <p>This action is <b>irreversible</b> and will delete your account and all your ${pasteCount} pastes.</p>
-        <p>Type your username <b>${username}</b> and your paste count <b>${pasteCount}</b> to confirm:</p>
-        <input id="delete-username" type="text" placeholder="Username" style="margin-bottom:8px;width:90%;padding:8px;border-radius:5px;border:1px solid var(--neutral-700);background:var(--neutral-800);color:var(--neutral-100);"><br>
-        <input id="delete-pastecount" type="number" placeholder="Paste count" style="margin-bottom:16px;width:90%;padding:8px;border-radius:5px;border:1px solid var(--neutral-700);background:var(--neutral-800);color:var(--neutral-100);"><br>
-        <button id="confirm-delete-account" disabled>Delete</button>
-        <button id="cancel-delete-account">Cancel</button>
-        <p id="delete-error" style="color:#e74c3c;margin-top:1rem;display:none;"></p>
+    const customContent = document.createElement('div');
+    customContent.innerHTML = `
+        <p style="color: var(--text-color); margin-bottom: 1rem; line-height: 1.6;">
+            This action is <strong>irreversible</strong> and will delete your account and all your ${pasteCount} pastes.
+        </p>
+        <p style="color: var(--text-color); margin-bottom: 1.5rem;">
+            To confirm, type your username <strong>${username}</strong> and your paste count <strong>${pasteCount}</strong>:
+        </p>
+        <div style="margin-bottom: 1rem;">
+            <label class="modal-label">Username:</label>
+            <input type="text" id="delete-username" class="modal-input" placeholder="Username">
+        </div>
+        <div style="margin-bottom: 1.5rem;">
+            <label class="modal-label">Paste count:</label>
+            <input type="number" id="delete-pastecount" class="modal-input" placeholder="Paste count">
+        </div>
+        <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+            <button class="btn btn-secondary delete-cancel">Cancel</button>
+            <button class="btn btn-danger delete-confirm" disabled>Delete Account</button>
+        </div>
     `;
-    modalOverlay.appendChild(modalBox);
-    document.body.appendChild(modalOverlay);
 
-    document.getElementById('cancel-delete-account').onclick = function () {
-        document.body.removeChild(modalOverlay);
-    };
+    const { body, close } = Modal.custom(customContent, {
+        title: 'Delete Account',
+        className: 'modal-delete-account'
+    });
 
-    const userInput = document.getElementById('delete-username');
-    const countInput = document.getElementById('delete-pastecount');
-    const confirmBtn = document.getElementById('confirm-delete-account');
+    const userInput = customContent.querySelector('#delete-username');
+    const countInput = customContent.querySelector('#delete-pastecount');
+    const confirmBtn = customContent.querySelector('.delete-confirm');
+    const cancelBtn = customContent.querySelector('.delete-cancel');
+
     function validateInputs() {
-        if (userInput.value.trim() === username && countInput.value.trim() === String(pasteCount)) {
+        const usernameValid = userInput.value.trim() === username;
+        const countValid = countInput.value.trim() === String(pasteCount);
+        
+        if (usernameValid && countValid) {
             confirmBtn.disabled = false;
+            confirmBtn.style.opacity = '1';
         } else {
             confirmBtn.disabled = true;
+            confirmBtn.style.opacity = '0.6';
         }
     }
+
+    validateInputs();
+
     userInput.addEventListener('input', validateInputs);
     countInput.addEventListener('input', validateInputs);
 
+    cancelBtn.onclick = () => close();
+
     confirmBtn.onclick = async function () {
         if (confirmBtn.disabled) return;
+        
+        if (userInput.value.trim() !== username || countInput.value.trim() !== String(pasteCount)) {
+            return;
+        }
+        
         try {
-            await fetch('/api/auth/delete', { method: 'DELETE'});
+            await fetch('/api/auth/delete', { method: 'DELETE' });
         } catch { }
         window.location.href = '/register';
     };
+
+    setTimeout(() => userInput.focus(), 100);
 }
