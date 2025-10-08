@@ -403,7 +403,9 @@ namespace SharpbinV2.Server.Controllers
                 if (paste == null)
                     return NotFound(new { success = false, message = "Paste not found." });
 
-                var newPaste = await _databaseService.UpdatePasteID(paste, newId, _logger);
+                paste.ID = newId;
+
+                var newPaste = await _databaseService.UpdatePaste(paste, _logger);
                 if (newPaste == null)
                     return StatusCode(500, new { success = false, message = "An error occurred while changing the paste ID." });
 
