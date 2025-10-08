@@ -740,9 +740,9 @@ namespace SharpbinV2.Server.Services
                 return false;
             }
         }
-        public async Task<Paste?> UpdatePasteID(Paste paste, string newId, ILogger logger)
+        public async Task<Paste?> UpdatePaste(Paste paste, ILogger logger)
         {
-            if (paste == null || string.IsNullOrEmpty(paste.UUID) || string.IsNullOrEmpty(newId))
+            if (paste == null || string.IsNullOrEmpty(paste.UUID))
                 return null;
             try
             {
@@ -751,20 +751,23 @@ namespace SharpbinV2.Server.Services
                     await connection.OpenAsync();
                     using (var command = connection.CreateCommand())
                     {
-                        command.CommandText = "UPDATE pastes SET ID = @NewID, Fileath = @FilePath WHERE UUID = @UUID;";
-                        command.Parameters.AddWithValue("@NewID", newId);
-                        command.Parameters.AddWithValue("@FilePath", $"pastes/{newId}" ?? paste.FilePath);
+                        command.CommandText = "UPDATE pastes SET Visibility = @Visibility, Title = @Title, Edited = @Edited, Size = @Size, TrueSize = @TrueSize, Syntax = @Syntax, FilePath = @FilePath WHERE UUID = @UUID;";
+                        command.Parameters.AddWithValue("@Visibility", paste.Visibility ?? 0);
+                        command.Parameters.AddWithValue("@Title", paste.Title ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@Edited", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                        command.Parameters.AddWithValue("@Size", paste.Size ?? 0);
+                        command.Parameters.AddWithValue("@TrueSize", paste.TrueSize ?? 0);
+                        command.Parameters.AddWithValue("@Syntax", paste.Syntax ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@FilePath", paste.FilePath);
                         command.Parameters.AddWithValue("@UUID", paste.UUID);
                         await command.ExecuteNonQueryAsync();
                     }
                 }
-                paste.ID = newId;
-                paste.FilePath = $"pastes/{newId}";
                 return paste;
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to update paste ID in database.");
+                logger.LogError(ex, "Failed to update paste in database.");
                 return null;
             }
         }
