@@ -24,7 +24,7 @@ namespace SharpbinV2.Server.Controllers
         [HttpPost("create")]
         [EnableRateLimiting("uploads")]
         [Consumes("text/plain")]
-        public async Task<IActionResult> CreatePaste()
+        public async Task<IActionResult> CreatePaste(string title, string syntax, int visibility)
         {
             try
             {
@@ -38,11 +38,9 @@ namespace SharpbinV2.Server.Controllers
                 if (content.Length > Program.MaxFileSize)
                     return BadRequest(new { success = false, message = $"Content exceeds maximum size of {Program.MaxFileSize} bytes." });
 
-                string title = queries.ContainsKey("title") ? queries["title"].ToString() : $"Untitled {await _databaseService.EnumeratePastes()}";
-                string syntax = queries.ContainsKey("syntax") ? queries["syntax"].ToString() : "none";
-                int visibility = 0;
-                if (queries.ContainsKey("visibility") && int.TryParse(queries["visibility"], out int parsedVisibility))
-                    visibility = parsedVisibility;
+                title = !string.IsNullOrWhiteSpace(title) ? title : $"Untitled {await _databaseService.EnumeratePastes()}";
+                syntax = syntax?.ToLower() ?? "none";
+                visibility = visibility < 0 || visibility > 2 ? 0 : visibility;
 
                 if (title.Length > 500)
                     return BadRequest(new { success = false, message = "Title cannot exceed 500 characters." });
