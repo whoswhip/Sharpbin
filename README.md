@@ -18,3 +18,4 @@ Instead of using html files and replacing variables(Simple SSR) it is now done w
 - [ ] Paste Editing
 - [ ] Paste Searching (maybe)
 - [x] Paste Deletion
+- [ ] Switch to Razor Pages?
