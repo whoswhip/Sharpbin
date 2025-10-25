@@ -1,6 +1,5 @@
-using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.RateLimiting;
-using SharpbinV2.Server.Models;
+using Microsoft.Data.Sqlite;
 using SharpbinV2.Server.Services;
 using System.Security.Cryptography;
 
@@ -11,7 +10,7 @@ namespace SharpbinV2.Server
         public static string MainDatabaseConnection = "Data Source=data.db";
         public static long MaxFileSize = 1_048_576; // 1MB
         public static string[] ValidSyntaxLanguages =
-        {
+        [
             "none",
             "autoHotkey",
             "autoIt",
@@ -36,7 +35,7 @@ namespace SharpbinV2.Server
             "typescript",
             "toml",
             "xml"
-        };
+        ];
         public static string SHA256Salt = RandomNumberGenerator.GetHexString(32);
 
         static async Task Main(string[] args)
@@ -155,7 +154,6 @@ namespace SharpbinV2.Server
             //app.UseHttpsRedirection();
             app.UseRouting();
             app.UseStaticFiles();
-
             app.UseRateLimiter();
 
             app.UseCors(builder =>

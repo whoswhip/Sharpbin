@@ -445,5 +445,83 @@ namespace SharpbinV2.Server.Controllers
                 return StatusCode(500, new { error = "An error occurred while changing the paste ID." });
             }
         }
+
+        [HttpPatch("{id}")]
+        [EnableRateLimiting("general")]
+        [Consumes("text/plain")]
+        public async Task<IActionResult> EditPaste(string id, string title)
+        {
+            var requestDetails = HelperService.GetRequestDetails(HttpContext);
+            if (string.IsNullOrWhiteSpace(requestDetails.Token) || await _databaseService.GetSession(requestDetails.Token) == null)
+                return Unauthorized(new { success = false, message = "Invalid or missing authentication token." });
+
+            User? user = await _databaseService.UserFromToken(requestDetails.Token ?? "");
+            if (user == null || user.UUID == "0")
+                return Unauthorized(new { success = false, message = "User not found." });
+            if (string.IsNullOrWhiteSpace(id))
+                return BadRequest(new { success = false, message = "Invalid paste ID." });
+            
+            var paste = await _databaseService.GetPasteFromID(id);
+            if (paste == null || string.IsNullOrWhiteSpace(paste.FilePath))
+                return NotFound(new { success = false, message = "Paste not found." });
+
+            if (paste.AuthorUUID != user.UUID && user.Type != 255)
+                return Unauthorized(new { success = false, message = "You do not have permission to edit this paste." });
+
+            if (title.Length > 500)
+                return BadRequest(new { success = false, message = "Title cannot exceed 500 characters." });
+
+            try
+            {
+                string content = await new StreamReader(HttpContext.Request.Body, Encoding.UTF8).ReadToEndAsync();
+                if (string.IsNullOrWhiteSpace(content))
+                    return BadRequest(new { success = false, message = "Content cannot be empty." });
+
+                if (content.Length > Program.MaxFileSize)
+                    return BadRequest(new { success = false, message = $"Content exceeds maximum size of {Program.MaxFileSize} bytes." });
+
+                bool shouldCompress = await CompressionService.ShouldCompress(content);
+                byte[] compressedContent = shouldCompress
+                    ? await CompressionService.CompressString(content)
+                    : Encoding.UTF8.GetBytes(content);
+
+                paste.Edited = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                paste.TrueSize = content.Length;
+                paste.Size = compressedContent.Length;
+                paste.FilePath = shouldCompress ? paste.FilePath.Split('.').First() + ".txt.gz" : paste.FilePath.Split('.').First() + ".txt";
+                paste.Title = !string.IsNullOrWhiteSpace(title) ? title : paste.Title;
+
+                await IOFile.WriteAllBytesAsync(paste.FilePath, compressedContent);
+
+                Console.WriteLine($"Wrote {content} to {paste.FilePath}");
+
+                var updatedPaste = await _databaseService.UpdatePaste(paste, _logger);
+                if (updatedPaste == null)
+                    return StatusCode(500, new { success = false, message = "An error occurred while editing the paste." });
+
+                return Ok(new
+                {
+                    success = true,
+                    paste = new
+                    {
+                        updatedPaste.ID,
+                        updatedPaste.UUID,
+                        updatedPaste.Title,
+                        updatedPaste.Syntax,
+                        updatedPaste.Visibility,
+                        updatedPaste.Created,
+                        updatedPaste.Size,
+                        updatedPaste.TrueSize,
+                        updatedPaste.AuthorUUID,
+                        updatedPaste.Edited
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error editing paste");
+                return StatusCode(500, new { error = "An error occurred while editing the paste." });
+            }
+        }
     }
 }
