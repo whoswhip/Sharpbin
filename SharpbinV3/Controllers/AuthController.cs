@@ -57,7 +57,8 @@ namespace SharpbinV3.Controllers
             if (!Bcrypt.Verify(request.Password, user.PasswordHash))
                 return BadRequest(new { message = "Invalid username/email or password." });
             var token = _authService.GenerateJWTToken(user);
-            return Ok(new { token });
+            await _authService.UpdateLoginTime(user);
+            return Ok(new { token.Result });
         }
         [HttpPost]
         [Route("refresh")]

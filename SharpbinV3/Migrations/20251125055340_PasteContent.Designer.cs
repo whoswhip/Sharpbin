@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SharpbinV3.Data;
 
@@ -10,9 +11,11 @@ using SharpbinV3.Data;
 namespace SharpbinV3.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251125055340_PasteContent")]
+    partial class PasteContent
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.0");
@@ -63,7 +66,7 @@ namespace SharpbinV3.Migrations
                     b.Property<int>("Views")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("Visibility")
+                    b.Property<int>("Visiblity")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("PID");
@@ -85,7 +88,7 @@ namespace SharpbinV3.Migrations
 
                     b.HasIndex("Views");
 
-                    b.HasIndex("Visibility");
+                    b.HasIndex("Visiblity");
 
                     b.ToTable("Pastes");
                 });

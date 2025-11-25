@@ -27,6 +27,7 @@ namespace SharpbinV3
             builder.Services.AddSingleton<ICompressionService, CompressionService>();
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<IPasteService, PasteService>();
 
             builder.Services.AddAuthentication(options =>
             {

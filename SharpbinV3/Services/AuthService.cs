@@ -60,7 +60,7 @@ namespace SharpbinV3.Services
                 existingToken.Used = false;
                 existingToken.CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 existingToken.ExpiresAt = DateTimeOffset.UtcNow.AddMonths(6).ToUnixTimeMilliseconds();
-                existingToken.Token = RandomString(36) + Guid.NewGuid();
+                existingToken.Token = Utilities.GenerateRandomString(36) + Guid.NewGuid();
                 _db.RefreshTokens.Update(existingToken);
             }
             else
@@ -73,7 +73,7 @@ namespace SharpbinV3.Services
                     UserUUID = user.UUID,
                     CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                     ExpiresAt = DateTimeOffset.UtcNow.AddMonths(6).ToUnixTimeMilliseconds(),
-                    Token = RandomString(36) + Guid.NewGuid()
+                    Token = Utilities.GenerateRandomString(36) + Guid.NewGuid()
                 };
                 await _db.RefreshTokens.AddAsync(refreshToken);
             }
@@ -151,10 +151,25 @@ namespace SharpbinV3.Services
             }
         }
 
-        private static string RandomString(int length)
+        public async Task<User> UpdateUser(User user)
         {
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-            return new string([.. Enumerable.Repeat(chars, length).Select(s => s[Random.Shared.Next(s.Length)])]);
+            var existingUser = await _db.Users.FirstOrDefaultAsync(u => u.UUID == user.UUID) ?? throw new Exception("User not found");
+            existingUser.Username = user.Username;
+            existingUser.Email = user.Email;
+            existingUser.DisplayName = user.DisplayName;
+            existingUser.Roles = user.Roles;
+            existingUser.LastLogin = user.LastLogin;
+            existingUser.Visiblity = user.Visiblity;
+            _db.Users.Update(existingUser);
+            await _db.SaveChangesAsync();
+            return user;
+        }
+        public async Task UpdateLoginTime(User user)
+        {
+            var existingUser = await _db.Users.FirstOrDefaultAsync(u => u.UUID == user.UUID) ?? throw new Exception("User not found");
+            existingUser.LastLogin = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            _db.Users.Update(existingUser);
+            await _db.SaveChangesAsync();
         }
     }
 }

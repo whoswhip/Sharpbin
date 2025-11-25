@@ -9,5 +9,7 @@ namespace SharpbinV3.Services
         Task<JWTResult> GenerateJWTToken(User user);
         Task<bool> ValidateJWTToken(string token);
         Task<JWTResult> RefreshJWTToken(string token, string refreshToken);
+        Task<User> UpdateUser(User user);
+        Task UpdateLoginTime(User user);
     }
 }
