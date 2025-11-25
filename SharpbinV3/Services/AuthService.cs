@@ -120,10 +120,12 @@ namespace SharpbinV3.Services
                 {
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(key),
-                    ValidateIssuer = false,
-                    ValidateAudience = false,
+                    ValidateIssuer = true,
+                    ValidIssuer = _configuration["JwtConfig:Issuer"],
+                    ValidateAudience = true,
+                    ValidAudience = _configuration["JwtConfig:Audience"],
                     ClockSkew = TimeSpan.Zero,
-                    ValidateLifetime = false
+                    ValidateLifetime = true
                 }, out SecurityToken validatedToken);
                 var jwtId = validatedToken.Id;
                 var storedRefreshToken = await _db.RefreshTokens
@@ -133,21 +135,20 @@ namespace SharpbinV3.Services
                     || storedRefreshToken.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                     || storedRefreshToken.JwtId != jwtId)
                 {
-                    return new JWTResult() { Success = false };
+                    return new JWTResult() { Success = false, Errors = ["Invalid refresh token, possibly already used or expired."] };
                 }
                 storedRefreshToken.Used = true;
                 await _db.SaveChangesAsync();
                 var userUUID = principal.Claims.First(c => c.Type == "UUID").Value;
-                var user = await _db.Users.FirstOrDefaultAsync(u => u.UUID.ToString() == userUUID);
+                var user = await _db.Users.FirstOrDefaultAsync(u => u.UUID == Guid.Parse(userUUID));
                 if (user == null)
-                {
-                    return new JWTResult() { Success = false };
-                }
+                    return new JWTResult() { Success = false, Errors = ["Invalid token."] };
+
                 return await GenerateJWTToken(user);
             }
             catch
             {
-                return new JWTResult() { Success = false };
+                return new JWTResult() { Success = false, Errors = ["Server Error"] };
             }
         }
 
