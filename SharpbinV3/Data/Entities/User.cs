@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ValueGeneration.Internal;
 using System.ComponentModel.DataAnnotations;
 
 namespace SharpbinV3.Data.Entities
@@ -16,7 +15,7 @@ namespace SharpbinV3.Data.Entities
         public string? Email { get; set; }
         public string? DisplayName { get; set; }
         public long? LastLogin { get; set; }
-        public int Type { get; set; } = 0; // 0 = regular user, 1 = moderator, 255 = admin
+        public int[] Roles { get; set; } = [0]; // 0 = regular user, 1 = moderator, 255 = admin
         public int Visiblity { get; set; } = 0; // 0 = public, 1 = unlisted, 2 = private
         public List<Paste> Pastes { get; set; } = [];
     }

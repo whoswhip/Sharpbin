@@ -11,8 +11,8 @@ using SharpbinV3.Data;
 namespace SharpbinV3.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251124184531_AddVisibility")]
-    partial class AddVisibility
+    [Migration("20251125015039_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -92,6 +92,39 @@ namespace SharpbinV3.Migrations
                     b.ToTable("Pastes");
                 });
 
+            modelBuilder.Entity("SharpbinV3.Data.Entities.RefreshToken", b =>
+                {
+                    b.Property<Guid>("UserUUID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("ExpiresAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("JwtId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Used")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("UserUID")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("UserUUID");
+
+                    b.HasIndex("UserUID");
+
+                    b.ToTable("RefreshTokens");
+                });
+
             modelBuilder.Entity("SharpbinV3.Data.Entities.User", b =>
                 {
                     b.Property<int>("UID")
@@ -111,8 +144,9 @@ namespace SharpbinV3.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("Type")
-                        .HasColumnType("INTEGER");
+                    b.PrimitiveCollection<string>("Roles")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid>("UUID")
                         .HasColumnType("TEXT");
@@ -139,6 +173,15 @@ namespace SharpbinV3.Migrations
                 {
                     b.HasOne("SharpbinV3.Data.Entities.User", "User")
                         .WithMany("Pastes")
+                        .HasForeignKey("UserUID");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SharpbinV3.Data.Entities.RefreshToken", b =>
+                {
+                    b.HasOne("SharpbinV3.Data.Entities.User", "User")
+                        .WithMany()
                         .HasForeignKey("UserUID");
 
                     b.Navigation("User");

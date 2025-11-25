@@ -8,6 +8,5 @@ namespace SharpbinV3.Services
         Task<User?> GetByUsername(string username);
         Task<User?> GetByUUID(Guid uuid);
         Task<User?> GetByEmail(string email);
-        Task<User> CreateUser(string username, string password, string? email, string? displayName);
     }
 }

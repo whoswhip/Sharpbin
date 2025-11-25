@@ -7,5 +7,6 @@ namespace SharpbinV3.Data
     {
         public DbSet<User> Users => Set<User>();
         public DbSet<Paste> Pastes => Set<Paste>();
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     }
 }

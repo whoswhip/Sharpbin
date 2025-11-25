@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace SharpbinV3.DTOs
 {
-    public class CreateUserDto
+    public class RegisterRequest
     {
         [Required]
         [StringLength(50, MinimumLength = 3)]
