@@ -49,7 +49,13 @@
 				startTokenRefreshInterval();
 				goto(resolve('/'));
 			} else {
-				goto(resolve('/login'));
+				const urlParams = new URLSearchParams(window.location.search);
+				const returnUrl = urlParams.get('return');
+				if (returnUrl) {
+					goto(resolve('/login') + `?return=${encodeURIComponent(returnUrl)}`);
+				} else {
+					goto(resolve('/login'));
+				}
 			}
 		} else {
 			error = 'Registration failed';

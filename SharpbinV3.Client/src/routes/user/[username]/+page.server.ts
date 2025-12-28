@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { getServerToken } from '$lib/utils/auth';
+import type { User } from '$lib/types/user';
 
 export const load: PageServerLoad = async ({ params, fetch, cookies }) => {
     const { username } = params;
@@ -9,6 +10,7 @@ export const load: PageServerLoad = async ({ params, fetch, cookies }) => {
             Authorization: token ? `Bearer ${token}` : ''
         }
     });
-    const user = await res.json();
+    
+    const user = await res.json() as User;
     return { user };
 }

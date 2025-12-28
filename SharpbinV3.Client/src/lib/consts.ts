@@ -72,3 +72,10 @@ export const displayNames: Record<string, string> = {
 };
 // only include langs that need special display names
 // e.g. cpp -> C++ or toml -> TOML, langs like java are automatically capitalized
+
+export const roles = {
+	0: 'User',
+	1: 'Moderator',
+	255: 'Administrator',
+	403: 'Banned'
+}

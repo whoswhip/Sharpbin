@@ -141,6 +141,7 @@
 				spellcheck="false"
 				autocomplete="off"
 				bind:value={title}
+				maxlength={data.options.maxTitleLength ?? 500}
 			/>
 			<textarea
 				placeholder="Your paste content here..."
@@ -148,6 +149,7 @@
 				spellcheck="false"
 				autocomplete="off"
 				bind:value={content}
+				maxlength={data.options.maxContentSize ? Math.floor(data.options.maxContentSize / 4) : undefined}
 			></textarea>
 			<Dropdown
 				options={syntaxOptions}

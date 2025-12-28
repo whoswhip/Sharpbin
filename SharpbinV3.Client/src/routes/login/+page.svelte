@@ -17,6 +17,12 @@
 				setTokens(data.result.token, data.result.refreshToken);
 				startTokenRefreshInterval();
 			}
+			const urlParams = new URLSearchParams(window.location.search);
+			const returnUrl = urlParams.get('return');
+			if (returnUrl) {
+				window.location.href = returnUrl;
+				return;
+			}
 			window.location.href = '/';
 		} else {
 			error = 'Invalid username or password';

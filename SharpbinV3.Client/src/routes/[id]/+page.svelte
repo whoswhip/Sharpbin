@@ -1,12 +1,16 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { FileBox, Eye, User, CalendarDays, CalendarOff, Code } from '@lucide/svelte/icons/index';
-	import { formatBytes, extractDateFromUUIDv7, dateToRelativeString } from '$lib/utils/misc';
+	import {
+		formatBytes,
+		extractDateFromUUIDv7,
+		dateToRelativeString,
+		tooltip
+	} from '$lib/utils/misc';
 	import { displayNames } from '$lib/consts';
 	import { fade } from 'svelte/transition';
 	import { resolve } from '$app/paths';
 	export let data: PageData;
-	let fileSizeHovered = false;
 
 	function addLineNumbers(html: string): string {
 		const match = html.match(/<pre.*?>[\s\S]*?<code.*?>([\s\S]*?)<\/code><\/pre>/);
@@ -31,26 +35,19 @@
 		class="max-h-[80vh] w-[95%] max-w-5xl rounded border-2 border-neutral-800 bg-neutral-900 p-4"
 	>
 		{#if data.paste}
-			<h1 class="mb-4 text-center text-4xl font-bold">{data.paste.title || 'Untitled Paste'}</h1>
+			<h1
+				use:tooltip={data.paste.title || 'Untitled Paste'}
+				class="mb-4 truncate text-center text-4xl font-bold"
+			>
+				{data.paste.title || 'Untitled Paste'}
+			</h1>
 			<div class="mb-2 flex flex-wrap items-center justify-center gap-4">
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="relative flex shrink-0 items-center">
-					<div
-						class="flex"
-						on:mouseenter={() => (fileSizeHovered = true)}
-						on:mouseleave={() => (fileSizeHovered = false)}
-					>
+					<div class="flex" use:tooltip={`True Size: ${formatBytes(data.paste.trueSize)}`}>
 						<FileBox class="mr-2 h-6 w-6 text-neutral-400" />
 						<span class="text-neutral-400">{formatBytes(data.paste.size)}</span>
 					</div>
-					{#if fileSizeHovered}
-						<div
-							class="absolute -top-8 left-1/2 z-10 w-fit -translate-x-1/2 rounded bg-neutral-800 px-2 py-1 text-sm whitespace-nowrap text-white shadow-lg"
-							transition:fade={{ duration: 150 }}
-						>
-							True Size: {formatBytes(data.paste.trueSize)}
-						</div>
-					{/if}
 				</div>
 
 				<div class="flex shrink-0 items-center">

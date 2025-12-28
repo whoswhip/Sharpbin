@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { user } from '$lib/stores/user';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/stores';
 
 	function logout() {
 		localStorage.removeItem('token');
@@ -8,6 +9,9 @@
 		user.set(null);
 		window.location.href = '/';
 	}
+
+	$: currentPath = $page.url.pathname;
+	$: returnParam = currentPath !== '/' ? `?return=${encodeURIComponent($page.url.pathname + $page.url.search)}` : '';
 </script>
 
 <div class="fixed top-0 left-0 h-15 w-full bg-neutral-900">
@@ -18,15 +22,15 @@
 				<span class="text-neutral-400">{$user.username}</span>
 				<button
 					on:click={logout}
-					class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800">Logout</button
+					class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800 cursor-pointer">Logout</button
 				>
 			</div>
 		{:else}
 			<div class="ml-auto flex items-center space-x-4">
-				<a href={resolve('/login')} class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800"
+				<a href={resolve('/login') + returnParam} class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800"
 					>Login</a
 				>
-				<a href={resolve('/register')} class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800"
+				<a href={resolve('/register') + returnParam} class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800"
 					>Register</a
 				>
 			</div>

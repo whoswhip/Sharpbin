@@ -45,9 +45,15 @@ namespace SharpbinV3.Server.Controllers
             var isAuthenticatedUser = HttpContext.User?.FindFirst("UUID")?.Value == user.UUID.ToString();
             var pasteQuery = _db.Pastes.AsNoTracking().Where(p => p.AuthorUUID == user.UUID);
             if (!isAuthenticatedUser)
-                pasteQuery = pasteQuery.Where(p => p.Visibility == 0);
+            {
+                if (user.Visibility == 1 || user.Visibility == 2)
+                    return NotFound();
+                else
+                    pasteQuery = pasteQuery.Where(p => p.Visibility == 0);
+            }
 
             var pastes = await pasteQuery.Select(p => new {
+                p.ID,
                 p.UUID,
                 p.Title,
                 p.Syntax,
@@ -79,6 +85,7 @@ namespace SharpbinV3.Server.Controllers
                 user.Username,
                 user.UUID,
                 user.DisplayName,
+                user.Roles,
                 Pastes = pastes
             };
         }
