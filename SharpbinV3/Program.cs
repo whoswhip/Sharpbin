@@ -38,16 +38,17 @@ namespace SharpbinV3.Server
             })
             .AddJwtBearer(jwt =>
             {
-                var key = Encoding.ASCII.GetBytes(builder.Configuration.GetSection("JwtConfig:Secret").Value ?? string.Empty);
+                var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+                var key = Encoding.ASCII.GetBytes(jwtSettings["Secret"] ?? string.Empty);
                 jwt.SaveToken = true;
                 jwt.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(key),
                     ValidateIssuer = true,
-                    ValidIssuer = builder.Configuration["JwtConfig:Issuer"],
+                    ValidIssuer = jwtSettings["Issuer"],
                     ValidateAudience = true,
-                    ValidAudience = builder.Configuration["JwtConfig:Audience"],
+                    ValidAudience = jwtSettings["Audience"],
                     RequireExpirationTime = true,
                     ValidateLifetime = true
                 };

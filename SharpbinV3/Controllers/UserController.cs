@@ -10,15 +10,7 @@ namespace SharpbinV3.Server.Controllers
     {
         private readonly IUserService _userService = userService;
 
-        [HttpGet("{uid}")]
-        public async Task<IActionResult> GetByUid(int uid)
-        {
-            var user = await _userService.GetByUID(uid);
-            if (user == null) return NotFound();
-
-            return Ok(new { user.UID, user.Username, user.UUID, user.DisplayName });
-        }
-        [HttpGet("username/{username}")]
+        [HttpGet("{username}")]
         public async Task<IActionResult> GetByUsername(string username)
         {
             var user = await _userService.GetByUsername(username);
@@ -26,12 +18,45 @@ namespace SharpbinV3.Server.Controllers
             return Ok(new { user.UID, user.Username, user.UUID, user.DisplayName });
         }
         [HttpGet("uuid/{uuid}")]
-        [Authorize]
         public async Task<IActionResult> GetByUUID(Guid uuid)
         {
             var user = await _userService.GetByUUID(uuid);
             if (user == null) return NotFound();
             return Ok(new { user.UID, user.Username, user.UUID, user.DisplayName });
+        }
+        [HttpGet("me")]
+        [Authorize]
+        public async Task<IActionResult> GetMe()
+        {
+            var httpUser = HttpContext.User;
+            var userUUID = httpUser?.FindFirst("UUID")?.Value;
+            if (userUUID is null)
+                return Unauthorized(new { message = "Invalid token." });
+            var user = await _userService.GetByUUID(Guid.Parse(userUUID), true);
+            if (user == null)
+                return NotFound();
+            var pastes = user.Pastes?.Select(p => new {
+                p.UUID,
+                p.Title,
+                p.Syntax,
+                p.Size,
+                p.TrueSize,
+                p.Views,
+                p.Visibility,
+                p.EditedAt,
+                p.ExpiresAt
+            });
+            return Ok(new {
+                user.UID,
+                user.Username,
+                user.UUID,
+                user.DisplayName,
+                user.Email,
+                user.LastLogin,
+                user.Roles,
+                user.Visibility,
+                Pastes = pastes
+            });
         }
     }
 }

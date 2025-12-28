@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SharpbinV3.Server.Data;
 
@@ -10,9 +11,11 @@ using SharpbinV3.Server.Data;
 namespace SharpbinV3.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251228173503_UserGrammarFix")]
+    partial class UserGrammarFix
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.0");
@@ -42,7 +45,7 @@ namespace SharpbinV3.Server.Migrations
                     b.Property<bool>("IsCompressed")
                         .HasColumnType("INTEGER");
 
-                    b.Property<long>("Size")
+                    b.Property<int>("Size")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Syntax")
@@ -51,7 +54,7 @@ namespace SharpbinV3.Server.Migrations
                     b.Property<string>("Title")
                         .HasColumnType("TEXT");
 
-                    b.Property<long>("TrueSize")
+                    b.Property<int>("TrueSize")
                         .HasColumnType("INTEGER");
 
                     b.Property<Guid>("UUID")

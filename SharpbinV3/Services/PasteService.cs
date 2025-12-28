@@ -32,6 +32,11 @@ namespace SharpbinV3.Server.Services
                 ExpiresAt = expiresAt,
             };
             _db.Pastes.Add(paste);
+            if (author != null)
+            {
+                author.Pastes.Add(paste);
+                _db.Users.Update(author);
+            }
             await _db.SaveChangesAsync();
             return paste;
         }

@@ -31,8 +31,13 @@ namespace SharpbinV3.Server.Controllers
 
             string content = await new StreamReader(Request.Body).ReadToEndAsync();
             var httpUser = HttpContext.User;
+            foreach (var key in httpUser.Claims)
+            {
+                Console.WriteLine($"Claim: {key.Type} = {key.Value}");
+            }
             var userUUID = httpUser?.FindFirst("UUID")?.Value;
             User? user = userUUID is not null ? await _userService.GetByUUID(Guid.Parse(userUUID)) : null;
+            Console.WriteLine($"Creating paste for user: {(user != null ? user.Username : "Anonymous")}");
             Paste paste = await _pasteService.Create(user, content, title, syntax, visibility, expiresAt);
             return Ok(new
             {
@@ -62,12 +67,13 @@ namespace SharpbinV3.Server.Controllers
                 paste.Syntax,
                 paste.Visibility,
                 paste.ExpiresAt,
-                Author = paste.User != null && paste.User.Visiblity == 0 ? new
+                Author = paste.User != null && paste.User.Visibility == 0 ? new
                 {
                     paste.User.UID,
                     paste.User.UUID,
                     paste.User.Username,
-                    paste.User.Visiblity
+                    paste.User.DisplayName,
+                    paste.User.Visibility
                 } : null
             });
         }

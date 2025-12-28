@@ -1,21 +1,54 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { displayNames } from '$lib/consts';
+	import { user } from '$lib/stores/user';
+	import { getToken } from '$lib/utils/auth';
+	import { fly } from 'svelte/transition';
+	import Dropdown from '$lib/components/Dropdown.svelte';
 
 	export let data: PageData;
 
+	let error = '';
 	let title = '';
 	let content = '';
 	let selectedSyntax = data.options.syntaxes[0];
+	let expiresIn: number = 0;
 	let selectedVisibility = data.options.visibilities[0].value;
 	let password = '';
+
+	const syntaxOptions = data.options.syntaxes.map((lang: string) => ({
+		value: lang,
+		label: displayNames[lang] ?? lang.charAt(0).toUpperCase() + lang.slice(1)
+	}));
+
+	const expiresOptions = [
+		{ value: 0, label: 'Never Expire' },
+		{ value: 600000, label: 'Expire in 10 Minutes' },
+		{ value: 3600000, label: 'Expire in 1 Hour' },
+		{ value: 86400000, label: 'Expire in 1 Day' },
+		{ value: 604800000, label: 'Expire in 1 Week' },
+		{ value: 1209600000, label: 'Expire in 2 Weeks' },
+		{ value: 2592000000, label: 'Expire in 1 Month' },
+		{ value: 7776000000, label: 'Expire in 3 Months' },
+		{ value: 15552000000, label: 'Expire in 6 Months' },
+		{ value: 31536000000, label: 'Expire in 1 Year' },
+		{ value: 63072000000, label: 'Expire in 2 Years' },
+		{ value: 157680000000, label: 'Expire in 5 Years' },
+		{ value: 315360000000, label: 'Expire in 10 Years' }
+	];
+
+	const visibilityOptions = data.options.visibilities.map((visibility: { value: number; displayName: string }) => ({
+		value: visibility.value,
+		label: visibility.displayName
+	}));
 
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
 		const params = new URLSearchParams({
 			title: title.trim(),
 			syntax: selectedSyntax,
-			visibility: selectedVisibility.toString()
+			visibility: selectedVisibility.toString(),
+			expiresAt: expiresIn > 0 ? (Date.now() + Number(expiresIn)).toString() : '0'
 		});
 		let body = content;
 		if (selectedVisibility === 2) {
@@ -27,12 +60,24 @@
 			headers: { 'Content-Type': 'text/plain' },
 			body
 		};
+		if ($user) {
+			const token = getToken();
+			if (token) {
+				options.headers = {
+					...options.headers,
+					Authorization: `Bearer ${token}`
+				};
+			}
+		}
 		const response = await fetch(url, options);
 		if (response.ok) {
 			const result = await response.json();
 			window.location.href = `/${result.id}`;
 		} else {
-			alert('Failed to create paste. Please try again.');
+			error = 'Failed to create paste. Please try again.';
+			setInterval(() => {
+				error = '';
+			}, 5000);
 		}
 	}
 
@@ -86,7 +131,7 @@
 <main
 	class="flex min-h-screen w-full flex-col items-center justify-center bg-neutral-950 text-white"
 >
-	<div class="rounded border-2 border-neutral-800 bg-neutral-900 p-6 w-full max-w-5xl">
+	<div class="w-[95%] max-w-5xl rounded border-2 border-neutral-800 bg-neutral-900 p-6">
 		<h1 class="mb-6 text-center text-4xl font-bold">Create a Paste</h1>
 		<form class="mt-4" on:submit|preventDefault={handleSubmit}>
 			<input
@@ -104,24 +149,22 @@
 				autocomplete="off"
 				bind:value={content}
 			></textarea>
-			<select
-				class="mb-4 w-full rounded border border-neutral-700 bg-neutral-800 p-2"
+			<Dropdown
+				options={syntaxOptions}
 				bind:value={selectedSyntax}
-			>
-				{#each data.options.syntaxes as lang (lang)}
-					<option value={lang}
-						>{displayNames[lang] ?? lang.charAt(0).toUpperCase() + lang.slice(1)}</option
-					>
-				{/each}
-			</select>
-			<select
-				class="mb-4 w-full rounded border border-neutral-700 bg-neutral-800 p-2"
+				placeholder="Select syntax..."
+				searchable={true}
+			/>
+			<Dropdown
+				options={expiresOptions}
+				bind:value={expiresIn}
+				placeholder="Select expiration..."
+			/>
+			<Dropdown
+				options={visibilityOptions}
 				bind:value={selectedVisibility}
-			>
-				{#each data.options.visibilities as visibility (visibility.value)}
-					<option value={visibility.value}>{visibility.displayName}</option>
-				{/each}
-			</select>
+				placeholder="Select visibility..."
+			/>
 			{#if selectedVisibility === 2}
 				<input
 					type="password"
@@ -137,6 +180,14 @@
 				class="w-full rounded bg-neutral-700 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-neutral-800 active:bg-neutral-900"
 				>Create Paste</button
 			>
+			{#if error}
+				<div
+					transition:fly={{ y: 40, duration: 300 }}
+					class="rounded border border-red-900 bg-red-950 p-2 text-sm text-red-200"
+				>
+					{error}
+				</div>
+			{/if}
 		</form>
 	</div>
 </main>

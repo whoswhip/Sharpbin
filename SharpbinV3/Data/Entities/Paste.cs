@@ -24,8 +24,8 @@ namespace SharpbinV3.Server.Data.Entities
         public long? EditedAt { get; set; }
 
         public required byte[] Content { get; set; }
-        public int Size { get; set; } // stored size (may be compressed)
-        public int TrueSize { get; set; } // uncompressed size
+        public long Size { get; set; } // stored size (may be compressed)
+        public long TrueSize { get; set; } // uncompressed size
         public bool IsCompressed { get; set; } = false;
 
         public int Views { get; set; }

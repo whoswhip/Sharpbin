@@ -3,7 +3,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace SharpbinV3.Server.Data.Entities
 {
-    [Index(nameof(UID), IsUnique = true)]
     [Index(nameof(UUID), IsUnique = true)]
     public sealed class User
     {
@@ -16,7 +15,7 @@ namespace SharpbinV3.Server.Data.Entities
         public string? DisplayName { get; set; }
         public long? LastLogin { get; set; }
         public int[] Roles { get; set; } = [0]; // 0 = regular user, 1 = moderator, 255 = admin
-        public int Visiblity { get; set; } = 0; // 0 = public, 1 = unlisted, 2 = private
+        public int Visibility { get; set; } = 0; // 0 = public, 1 = unlisted, 2 = private
         public List<Paste> Pastes { get; set; } = [];
     }
 }

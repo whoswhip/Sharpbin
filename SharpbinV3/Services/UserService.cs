@@ -8,10 +8,36 @@ namespace SharpbinV3.Server.Services
     public sealed class UserService(AppDbContext db) : IUserService
     {
         private readonly AppDbContext _db = db;
+        public Task<User?> GetByUID(int uid, bool withPastes = false)
+        {
+            IQueryable<User> query = _db.Users;
+            if (withPastes)
+                query = query.Include(u => u.Pastes);
+            return query.FirstOrDefaultAsync(u => u.UID == uid);
+        }
 
-        public Task<User?> GetByUID(int uid) => _db.Users.FirstOrDefaultAsync(u => u.UID == uid);
-        public Task<User?> GetByUUID(Guid uuid) => _db.Users.FirstOrDefaultAsync(u => u.UUID == uuid);
-        public Task<User?> GetByUsername(string username) => _db.Users.FirstOrDefaultAsync(u => u.Username == username);
-        public Task<User?> GetByEmail(string email) => _db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        public Task<User?> GetByUUID(Guid uuid, bool withPastes = false)
+        {
+            IQueryable<User> query = _db.Users;
+            if (withPastes)
+                query = query.Include(u => u.Pastes);
+            return query.FirstOrDefaultAsync(u => u.UUID == uuid);
+        }
+
+        public Task<User?> GetByUsername(string username, bool withPastes = false)
+        {
+            IQueryable<User> query = _db.Users;
+            if (withPastes)
+                query = query.Include(u => u.Pastes);
+            return query.FirstOrDefaultAsync(u => u.Username == username);
+        }
+
+        public Task<User?> GetByEmail(string email, bool withPastes = false)
+        {
+            IQueryable<User> query = _db.Users;
+            if (withPastes)
+                query = query.Include(u => u.Pastes);
+            return query.FirstOrDefaultAsync(u => u.Email == email);
+        }
     }
 }

@@ -2,8 +2,8 @@
 {
     public class JWTSettings
     {
-        public string SecretKey { get; set; } = Utilities.GenerateRandomString(64);
-        public string Issuer { get; set; } = "SharpbinV3";
-        public string Audience { get; set; } = "SharpbinV3.Client";
+        public string Secret { get; set; } = Utilities.GenerateRandomString(64);
+        public string Issuer { get; set; } = "SharpbinApi";
+        public string Audience { get; set; } = "SharpbinClient";
     }
 }

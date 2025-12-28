@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
-import { getShiki } from '$lib/shiki';
+import type { Paste } from '$lib/types/paste';
+import { getShiki } from '$lib/server/shiki';
 
 export const load: PageServerLoad = async ({ params, fetch }) => {
 	const { id } = params;
@@ -11,7 +12,7 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 			error: { message: 'Paste not found' }
 		};
 	}
-	const pasteData = await paste.json();
+	const pasteData = (await paste.json()) as Paste;
 	const pasteContent = await fetch(`/api/paste/raw/${id}`);
 	const pasteOptions = await fetch('/api/paste/create/options');
 	const options = await pasteOptions.json();

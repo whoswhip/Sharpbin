@@ -35,7 +35,7 @@ namespace SharpbinV3.Server.Services
         public async Task<JWTResult> GenerateJWTToken(User user)
         {
             var jwtHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_jwtSettings.SecretKey);
+            var key = Encoding.ASCII.GetBytes(_jwtSettings.Secret);
 
             var descriptor = new SecurityTokenDescriptor
             {
@@ -93,7 +93,7 @@ namespace SharpbinV3.Server.Services
         public async Task<bool> ValidateJWTToken(string token)
         {
             var jwtHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_jwtSettings.SecretKey);
+            var key = Encoding.ASCII.GetBytes(_jwtSettings.Secret);
             try
             {
                 jwtHandler.ValidateToken(token, new TokenValidationParameters
@@ -115,7 +115,7 @@ namespace SharpbinV3.Server.Services
         public async Task<JWTResult> RefreshJWTToken(string token, string refreshToken)
         {
             var jwtHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_jwtSettings.SecretKey);
+            var key = Encoding.ASCII.GetBytes(_jwtSettings.Secret);
             try
             {
                 var principal = jwtHandler.ValidateToken(token, new TokenValidationParameters
@@ -162,7 +162,7 @@ namespace SharpbinV3.Server.Services
             existingUser.DisplayName = user.DisplayName;
             existingUser.Roles = user.Roles;
             existingUser.LastLogin = user.LastLogin;
-            existingUser.Visiblity = user.Visiblity;
+            existingUser.Visibility = user.Visibility;
             _db.Users.Update(existingUser);
             await _db.SaveChangesAsync();
             return user;

@@ -1,6 +1,12 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { FileBox, Eye, User, CalendarDays, CalendarOff, Code } from '@lucide/svelte/icons/index';
+	import { formatBytes, extractDateFromUUIDv7, dateToRelativeString } from '$lib/utils/misc';
+	import { displayNames } from '$lib/consts';
+	import { fade } from 'svelte/transition';
+	import { resolve } from '$app/paths';
 	export let data: PageData;
+	let fileSizeHovered = false;
 
 	function addLineNumbers(html: string): string {
 		const match = html.match(/<pre.*?>[\s\S]*?<code.*?>([\s\S]*?)<\/code><\/pre>/);
@@ -21,20 +27,90 @@
 <main
 	class="flex min-h-screen w-full flex-col items-center justify-center bg-neutral-950 text-white"
 >
-	{#if data.paste}
-		<div class="max-h-[80vh] rounded border-2 border-neutral-800 bg-neutral-900 p-4 w-full max-w-5xl">
+	<div
+		class="max-h-[80vh] w-[95%] max-w-5xl rounded border-2 border-neutral-800 bg-neutral-900 p-4"
+	>
+		{#if data.paste}
 			<h1 class="mb-4 text-center text-4xl font-bold">{data.paste.title || 'Untitled Paste'}</h1>
+			<div class="mb-2 flex flex-wrap items-center justify-center gap-4">
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div class="relative flex shrink-0 items-center">
+					<div
+						class="flex"
+						on:mouseenter={() => (fileSizeHovered = true)}
+						on:mouseleave={() => (fileSizeHovered = false)}
+					>
+						<FileBox class="mr-2 h-6 w-6 text-neutral-400" />
+						<span class="text-neutral-400">{formatBytes(data.paste.size)}</span>
+					</div>
+					{#if fileSizeHovered}
+						<div
+							class="absolute -top-8 left-1/2 z-10 w-fit -translate-x-1/2 rounded bg-neutral-800 px-2 py-1 text-sm whitespace-nowrap text-white shadow-lg"
+							transition:fade={{ duration: 150 }}
+						>
+							True Size: {formatBytes(data.paste.trueSize)}
+						</div>
+					{/if}
+				</div>
+
+				<div class="flex shrink-0 items-center">
+					<Eye class="mr-2 h-6 w-6 text-neutral-400" />
+					<span class="text-neutral-400"
+						>{data.paste.views} view{data.paste.views !== 1 ? 's' : ''}</span
+					>
+				</div>
+
+				<div class="flex shrink-0 items-center">
+					<CalendarDays class="mr-2 h-6 w-6 text-neutral-400" />
+					<span
+						class="text-neutral-400"
+						title={extractDateFromUUIDv7(data.paste.uuid)?.toLocaleString() ?? 'Unknown Date'}
+					>
+						{extractDateFromUUIDv7(data.paste.uuid)?.toLocaleDateString() ?? 'Unknown Date'}
+					</span>
+				</div>
+
+				{#if data.paste.expiresAt !== 0}
+					<div class="flex shrink-0 items-center">
+						<CalendarOff class="mr-2 h-6 w-6 text-neutral-400" />
+						<span class="text-neutral-400" title={new Date(data.paste.expiresAt).toLocaleString()}>
+							Expires in {dateToRelativeString(new Date(data.paste.expiresAt), false)}
+						</span>
+					</div>
+				{/if}
+
+				<div class="flex shrink-0 items-center">
+					<User class="mr-2 h-6 w-6 text-neutral-400" />
+					{#if data.paste.author}
+						<a
+							href={resolve(`/user/${data.paste.author.username}`)}
+							class="text-neutral-400 transition-colors duration-300 hover:text-neutral-500"
+							>{data.paste.author.username}</a
+						>
+					{:else}
+						<span class="text-neutral-400">Anonymous</span>
+					{/if}
+				</div>
+				<div class="flex shrink-0 items-center">
+					<Code class="mr-2 h-6 w-6 text-neutral-400" />
+					<span class="text-neutral-400">
+						{displayNames[data.paste.syntax] ??
+							data.paste.syntax.charAt(0).toUpperCase() + data.paste.syntax.slice(1)}
+					</span>
+				</div>
+			</div>
 			<div
 				class="codeblock-with-lines max-w-full overflow-x-auto overflow-y-auto"
 				style="max-width:100vw; min-width:0;"
 			>
 				{@html addLineNumbers(data.highlighted ?? '')}
 			</div>
-		</div>
-	{:else}
-		<h1 class="text-2xl font-bold">Paste not found</h1>
-		<h2 class="mt-2 text-lg">The paste you are looking for does not exist.</h2>
-	{/if}
+		{:else}
+			<h1 class="mb-4 text-center text-4xl font-bold">Paste not found</h1>
+			<h2 class="mt-2 text-center text-xl">The paste you are looking for does not exist.</h2>
+		{/if}
+	</div>
+
 	<style>
 		.codeblock-with-lines {
 			max-width: 100vw;
@@ -59,6 +135,10 @@
 			align-items: flex-start;
 			min-width: max-content;
 			padding: 0.1em 0;
+			border-radius: 0.15em;
+		}
+		.code-row:hover {
+			background-color: rgba(255, 255, 255, 0.05);
 		}
 		.line-number {
 			flex-shrink: 0;
