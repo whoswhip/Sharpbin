@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace SharpbinV3.Migrations
+namespace SharpbinV3.Server.Migrations
 {
     /// <inheritdoc />
     public partial class Init : Migration

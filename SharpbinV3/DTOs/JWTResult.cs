@@ -1,4 +1,4 @@
-﻿namespace SharpbinV3.DTOs
+﻿namespace SharpbinV3.Server.DTOs
 {
     public class JWTResult
     {

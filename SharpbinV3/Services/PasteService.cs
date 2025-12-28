@@ -1,15 +1,41 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SharpbinV3.Data;
-using SharpbinV3.Data.Entities;
-using SharpbinV3.DTOs;
+using SharpbinV3.Server.Data;
+using SharpbinV3.Server.Data.Entities;
 using System.Text;
 
-namespace SharpbinV3.Services
+namespace SharpbinV3.Server.Services
 {
     public sealed class PasteService(AppDbContext db, ICompressionService cs) : IPasteService
     {
         private readonly AppDbContext _db = db;
         private readonly ICompressionService _cs = cs;
+        private readonly static string[] ValidSyntaxLanguages =
+        [
+            "plaintext",
+            "autoHotkey",
+            "autoIt",
+            "bash",
+            "c",
+            "cpp",
+            "csharp",
+            "css",
+            "dart",
+            "html",
+            "java",
+            "javascript",
+            "json",
+            "lua",
+            "markdown",
+            "php",
+            "python",
+            "ruby",
+            "rust",
+            "sql",
+            "swift",
+            "typescript",
+            "toml",
+            "xml"
+        ];
 
         public async Task<Paste> Create(User? author, string content, string title, string syntax, int visibility, long expiresAt)
         {
@@ -61,6 +87,7 @@ namespace SharpbinV3.Services
             paste.Size = compressedData.Length;
             paste.TrueSize = Encoding.UTF8.GetByteCount(text);
             paste.EditedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            paste.IsCompressed = compressedData.Length < Encoding.UTF8.GetByteCount(text);
             _db.Pastes.Update(paste);
             var result = await _db.SaveChangesAsync();
             return result > 0;
@@ -83,5 +110,23 @@ namespace SharpbinV3.Services
                 .ToListAsync();
         }
 
+        public async Task<bool> ValidateSyntax(string syntax)
+        {
+            return await Task.FromResult(ValidSyntaxLanguages.Contains(syntax));
+        }
+        public async Task<bool> ValidateTitle(string title)
+        {
+            return await Task.FromResult(title.Length <= 500);
+        }
+        public async Task<bool> ValidateVisibility(int visibility)
+        {
+            return await Task.FromResult(visibility >= 0 && visibility <= 2);
+        }
+        public async Task<bool> ValidateExpiresAt(long expiresAt)
+        {
+            if (expiresAt == 0) return true;
+            var currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            return await Task.FromResult(expiresAt > currentTime - 1000);
+        }
     }
 }

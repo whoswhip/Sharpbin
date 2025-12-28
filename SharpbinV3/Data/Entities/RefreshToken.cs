@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SharpbinV3.Data.Entities
+namespace SharpbinV3.Server.Data.Entities
 {
     public sealed class RefreshToken
     {

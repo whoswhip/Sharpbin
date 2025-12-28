@@ -1,0 +1,6 @@
+{
+	"files.associations": {
+		"*.css": "tailwindcss"
+	},
+	"tailwindCSS.experimental.configFile": "src/routes/layout.css",
+}

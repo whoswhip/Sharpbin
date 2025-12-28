@@ -1,6 +1,6 @@
-﻿using SharpbinV3.Data.Entities;
+﻿using SharpbinV3.Server.Data.Entities;
 
-namespace SharpbinV3.Services
+namespace SharpbinV3.Server.Services
 {
     public interface IUserService
     {

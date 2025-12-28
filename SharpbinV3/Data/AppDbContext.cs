@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SharpbinV3.Data.Entities;
+using SharpbinV3.Server.Data.Entities;
 
-namespace SharpbinV3.Data
+namespace SharpbinV3.Server.Data
 {
     public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
     {

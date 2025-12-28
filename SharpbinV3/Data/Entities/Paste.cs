@@ -1,7 +1,7 @@
-﻿using System.ComponentModel.DataAnnotations;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
-namespace SharpbinV3.Data.Entities
+namespace SharpbinV3.Server.Data.Entities
 {
     [Index(nameof(PID), IsUnique = true)]
     [Index(nameof(UUID), IsUnique = true)]
@@ -20,9 +20,9 @@ namespace SharpbinV3.Data.Entities
 
         public required Guid AuthorUUID { get; set; } = Guid.Empty; // uuid of the user who created the paste, or Guid.Empty for anonymous pastes
         public User? User { get; set; }
-        
+
         public long? EditedAt { get; set; }
-        
+
         public required byte[] Content { get; set; }
         public int Size { get; set; } // stored size (may be compressed)
         public int TrueSize { get; set; } // uncompressed size

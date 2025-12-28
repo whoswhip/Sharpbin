@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace SharpbinV3.DTOs
+namespace SharpbinV3.Server.DTOs
 {
     public class RegisterRequest
     {

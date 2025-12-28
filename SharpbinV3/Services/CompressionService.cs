@@ -1,7 +1,7 @@
 ﻿using System.IO.Compression;
 
 
-namespace SharpbinV3.Services
+namespace SharpbinV3.Server.Services
 {
     public class CompressionService : ICompressionService
     {

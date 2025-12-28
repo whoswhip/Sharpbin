@@ -1,3 +1,3 @@
 <Solution>
-  <Project Path="SharpbinV3/SharpbinV3.csproj" />
+  <Project Path="SharpbinV3/SharpbinV3.Server.csproj" />
 </Solution>

@@ -1,4 +1,4 @@
-﻿namespace SharpbinV3.Services
+﻿namespace SharpbinV3.Server.Services
 {
     public interface ICompressionService
     {

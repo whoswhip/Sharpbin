@@ -6,11 +6,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>a95b1aac-5cce-4fa9-8056-51f0d045cf2f</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-  </PropertyGroup>
 
-  <ItemGroup>
-    <None Remove="Controllers\UserController.cs~RF7ce337d.TMP" />
-  </ItemGroup>
+    <EnableStaticWebAssets>false</EnableStaticWebAssets>
+    <EnableDefaultContentItems>false</EnableDefaultContentItems>
+  </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />

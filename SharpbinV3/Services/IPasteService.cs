@@ -1,7 +1,6 @@
-﻿using SharpbinV3.Data.Entities;
-using SharpbinV3.DTOs;
+﻿using SharpbinV3.Server.Data.Entities;
 
-namespace SharpbinV3.Services
+namespace SharpbinV3.Server.Services
 {
     public interface IPasteService
     {
@@ -13,5 +12,9 @@ namespace SharpbinV3.Services
         Task<bool> EditText(Paste paste, string text);
         Task<Paste> Get(string id);
         Task<List<Paste>> GetList(int offset, int count, bool publicOnly = false);
+        Task<bool> ValidateSyntax(string syntax);
+        Task<bool> ValidateTitle(string title);
+        Task<bool> ValidateVisibility(int visibility);
+        Task<bool> ValidateExpiresAt(long expiresAt);
     }
 }

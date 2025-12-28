@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SharpbinV3.Services;
+using SharpbinV3.Server.Services;
 
-namespace SharpbinV3.Controllers
+namespace SharpbinV3.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]

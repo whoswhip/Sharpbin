@@ -1,14 +1,14 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using SharpbinV3.Data;
-using SharpbinV3.Data.Entities;
-using SharpbinV3.DTOs;
+using SharpbinV3.Server.Data;
+using SharpbinV3.Server.Data.Entities;
+using SharpbinV3.Server.DTOs;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Bcrypt = BCrypt.Net.BCrypt;
 
-namespace SharpbinV3.Services
+namespace SharpbinV3.Server.Services
 {
     public sealed class AuthService(AppDbContext db, IConfiguration configuration) : IAuthService
     {
@@ -125,7 +125,7 @@ namespace SharpbinV3.Services
                     ValidateAudience = true,
                     ValidAudience = _configuration["JwtConfig:Audience"],
                     ClockSkew = TimeSpan.Zero,
-                    ValidateLifetime = true
+                    ValidateLifetime = false
                 }, out SecurityToken validatedToken);
                 var jwtId = validatedToken.Id;
                 var storedRefreshToken = await _db.RefreshTokens

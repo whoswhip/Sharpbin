@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using SharpbinV3.Data;
+using SharpbinV3.Server.Data;
 
 #nullable disable
 
-namespace SharpbinV3.Migrations
+namespace SharpbinV3.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     [Migration("20251125015039_Init")]

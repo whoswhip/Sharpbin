@@ -1,7 +1,7 @@
-﻿using SharpbinV3.Data.Entities;
-using SharpbinV3.DTOs;
+﻿using SharpbinV3.Server.Data.Entities;
+using SharpbinV3.Server.DTOs;
 
-namespace SharpbinV3.Services
+namespace SharpbinV3.Server.Services
 {
     public interface IAuthService
     {

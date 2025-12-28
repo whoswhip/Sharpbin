@@ -1,9 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using SharpbinV3.Data.Entities;
-using SharpbinV3.DTOs;
-using SharpbinV3.Services;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using SharpbinV3.Server.Data.Entities;
+using SharpbinV3.Server.DTOs;
+using SharpbinV3.Server.Services;
 
-namespace SharpbinV3.Controllers
+namespace SharpbinV3.Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -16,6 +17,15 @@ namespace SharpbinV3.Controllers
         [Route("create")]
         public async Task<IActionResult> CreatePaste(string title = "", string syntax = "plaintext", int visibility = 0, long expiresAt = 0)
         {
+            if (!await _pasteService.ValidateExpiresAt(expiresAt))
+                return BadRequest(new { message = "Invalid expiration time." });
+            if (!await _pasteService.ValidateVisibility(visibility))
+                return BadRequest(new { message = "Invalid visibility level. Must be between 0 and 2." });
+            if (!await _pasteService.ValidateSyntax(syntax))
+                return BadRequest(new { message = "Invalid syntax." });
+            if (!await _pasteService.ValidateTitle(title))
+                return BadRequest(new { message = "Invalid title. Must be less than 500 characters." });
+
             string content = await new StreamReader(Request.Body).ReadToEndAsync();
             var httpUser = HttpContext.User;
             var userUUID = httpUser?.FindFirst("UUID")?.Value;
@@ -75,6 +85,63 @@ namespace SharpbinV3.Controllers
             {
                 return File(paste.Content, "text/plain; charset=utf-8");
             }
+        }
+
+        [HttpPut]
+        [Route("{id}/edit")]
+        [Authorize]
+        public async Task<IActionResult> EditPaste(string id)
+        {
+            string content = await new StreamReader(Request.Body).ReadToEndAsync();
+            if (content == null || id == null) return NotFound();
+            var paste = await _pasteService.Get(id);
+            if (paste == null) return NotFound();
+            var httpUser = HttpContext.User;
+            var userUUID = httpUser?.FindFirst("UUID")?.Value;
+            if (userUUID == null || paste.AuthorUUID != Guid.Parse(userUUID))
+                return Forbid();
+            bool result = await _pasteService.EditText(paste, content);
+            if (!result) return NotFound();
+            return Ok(new { message = "Paste edited successfully." });
+        }
+
+        [HttpPatch]
+        [Route("{id}/modify")]
+        [Authorize]
+        public async Task<IActionResult> ModifyPasteMetadata(string id, [FromBody] PasteMetadataUpdateRequest request)
+        {
+            var paste = await _pasteService.Get(id);
+            if (paste == null) return NotFound();
+            var httpUser = HttpContext.User;
+            var userUUID = httpUser?.FindFirst("UUID")?.Value;
+            if (userUUID == null || paste.AuthorUUID != Guid.Parse(userUUID))
+                return Forbid();
+            if (request.Title != null)
+                paste.Title = request.Title;
+            if (request.Syntax != null)
+                paste.Syntax = request.Syntax;
+            if (request.Visibility.HasValue)
+                paste.Visibility = request.Visibility.Value;
+            if (request.ExpiresAt.HasValue)
+                paste.ExpiresAt = request.ExpiresAt.Value;
+            var newPaste = await _pasteService.Edit(paste);
+            return Ok(new
+            {
+                message = "Paste metadata updated successfully.",
+                paste = new
+                {
+                    newPaste.ID,
+                    newPaste.UUID,
+                    newPaste.Title,
+                    newPaste.Size,
+                    newPaste.TrueSize,
+                    newPaste.IsCompressed,
+                    newPaste.Views,
+                    newPaste.Syntax,
+                    newPaste.Visibility,
+                    newPaste.ExpiresAt
+                }
+            });
         }
     }
 }

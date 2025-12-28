@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
-namespace SharpbinV3.Data.Entities
+namespace SharpbinV3.Server.Data.Entities
 {
     [Index(nameof(UID), IsUnique = true)]
     [Index(nameof(UUID), IsUnique = true)]

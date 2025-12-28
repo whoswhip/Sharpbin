@@ -1,13 +1,13 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using SharpbinV3.Data;
-using SharpbinV3.Services;
-using System.Threading.RateLimiting;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using SharpbinV3.Server.Data;
+using SharpbinV3.Server.Services;
 using System.Text;
+using System.Threading.RateLimiting;
 
-namespace SharpbinV3
+namespace SharpbinV3.Server
 {
     public class Program
     {
@@ -65,6 +65,13 @@ namespace SharpbinV3
 
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             });
+            builder.Services.AddCors(o =>
+            {
+                o.AddDefaultPolicy(p =>
+                    p.WithOrigins("http://localhost:5173")
+                     .AllowAnyHeader()
+                     .AllowAnyMethod());
+            });
 
             var app = builder.Build();
             app.UseRateLimiter();
@@ -79,7 +86,6 @@ namespace SharpbinV3
 
             app.UseAuthentication();
             app.UseAuthorization();
-
 
             app.MapControllers();
 

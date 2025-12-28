@@ -1,11 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using SharpbinV3.Services;
-using SharpbinV3.DTOs;
-using Bcrypt = BCrypt.Net.BCrypt;
-using SharpbinV3.Data.Entities;
 using Microsoft.AspNetCore.RateLimiting;
+using SharpbinV3.Server.Data.Entities;
+using SharpbinV3.Server.DTOs;
+using SharpbinV3.Server.Services;
+using Bcrypt = BCrypt.Net.BCrypt;
 
-namespace SharpbinV3.Controllers
+namespace SharpbinV3.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
