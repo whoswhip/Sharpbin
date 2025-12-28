@@ -1,41 +1,17 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Data.Entities;
+using SharpbinV3.Server.Settings;
 using System.Text;
 
 namespace SharpbinV3.Server.Services
 {
-    public sealed class PasteService(AppDbContext db, ICompressionService cs) : IPasteService
+    public sealed class PasteService(AppDbContext db, ICompressionService cs, IOptions<PasteSettings> options) : IPasteService
     {
         private readonly AppDbContext _db = db;
         private readonly ICompressionService _cs = cs;
-        private readonly static string[] ValidSyntaxLanguages =
-        [
-            "plaintext",
-            "autoHotkey",
-            "autoIt",
-            "bash",
-            "c",
-            "cpp",
-            "csharp",
-            "css",
-            "dart",
-            "html",
-            "java",
-            "javascript",
-            "json",
-            "lua",
-            "markdown",
-            "php",
-            "python",
-            "ruby",
-            "rust",
-            "sql",
-            "swift",
-            "typescript",
-            "toml",
-            "xml"
-        ];
+        private readonly PasteSettings _pasteSettings = options.Value;
 
         public async Task<Paste> Create(User? author, string content, string title, string syntax, int visibility, long expiresAt)
         {
@@ -92,10 +68,10 @@ namespace SharpbinV3.Server.Services
             var result = await _db.SaveChangesAsync();
             return result > 0;
         }
-        public async Task<Paste> Get(string id)
+        public async Task<Paste?> Get(string id)
         {
             var paste = await _db.Pastes.Include(p => p.User).FirstOrDefaultAsync(p => p.ID == id);
-            return paste ?? throw new KeyNotFoundException("Paste not found");
+            return paste ?? null;
         }
         public async Task<List<Paste>> GetList(int offset, int count, bool publicOnly = false)
         {
@@ -112,11 +88,11 @@ namespace SharpbinV3.Server.Services
 
         public async Task<bool> ValidateSyntax(string syntax)
         {
-            return await Task.FromResult(ValidSyntaxLanguages.Contains(syntax));
+            return await Task.FromResult(_pasteSettings.ValidSyntaxLanguages.Contains(syntax));
         }
         public async Task<bool> ValidateTitle(string title)
         {
-            return await Task.FromResult(title.Length <= 500);
+            return await Task.FromResult(title.Length <= _pasteSettings.MaxTitleLength);
         }
         public async Task<bool> ValidateVisibility(int visibility)
         {

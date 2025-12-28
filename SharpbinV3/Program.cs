@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Services;
+using SharpbinV3.Server.Settings;
 using System.Text;
 using System.Threading.RateLimiting;
 
@@ -72,6 +73,8 @@ namespace SharpbinV3.Server
                      .AllowAnyHeader()
                      .AllowAnyMethod());
             });
+            builder.Services.Configure<PasteSettings>(builder.Configuration.GetSection("PasteSettings"));
+            builder.Services.Configure<JWTSettings>(builder.Configuration.GetSection("JWTSettings"));
 
             var app = builder.Build();
             app.UseRateLimiter();

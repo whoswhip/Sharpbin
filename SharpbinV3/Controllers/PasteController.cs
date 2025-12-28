@@ -1,17 +1,20 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using SharpbinV3.Server.Data.Entities;
 using SharpbinV3.Server.DTOs;
 using SharpbinV3.Server.Services;
+using SharpbinV3.Server.Settings;
 
 namespace SharpbinV3.Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class PasteController(IPasteService pasteService, IUserService userService) : ControllerBase
+    public class PasteController(IPasteService pasteService, IUserService userService, IOptions<PasteSettings> options) : ControllerBase
     {
         private readonly IPasteService _pasteService = pasteService;
         private readonly IUserService _userService = userService;
+        private readonly PasteSettings _pasteSettings = options.Value;
 
         [HttpPost]
         [Route("create")]
@@ -24,7 +27,7 @@ namespace SharpbinV3.Server.Controllers
             if (!await _pasteService.ValidateSyntax(syntax))
                 return BadRequest(new { message = "Invalid syntax." });
             if (!await _pasteService.ValidateTitle(title))
-                return BadRequest(new { message = "Invalid title. Must be less than 500 characters." });
+                return BadRequest(new { message = $"Invalid title. Must be less than {_pasteSettings.MaxTitleLength} characters." });
 
             string content = await new StreamReader(Request.Body).ReadToEndAsync();
             var httpUser = HttpContext.User;
@@ -40,7 +43,6 @@ namespace SharpbinV3.Server.Controllers
                 paste.TrueSize,
                 paste.ExpiresAt
             });
-
         }
         [HttpGet]
         [Route("{id}")]
@@ -48,7 +50,6 @@ namespace SharpbinV3.Server.Controllers
         {
             var paste = await _pasteService.Get(id);
             if (paste == null) return NotFound();
-            Console.WriteLine(paste.User);
             return Ok(new
             {
                 paste.ID,
@@ -124,6 +125,16 @@ namespace SharpbinV3.Server.Controllers
                 paste.Visibility = request.Visibility.Value;
             if (request.ExpiresAt.HasValue)
                 paste.ExpiresAt = request.ExpiresAt.Value;
+
+            if (!await _pasteService.ValidateExpiresAt(paste.ExpiresAt))
+                return BadRequest(new { message = "Invalid expiration time." });
+            if (!await _pasteService.ValidateVisibility(paste.Visibility))
+                return BadRequest(new { message = "Invalid visibility level. Must be between 0 and 2." });
+            if (!await _pasteService.ValidateSyntax(paste.Syntax ?? "plaintext"))
+                return BadRequest(new { message = "Invalid syntax." });
+            if (!await _pasteService.ValidateTitle(paste.Title ?? ""))
+                return BadRequest(new { message = $"Invalid title. Must be less than {_pasteSettings.MaxTitleLength} characters." });
+
             var newPaste = await _pasteService.Edit(paste);
             return Ok(new
             {
@@ -142,6 +153,25 @@ namespace SharpbinV3.Server.Controllers
                     newPaste.ExpiresAt
                 }
             });
+        }
+
+        [HttpGet]
+        [Route("create/options")]
+        public IActionResult GetCreatePasteOptions()
+        {
+            var options = new
+            {
+                syntaxes = _pasteSettings.ValidSyntaxLanguages,
+                visibilities = new[]
+                {
+                    new { value = 0, displayName = "Public" },
+                    new { value = 1, displayName = "Unlisted" },
+                    new { value = 2, displayName = "Private" }
+                },
+                maxTitleLength = _pasteSettings.MaxTitleLength,
+                maxPasteSize = _pasteSettings.MaxPasteSizeInBytes
+            };
+            return Ok(options);
         }
     }
 }

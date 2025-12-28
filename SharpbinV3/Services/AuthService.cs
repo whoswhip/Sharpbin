@@ -1,8 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Data.Entities;
 using SharpbinV3.Server.DTOs;
+using SharpbinV3.Server.Settings;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -10,10 +12,10 @@ using Bcrypt = BCrypt.Net.BCrypt;
 
 namespace SharpbinV3.Server.Services
 {
-    public sealed class AuthService(AppDbContext db, IConfiguration configuration) : IAuthService
+    public sealed class AuthService(AppDbContext db, IOptions<JWTSettings> options) : IAuthService
     {
         private readonly AppDbContext _db = db;
-        private readonly IConfiguration _configuration = configuration;
+        private readonly JWTSettings _jwtSettings = options.Value;
 
         public async Task<User> CreateUser(string username, string password, string? email, string? displayName)
         {
@@ -33,7 +35,7 @@ namespace SharpbinV3.Server.Services
         public async Task<JWTResult> GenerateJWTToken(User user)
         {
             var jwtHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_configuration["JwtConfig:Secret"]!);
+            var key = Encoding.ASCII.GetBytes(_jwtSettings.SecretKey);
 
             var descriptor = new SecurityTokenDescriptor
             {
@@ -43,8 +45,8 @@ namespace SharpbinV3.Server.Services
                     new Claim("Roles", user.Roles != null ? string.Join(",", user.Roles) : "0"),
                     new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
                 ]),
-                Issuer = _configuration["JwtConfig:Issuer"],
-                Audience = _configuration["JwtConfig:Audience"],
+                Issuer = _jwtSettings.Issuer,
+                Audience = _jwtSettings.Audience,
                 Expires = DateTime.UtcNow.AddMinutes(15),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
@@ -91,7 +93,7 @@ namespace SharpbinV3.Server.Services
         public async Task<bool> ValidateJWTToken(string token)
         {
             var jwtHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_configuration["JwtConfig:Secret"]!);
+            var key = Encoding.ASCII.GetBytes(_jwtSettings.SecretKey);
             try
             {
                 jwtHandler.ValidateToken(token, new TokenValidationParameters
@@ -113,7 +115,7 @@ namespace SharpbinV3.Server.Services
         public async Task<JWTResult> RefreshJWTToken(string token, string refreshToken)
         {
             var jwtHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_configuration["JwtConfig:Secret"]!);
+            var key = Encoding.ASCII.GetBytes(_jwtSettings.SecretKey);
             try
             {
                 var principal = jwtHandler.ValidateToken(token, new TokenValidationParameters
@@ -121,9 +123,9 @@ namespace SharpbinV3.Server.Services
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(key),
                     ValidateIssuer = true,
-                    ValidIssuer = _configuration["JwtConfig:Issuer"],
+                    ValidIssuer = _jwtSettings.Issuer,
                     ValidateAudience = true,
-                    ValidAudience = _configuration["JwtConfig:Audience"],
+                    ValidAudience = _jwtSettings.Audience,
                     ClockSkew = TimeSpan.Zero,
                     ValidateLifetime = false
                 }, out SecurityToken validatedToken);
