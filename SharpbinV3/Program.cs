@@ -26,6 +26,7 @@ namespace SharpbinV3.Server
                 opt.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
             });
             builder.Services.AddSingleton<ICompressionService, CompressionService>();
+            builder.Services.AddSingleton<IHostedService, PasteCleanUpService>();
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IPasteService, PasteService>();
