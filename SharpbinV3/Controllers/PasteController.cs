@@ -30,14 +30,11 @@ namespace SharpbinV3.Server.Controllers
                 return BadRequest(new { message = $"Invalid title. Must be less than {_pasteSettings.MaxTitleLength} characters." });
 
             string content = await new StreamReader(Request.Body).ReadToEndAsync();
+            if (System.Text.Encoding.UTF8.GetByteCount(content) > _pasteSettings.MaxPasteSizeInBytes)
+                return BadRequest(new { message = $"Paste size exceeds the maximum allowed size of {_pasteSettings.MaxPasteSizeInBytes} bytes." });
             var httpUser = HttpContext.User;
-            foreach (var key in httpUser.Claims)
-            {
-                Console.WriteLine($"Claim: {key.Type} = {key.Value}");
-            }
             var userUUID = httpUser?.FindFirst("UUID")?.Value;
             User? user = userUUID is not null ? await _userService.GetByUUID(Guid.Parse(userUUID)) : null;
-            Console.WriteLine($"Creating paste for user: {(user != null ? user.Username : "Anonymous")}");
             Paste paste = await _pasteService.Create(user, content, title, syntax, visibility, expiresAt);
             return Ok(new
             {
