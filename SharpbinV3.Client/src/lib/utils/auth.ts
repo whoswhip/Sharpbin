@@ -16,12 +16,14 @@ export function getRefreshToken() {
 
 export function setTokens(token: string, refreshToken: string) {
 	if (!browser) return;
+	console.log('Setting tokens');
 	document.cookie = `${TOKEN_KEY}=${token}; path=/; secure; samesite=strict`;
 	document.cookie = `${REFRESH_TOKEN_KEY}=${refreshToken}; path=/; secure; samesite=strict`;
 }
 
 export function clearTokens() {
 	if (!browser) return;
+	console.log('Clearing tokens');
 	document.cookie = `${TOKEN_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 	document.cookie = `${REFRESH_TOKEN_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }
@@ -36,6 +38,7 @@ export async function refreshTokenIfNeeded() {
 	const now = Date.now();
 
 	if (exp - now < 2 * 60 * 1000) {
+		console.log('Refreshing token...');
 		const res = await fetch('/api/auth/refresh', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -43,15 +46,19 @@ export async function refreshTokenIfNeeded() {
 		});
 		if (res.ok) {
 			const data = await res.json();
-			if (data.token && data.refreshToken) {
-				setTokens(data.token, data.refreshToken);
+			if (data.token.token && data.token.refreshToken && data.token.success) {
+				console.log('Token refreshed successfully');
+				setTokens(data.token.token, data.token.refreshToken);
 			} else {
+				console.log('Invalid tokens received during refresh');
 				clearTokens();
 			}
 		} else {
+			console.log('Failed to refresh token');
 			clearTokens();
 		}
 	}
+	console.log('Token is still valid, no refresh needed');
 }
 
 export function startTokenRefreshInterval() {
