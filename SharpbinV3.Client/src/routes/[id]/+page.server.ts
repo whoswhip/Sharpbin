@@ -1,6 +1,5 @@
 import type { PageServerLoad } from './$types';
 import type { Paste } from '$lib/types/paste';
-import { getShiki } from '$lib/server/shiki';
 
 export const load: PageServerLoad = async ({ params, fetch }) => {
 	const { id } = params;
@@ -18,14 +17,5 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 	const options = await pasteOptions.json();
 	const content = await pasteContent.text();
 
-	let highlighted = '';
-	if (pasteData && content) {
-		const shiki = await getShiki();
-		highlighted = shiki.codeToHtml(content, {
-			lang: pasteData.syntax || 'plaintext',
-			theme: 'github-dark'
-		});
-	}
-
-	return { paste: pasteData, content, options, highlighted };
+	return { paste: pasteData, content, options };
 };

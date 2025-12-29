@@ -1,4 +1,6 @@
 <script lang="ts">
+	import hljs from 'highlight.js';
+	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 	import { FileBox, Eye, User, CalendarDays, CalendarOff, Code } from '@lucide/svelte/icons/index';
 	import {
@@ -8,9 +10,16 @@
 		tooltip
 	} from '$lib/utils/misc';
 	import { displayNames } from '$lib/consts';
-	import { fade } from 'svelte/transition';
 	import { resolve } from '$app/paths';
+	import { decryptAES } from '$lib/utils/encryption';
 	export let data: PageData;
+
+	let codeElement: HTMLElement;
+	let showPasswordModal = false;
+	let passwordInput = '';
+	let decryptedContent: string | null = null;
+	let decryptError = '';
+	let contentRendered = false;
 
 	function addLineNumbers(html: string): string {
 		const match = html.match(/<pre.*?>[\s\S]*?<code.*?>([\s\S]*?)<\/code><\/pre>/);
@@ -26,17 +35,66 @@
 			.join('');
 		return html.replace(code, numbered);
 	}
+
+	function renderCode() {
+		if (!codeElement || !data?.paste) return;
+		let code = decryptedContent ?? data.content ?? '';
+		if (data.paste.visibility === 2 && JSON.parse(data.content)?.kdf) {
+			let json = JSON.parse(data.content);
+			if (json?.version === 1) {
+			}
+		}
+		const lang = data.paste.syntax ?? '';
+		let highlighted = '';
+		try {
+			if (lang && hljs.getLanguage && hljs.getLanguage(lang)) {
+				highlighted = hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
+			} else {
+				highlighted = hljs.highlightAuto(code).value;
+			}
+		} catch {
+			highlighted = hljs.highlightAuto(code).value;
+		}
+		const wrapped = `<pre><code class="hljs">${highlighted}</code></pre>`;
+		codeElement.innerHTML = addLineNumbers(wrapped);
+		contentRendered = true;
+	}
+
+	onMount(async () => {
+		try {
+			if (data?.paste && data.paste.visibility === 2) {
+				contentRendered = false;
+				const urlHash = window.location.hash.slice(1);
+				if (urlHash) {
+					const passwordFromUrl = atob(urlHash);
+					decryptedContent = await decryptAES(data.content, passwordFromUrl);
+					if (decryptedContent === null) {
+						showPasswordModal = true;
+					} else {
+						renderCode();
+					}
+					return;
+				}
+				showPasswordModal = true;
+			} else {
+				renderCode();
+			}
+		} catch {
+			renderCode();
+		}
+	});
+
+	$: if (data?.paste && (data.paste.visibility !== 2 || decryptedContent !== null)) renderCode();
 </script>
 
 <main
 	class="flex min-h-screen w-full flex-col items-center justify-center bg-neutral-950 text-white"
 >
 	<div
-		class="max-h-[80vh] w-[95%] max-w-5xl rounded border-2 border-neutral-800 bg-neutral-900 p-4"
+		class="max-h-[80vh] w-[95%] max-w-7xl rounded border-2 border-neutral-800 bg-neutral-900 p-4"
 	>
 		{#if data.paste}
 			<h1
-				use:tooltip={data.paste.title || 'Untitled Paste'}
 				class="mb-4 truncate text-center text-4xl font-bold"
 				use:tooltip={data.paste.title && data.paste.title.length > 40 ? data.paste.title : ''}
 			>
@@ -62,7 +120,7 @@
 					<CalendarDays class="mr-2 h-6 w-6 text-neutral-400" />
 					<span
 						class="text-neutral-400"
-						title={extractDateFromUUIDv7(data.paste.uuid)?.toLocaleString() ?? 'Unknown Date'}
+						use:tooltip={extractDateFromUUIDv7(data.paste.uuid)?.toLocaleString() ?? 'Unknown Date'}
 					>
 						{extractDateFromUUIDv7(data.paste.uuid)?.toLocaleDateString() ?? 'Unknown Date'}
 					</span>
@@ -97,41 +155,99 @@
 					</span>
 				</div>
 			</div>
-			<div
-				class="codeblock-with-lines max-w-full overflow-x-auto overflow-y-auto"
+			<div class="h-15 w-full rounded bg-neutral-800" class:hidden={contentRendered}></div>
+			<code
+				class="codeblock-with-lines hidden max-w-full overflow-x-auto overflow-y-auto"
 				style="max-width:100vw; min-width:0;"
+				class:hidden={!contentRendered}
+				bind:this={codeElement}
 			>
-				{@html addLineNumbers(data.highlighted ?? '')}
-			</div>
+			</code>
 		{:else}
 			<h1 class="mb-4 text-center text-4xl font-bold">Paste not found</h1>
 			<h2 class="mt-2 text-center text-xl">The paste you are looking for does not exist.</h2>
 		{/if}
 	</div>
 
+	{#if showPasswordModal}
+		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+			<form
+				on:submit|preventDefault={async () => {
+					decryptError = '';
+					try {
+						const decrypted = await decryptAES(data.content ?? '', passwordInput);
+						if (decrypted === null) {
+							decryptError = 'Incorrect password. Please try again.';
+						} else {
+							decryptedContent = decrypted;
+							showPasswordModal = false;
+							renderCode();
+							history.replaceState(null, '', window.location.pathname + window.location.search);
+						}
+					} catch {
+						decryptError = 'An error occurred during decryption. Please try again.';
+					}
+				}}
+				class="w-full max-w-md rounded bg-neutral-900 p-6"
+			>
+				<h2 class="mb-4 text-xl font-semibold">Enter password to decrypt</h2>
+				<input
+					type="text"
+					bind:value={passwordInput}
+					class="mb-3 w-full rounded border border-neutral-700 bg-neutral-800 p-2"
+				/>
+				{#if decryptError}
+					<div class="mb-3 rounded border border-red-900 bg-red-950 p-2 text-sm text-red-200">
+						{decryptError}
+					</div>
+				{/if}
+				<div class="flex gap-2">
+					<button
+						type="submit"
+						class="flex-1 cursor-pointer rounded bg-neutral-700 px-4 py-2 font-semibold text-white hover:bg-neutral-800"
+						>Decrypt</button
+					>
+					<button
+						type="button"
+						on:click={() => {
+							showPasswordModal = false;
+							decryptError = '';
+						}}
+						class="cursor-pointer rounded border border-neutral-700 px-4 py-2 hover:bg-neutral-950"
+						>Cancel</button
+					>
+				</div>
+			</form>
+		</div>
+	{/if}
+
 	<style>
+		.hljs {
+			background-color: var(--color-neutral-800) !important;
+		}
 		.codeblock-with-lines {
-			max-width: 100vw;
-			min-width: 0;
-			overflow-x: auto;
-			overflow-y: auto;
+			display: block;
+			width: 100%;
+			max-width: 100%;
+			overflow: visible;
 		}
 		.codeblock-with-lines pre {
 			display: block;
 			position: relative;
-			padding: 1em;
 			margin: 0;
 			background: none;
 			border-radius: 0.25em;
 			background-color: var(--color-neutral-800) !important;
-			overflow-x: auto;
-			min-width: max-content;
+			overflow: auto;
+			box-sizing: border-box;
+			min-width: 0;
+			width: 100%;
 			max-height: 60vh;
 		}
 		.code-row {
 			display: flex;
 			align-items: flex-start;
-			min-width: max-content;
+			min-width: 0;
 			padding: 0.1em 0;
 			border-radius: 0.15em;
 		}
@@ -151,9 +267,9 @@
 		}
 		.code-line {
 			display: block;
-			white-space: pre;
-			word-break: normal;
-			overflow-wrap: normal;
+			white-space: pre-wrap;
+			word-break: break-word;
+			overflow-wrap: anywhere;
 			padding-left: 0.25em;
 			min-width: 0;
 		}
