@@ -1,4 +1,5 @@
 import type { Paste } from './paste';
+import type { Pagination } from './pagination';
 
 export interface User {
 	uid: number;
@@ -10,4 +11,5 @@ export interface User {
 	roles: number[];
 	visibility: 0 | 1 | 2;
 	pastes: Paste[] | null;
+	pagination: Pagination | null;
 }
