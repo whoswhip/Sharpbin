@@ -44,16 +44,24 @@
 			if (json?.version === 1) {
 			}
 		}
-		const lang = data.paste.syntax ?? '';
+		const lang = (data.paste.syntax ?? '').toLowerCase();
 		let highlighted = '';
 		try {
-			if (lang && hljs.getLanguage && hljs.getLanguage(lang)) {
+			if (lang === 'plaintext') {
+				const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+				highlighted = escapeHtml(code);
+			} else if (lang && hljs.getLanguage && hljs.getLanguage(lang)) {
 				highlighted = hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
 			} else {
 				highlighted = hljs.highlightAuto(code).value;
 			}
 		} catch {
-			highlighted = hljs.highlightAuto(code).value;
+			if (lang === 'plaintext') {
+				const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+				highlighted = escapeHtml(code);
+			} else {
+				highlighted = hljs.highlightAuto(code).value;
+			}
 		}
 		const wrapped = `<pre><code class="hljs">${highlighted}</code></pre>`;
 		codeElement.innerHTML = addLineNumbers(wrapped);
