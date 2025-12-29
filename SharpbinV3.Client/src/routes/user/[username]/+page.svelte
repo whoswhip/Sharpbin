@@ -1,11 +1,44 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import type { PageData } from './$types';
+    import type { Pagination } from '$lib/types/pagination';
 	import { User, CalendarDays, ShieldUser, Ban, File, AtSign } from '@lucide/svelte';
 	import { extractDateFromUUIDv7, tooltip } from '$lib/utils/misc';
 	import { roles } from '$lib/consts';
+    import { getToken } from '$lib/utils/auth';
 
 	export let data: PageData;
+
+	let currentPage = data.user.pagination?.page ?? 1;
+	let pagination: Pagination = data.user.pagination ?? {
+        page: 1,
+        pageSize: 50,
+        totalCount: 0,
+        totalPages: 1
+    };
+	let pastes = data.user.pastes ?? [];
+	let loading = false;
+
+	async function fetchPage(pageNum: number) {
+		if (pageNum < 1 || pageNum > (pagination.totalPages || 1) || loading) return;
+		loading = true;
+        const token = getToken();
+        const res = await fetch(
+            `/api/user/${data.user.username}?page=${pageNum}`,
+            {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            }
+        );
+		if (!res.ok) {
+			loading = false;
+			return;
+		}
+		const json = await res.json();
+		pastes = json.pastes ?? [];
+		pagination = json.pagination ?? pagination;
+		currentPage = pagination.page ?? pageNum;
+		loading = false;
+	}
 </script>
 
 <main
@@ -58,13 +91,13 @@
 			<div class="flex shrink-0 items-center">
 				<File class="mr-2 h-6 w-6 text-neutral-400" />
 				<span class="text-neutral-400"
-					>{data.user.pastes?.length} paste{data.user.pastes?.length !== 1 ? 's' : ''}</span
+					>{pagination.totalCount} paste{pagination.totalCount !== 1 ? 's' : ''}</span
 				>
 			</div>
 		</div>
 		<div class="mt-6 max-h-[60vh] space-y-4 overflow-y-auto">
-			{#if data.user.pastes && data.user.pastes.length > 0}
-				{#each data.user.pastes as paste}
+			{#if pastes && pastes.length > 0}
+				{#each pastes.slice().sort((a, b) => b.uuid.localeCompare(a.uuid)) as paste (paste.uuid)}
 					<a
 						href={resolve(`/${paste.id}`)}
 						class="flex flex-col gap-2 rounded border border-neutral-700 bg-neutral-800 px-5 py-4 transition-colors duration-200 hover:bg-neutral-700 focus:ring-2 focus:ring-neutral-600 focus:outline-none"
@@ -81,5 +114,26 @@
 				<p class="text-center text-neutral-400">This user has not created any pastes yet.</p>
 			{/if}
 		</div>
+		{#if pagination.totalPages && pagination.totalPages > 1}
+			<div class="mt-4 flex items-center justify-center gap-4">
+				<button
+					class="rounded bg-neutral-700 px-3 py-1 disabled:opacity-50"
+					on:click={() => fetchPage(currentPage - 1)}
+					disabled={currentPage === 1 || loading}
+				>
+					Prev
+				</button>
+				<span class="text-neutral-400">
+					Page {currentPage} of {pagination.totalPages}
+				</span>
+				<button
+					class="rounded bg-neutral-700 px-3 py-1 disabled:opacity-50"
+					on:click={() => fetchPage(currentPage + 1)}
+					disabled={currentPage === pagination.totalPages || loading}
+				>
+					Next
+				</button>
+			</div>
+		{/if}
 	</div>
 </main>
