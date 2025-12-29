@@ -4,6 +4,7 @@
 	import { user } from '$lib/stores/user';
 	import { getToken } from '$lib/utils/auth';
 	import { fly } from 'svelte/transition';
+	import { encryptAES } from '$lib/utils/encryption';
 	import Dropdown from '$lib/components/Dropdown.svelte';
 
 	export let data: PageData;
@@ -72,6 +73,11 @@
 		const response = await fetch(url, options);
 		if (response.ok) {
 			const result = await response.json();
+			if (selectedVisibility === 2) {
+				const passwordBase64 = btoa(password);
+				window.location.href = `/${result.id}#${passwordBase64}`;
+				return;
+			}
 			window.location.href = `/${result.id}`;
 		} else {
 			error = 'Failed to create paste. Please try again.';
@@ -79,52 +85,6 @@
 				error = '';
 			}, 5000);
 		}
-	}
-
-	async function encryptAES(content: string, password: string): Promise<string> {
-		const enc = new TextEncoder();
-		const keyMaterial = await window.crypto.subtle.importKey(
-			'raw',
-			enc.encode(password),
-			{ name: 'PBKDF2' },
-			false,
-			['deriveBits', 'deriveKey']
-		);
-		const salt = window.crypto.getRandomValues(new Uint8Array(16));
-		const key = await window.crypto.subtle.deriveKey(
-			{
-				name: 'PBKDF2',
-				salt: salt,
-				iterations: 100000,
-				hash: 'SHA-256'
-			},
-			keyMaterial,
-			{ name: 'AES-GCM', length: 256 },
-			false,
-			['encrypt']
-		);
-		const iv = window.crypto.getRandomValues(new Uint8Array(12));
-		const encryptedContent = await window.crypto.subtle.encrypt(
-			{
-				name: 'AES-GCM',
-				iv: iv
-			},
-			key,
-			enc.encode(content)
-		);
-		const combined = new Uint8Array(salt.byteLength + iv.byteLength + encryptedContent.byteLength);
-		combined.set(salt, 0);
-		combined.set(iv, salt.byteLength);
-		combined.set(new Uint8Array(encryptedContent), salt.byteLength + iv.byteLength);
-		const result = {
-			version: 1,
-			kdf: 'PBKDF2',
-			iterations: 100000,
-			hash: 'SHA-256',
-			algorithm: 'AES-GCM',
-			data: btoa(String.fromCharCode(...combined))
-		};
-		return JSON.stringify(result);
 	}
 </script>
 
