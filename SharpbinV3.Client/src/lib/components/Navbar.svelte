@@ -20,7 +20,7 @@
 		{#if $user}
 			<div class="ml-auto flex items-center space-x-4">
 				<a
-					href={resolve(`/dashboard`)}
+					href={resolve(`/user/${$user.username}`)}
 					class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800"
 					>Profile</a
 				>
