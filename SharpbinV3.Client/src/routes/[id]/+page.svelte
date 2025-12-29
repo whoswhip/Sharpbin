@@ -38,6 +38,7 @@
 			<h1
 				use:tooltip={data.paste.title || 'Untitled Paste'}
 				class="mb-4 truncate text-center text-4xl font-bold"
+				use:tooltip={data.paste.title && data.paste.title.length > 40 ? data.paste.title : ''}
 			>
 				{data.paste.title || 'Untitled Paste'}
 			</h1>

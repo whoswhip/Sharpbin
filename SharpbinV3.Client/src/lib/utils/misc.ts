@@ -37,6 +37,7 @@ export function dateToRelativeString(date: Date, useSuffix = true): string {
 }
 
 export function tooltip(node: HTMLElement, text: string) {
+	if (!text || text.trim() === '') return;
 	let tooltipEl: HTMLDivElement | null;
 	let caretEl: HTMLDivElement | null;
 	let showTimeout: ReturnType<typeof setTimeout>;
