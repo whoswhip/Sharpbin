@@ -17,13 +17,15 @@ namespace SharpbinV3.Server
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
+            var connectionString = Environment.GetEnvironmentVariable("SQLITE_CONN") 
+                       ?? builder.Configuration.GetConnectionString("Default");
 
             builder.Services.AddControllers();
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
             builder.Services.AddDbContext<AppDbContext>(opt =>
             {
-                opt.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+                opt.UseSqlite(connectionString);
             });
             builder.Services.AddSingleton<ICompressionService, CompressionService>();
             builder.Services.AddSingleton<IHostedService, PasteCleanUpService>();
