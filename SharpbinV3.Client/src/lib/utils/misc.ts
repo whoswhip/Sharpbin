@@ -7,6 +7,10 @@ export function formatBytes(bytes: number, decimals = 2): string {
 	return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
+export function formatNumber(num: number): string {
+	return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 export function extractDateFromUUIDv7(uuid?: string): Date | null {
 	if (!uuid) return null;
 	const hex = uuid.replace(/-/g, '');
@@ -14,54 +18,76 @@ export function extractDateFromUUIDv7(uuid?: string): Date | null {
 	return new Date(parseInt(timestampHex, 16));
 }
 
-export function dateToRelativeString(date: Date, useSuffix = true): string {
-	const now = new Date();
+export function dateToRelativeString(
+	date: Date,
+	useSuffix = true,
+	full = false,
+	nowArg?: Date,
+	accuracy = 1
+): string {
+	const now = nowArg ?? new Date();
 	const isFuture = date > now;
 	const suffix = useSuffix ? (isFuture ? 'from now' : 'ago') : '';
 	const diff = Math.abs(now.getTime() - date.getTime());
-
-	const seconds = Math.floor(diff / 1000);
-	const minutes = Math.floor(seconds / 60);
-	const hours = Math.floor(minutes / 60);
-	const days = Math.floor(hours / 24);
-	const weeks = Math.floor(days / 7);
-	const months = Math.floor(days / 30);
-	const years = Math.floor(days / 365);
-	if (years > 0) return `${years} year${years > 1 ? 's' : ''} ${suffix}`;
-	if (months > 0) return `${months} month${months > 1 ? 's' : ''} ${suffix}`;
-	if (weeks > 0) return `${weeks} week${weeks > 1 ? 's' : ''} ${suffix}`;
-	if (days > 0) return `${days} day${days > 1 ? 's' : ''} ${suffix}`;
-	if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ${suffix}`;
-	if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ${suffix}`;
-	return `${seconds} second${seconds !== 1 ? 's' : ''} ${suffix}`;
+	let seconds = Math.floor(diff / 1000);
+	const units = [
+		{ name: 'year', value: 365 * 24 * 60 * 60 },
+		{ name: 'month', value: 30 * 24 * 60 * 60 },
+		{ name: 'week', value: 7 * 24 * 60 * 60 },
+		{ name: 'day', value: 24 * 60 * 60 },
+		{ name: 'hour', value: 60 * 60 },
+		{ name: 'minute', value: 60 },
+		{ name: 'second', value: 1 }
+	];
+	if (!full) {
+		for (const unit of units) {
+			const count = Math.floor(seconds / unit.value);
+			if (count > 0) {
+				return `${count} ${unit.name}${count > 1 ? 's' : ''} ${suffix}`.trim();
+			}
+		}
+		return `0 seconds ${suffix}`.trim();
+	}
+	const parts: string[] = [];
+	let acc = 0;
+	for (const unit of units) {
+		if (acc >= accuracy) break;
+		const count = Math.floor(seconds / unit.value);
+		if (count > 0) {
+			parts.push(`${count} ${unit.name}${count > 1 ? 's' : ''}`);
+			seconds -= count * unit.value;
+			acc++;
+		}
+	}
+	if (parts.length === 0) parts.push('0 seconds');
+	return `${parts.join(', ')} ${suffix}`.trim();
 }
 
 export function tooltip(node: HTMLElement, text: string) {
-	if (!text || text.trim() === '') return;
-	let tooltipEl: HTMLDivElement | null;
-	let caretEl: HTMLDivElement | null;
+	let currentText = text ?? '';
+	let tooltipEl: HTMLDivElement | null = null;
+	let caretEl: HTMLDivElement | null = null;
 	let showTimeout: ReturnType<typeof setTimeout>;
 	let hideTimeout: ReturnType<typeof setTimeout>;
 
 	function createTooltip() {
+		if (!currentText || currentText.trim() === '') return;
 		const el = document.createElement('div');
-		el.textContent = text;
 		el.className =
 			'fixed z-50 rounded bg-neutral-800 px-2 py-1 text-sm text-white shadow-lg opacity-0 pointer-events-none transition-opacity duration-150';
 		el.style.maxWidth = '90%';
 		el.style.wordBreak = 'break-word';
-		const lines = text.split('\n');
+		const lines = currentText.split('\n');
 		if (lines.length > 1) {
 			el.innerHTML = '';
 			lines.forEach((line, index) => {
-				const lineEl = document.createElement('div');
-				lineEl.textContent = line;
-				el.appendChild(lineEl);
-				if (index < lines.length - 1) {
-					const br = document.createElement('br');
-					el.appendChild(br);
-				}
+				const span = document.createElement('span');
+				span.textContent = line;
+				el.appendChild(span);
+				if (index < lines.length - 1) el.appendChild(document.createElement('br'));
 			});
+		} else {
+			el.textContent = currentText;
 		}
 		const caret = document.createElement('div');
 		caret.style.position = 'absolute';
@@ -74,6 +100,41 @@ export function tooltip(node: HTMLElement, text: string) {
 		el.appendChild(caret);
 		document.body.appendChild(el);
 		tooltipEl = el;
+	}
+
+	function updateContent() {
+		if (!tooltipEl) return;
+		if (!currentText || currentText.trim() === '') {
+			tooltipEl.remove();
+			tooltipEl = null;
+			caretEl = null;
+			return;
+		}
+		const lines = currentText.split('\n');
+		tooltipEl.innerHTML = '';
+		if (lines.length > 1) {
+			lines.forEach((line, index) => {
+				const span = document.createElement('span');
+				span.textContent = line;
+				tooltipEl?.appendChild(span);
+				if (index < lines.length - 1) tooltipEl?.appendChild(document.createElement('br'));
+			});
+		} else {
+			tooltipEl.textContent = currentText;
+		}
+		if (!caretEl) {
+			const caret = document.createElement('div');
+			caret.style.position = 'absolute';
+			caret.style.width = '0';
+			caret.style.height = '0';
+			caret.style.left = '50%';
+			caret.style.transform = 'translateX(-50%)';
+			caret.style.pointerEvents = 'none';
+			caretEl = caret;
+			tooltipEl.appendChild(caretEl);
+		} else {
+			tooltipEl.appendChild(caretEl);
+		}
 	}
 
 	function positionTooltip() {
@@ -112,7 +173,8 @@ export function tooltip(node: HTMLElement, text: string) {
 	function mouseOver() {
 		clearTimeout(hideTimeout);
 		showTimeout = setTimeout(() => {
-			createTooltip();
+			if (!tooltipEl) createTooltip();
+			else updateContent();
 			positionTooltip();
 			requestAnimationFrame(() => {
 				if (tooltipEl) tooltipEl.style.opacity = '1';
@@ -140,6 +202,21 @@ export function tooltip(node: HTMLElement, text: string) {
 	window.addEventListener('resize', mouseOut, true);
 
 	return {
+		update(newText: string) {
+			currentText = newText ?? '';
+			if (!currentText || currentText.trim() === '') {
+				if (tooltipEl) {
+					tooltipEl.remove();
+					tooltipEl = null;
+					caretEl = null;
+				}
+				return;
+			}
+			if (tooltipEl) {
+				updateContent();
+				positionTooltip();
+			}
+		},
 		destroy() {
 			node.removeEventListener('mouseover', mouseOver);
 			node.removeEventListener('mouseout', mouseOut);
