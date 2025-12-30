@@ -11,6 +11,7 @@
 	export let displayValue: (val: string | number) => string = (val) => {
 		return options.find((o) => o.value === val)?.label ?? String(val);
 	};
+	export let variant: string = '';
 
 	let isOpen = false;
 	let searchQuery = '';
@@ -55,11 +56,12 @@
 
 <svelte:window on:click={handleClickOutside} />
 
-<div bind:this={dropdownElement} class="relative w-full mb-2">
+<div bind:this={dropdownElement} class="relative mb-2 w-full" class:dropdown-sm={variant === 'sm'}>
 	<button
 		type="button"
 		on:click={toggleDropdown}
 		class="w-full rounded border border-neutral-700 bg-neutral-800 p-2 text-left transition-colors hover:bg-neutral-700"
+		class:dropdown-sm-btn={variant === 'sm'}
 	>
 		{displayValue(value) || placeholder}
 	</button>
@@ -67,12 +69,14 @@
 	{#if isOpen}
 		<div
 			class="absolute top-full z-50 mt-1 w-full rounded border border-neutral-700 bg-neutral-800 shadow-lg"
+			class:dropdown-sm-list={variant === 'sm'}
 		>
 			{#if searchable}
 				<input
 					type="text"
 					placeholder="Search..."
 					class="w-full border-b border-neutral-700 bg-neutral-800 p-2 outline-none"
+					class:dropdown-sm-input={variant === 'sm'}
 					bind:value={searchQuery}
 					on:keydown={handleKeyDown}
 				/>
@@ -85,6 +89,7 @@
 						on:click={() => handleSelect(option.value)}
 						class="w-full border-b border-neutral-700 px-3 py-2 text-left last:border-b-0 hover:bg-neutral-600"
 						class:bg-neutral-700={value === option.value}
+						class:dropdown-sm-option={variant === 'sm'}
 					>
 						{option.label}
 					</button>
@@ -93,3 +98,33 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	.dropdown-sm {
+		margin-bottom: 0;
+	}
+	.dropdown-sm-btn {
+		padding-top: 0;
+		padding-bottom: 0;
+		padding-left: 0.5rem;
+		padding-right: 0.5rem;
+		font-size: 0.95rem;
+	}
+	.dropdown-sm-list {
+		min-width: 160px;
+	}
+	.dropdown-sm-input {
+		padding-top: 0;
+		padding-bottom: 0;
+		padding-left: 0.5rem;
+		padding-right: 0.5rem;
+		font-size: 0.95rem;
+	}
+	.dropdown-sm-option {
+		padding-top: 0.15rem;
+		padding-bottom: 0.15rem;
+		padding-left: 0.5rem;
+		padding-right: 0.5rem;
+		font-size: 0.95rem;
+	}
+</style>
