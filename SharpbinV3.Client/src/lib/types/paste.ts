@@ -11,5 +11,6 @@ export interface Paste {
 	syntax: string;
 	visibility: 0 | 1 | 2;
 	expiresAt: number;
+	editedAt: number | null;
 	author: Author | null;
 }

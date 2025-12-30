@@ -2,24 +2,98 @@
 	import hljs from 'highlight.js';
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
-	import { FileBox, Eye, User, CalendarDays, CalendarOff, Code } from '@lucide/svelte/icons/index';
+	import {
+		FileBox,
+		Eye,
+		EyeClosed,
+		EyeOff,
+		User,
+		CalendarDays,
+		CalendarOff,
+		Code,
+		Pencil,
+		PencilOff,
+		PencilLine,
+		Trash2,
+		Download,
+		Copy,
+		Check,
+		CalendarCog
+	} from '@lucide/svelte/icons/index';
 	import {
 		formatBytes,
+		formatNumber,
 		extractDateFromUUIDv7,
 		dateToRelativeString,
 		tooltip
 	} from '$lib/utils/misc';
 	import { displayNames } from '$lib/consts';
 	import { resolve } from '$app/paths';
-	import { decryptAES } from '$lib/utils/encryption';
+	import { decryptAES, encryptAES } from '$lib/utils/encryption';
+	import { fade } from 'svelte/transition';
+	import { getToken } from '$lib/utils/auth';
+	import { user } from '$lib/stores/user';
+	import Dropdown from '$lib/components/Dropdown.svelte';
+	import type { Paste } from '$lib/types/paste';
 	export let data: PageData;
 
-	let codeElement: HTMLElement;
 	let showPasswordModal = false;
+	let passwordModalResolve: ((password: string) => void) | null = null;
+	let passwordModalMode: 'decrypt' | 'encrypt' = 'decrypt';
+	let editing = false;
+	let editContent: string | null = null;
+	let editMetadata: Paste | null = data.paste ? { ...data.paste } : null;
+	let editError = '';
+	let editLoading = false;
 	let passwordInput = '';
+	let pasteContent = '';
 	let decryptedContent: string | null = null;
 	let decryptError = '';
 	let contentRendered = false;
+	let downloadedPaste = false;
+	let copiedPaste = false;
+
+	let now = new Date();
+	$: isExpired =
+		data?.paste?.expiresAt && data.paste.expiresAt !== 0
+			? new Date(data.paste.expiresAt).getTime() <= now.getTime()
+			: false;
+
+	let interval: ReturnType<typeof setInterval> | null = null;
+	const syntaxOptions = data.options?.syntaxes.map((lang: string) => ({
+		value: lang,
+		label: displayNames[lang] ?? lang.charAt(0).toUpperCase() + lang.slice(1)
+	}));
+	const expiresOptions = [
+		{ value: 0, label: 'Never Expire' },
+		{ value: 600000, label: 'Expire in 10 Minutes' },
+		{ value: 3600000, label: 'Expire in 1 Hour' },
+		{ value: 86400000, label: 'Expire in 1 Day' },
+		{ value: 604800000, label: 'Expire in 1 Week' },
+		{ value: 1209600000, label: 'Expire in 2 Weeks' },
+		{ value: 2592000000, label: 'Expire in 1 Month' },
+		{ value: 7776000000, label: 'Expire in 3 Months' },
+		{ value: 15552000000, label: 'Expire in 6 Months' },
+		{ value: 31536000000, label: 'Expire in 1 Year' },
+		{ value: 63072000000, label: 'Expire in 2 Years' },
+		{ value: 157680000000, label: 'Expire in 5 Years' },
+		{ value: 315360000000, label: 'Expire in 10 Years' }
+	];
+	const visibilityOptions = data.options?.visibilities.map(
+		(visibility: { value: number; displayName: string }) => ({
+			value: visibility.value,
+			label: visibility.displayName
+		})
+	);
+
+	onMount(() => {
+		interval = setInterval(() => {
+			now = new Date();
+		}, 1000);
+		return () => {
+			if (interval) clearInterval(interval);
+		};
+	});
 
 	function addLineNumbers(html: string): string {
 		const match = html.match(/<pre.*?>[\s\S]*?<code.*?>([\s\S]*?)<\/code><\/pre>/);
@@ -36,19 +110,15 @@
 		return html.replace(code, numbered);
 	}
 
-	function renderCode() {
-		if (!codeElement || !data?.paste) return;
-		let code = decryptedContent ?? data.content ?? '';
-		if (data.paste.visibility === 2 && JSON.parse(data.content)?.kdf) {
-			let json = JSON.parse(data.content);
-			if (json?.version === 1) {
-			}
-		}
+	function renderCode(content: string | null = null) {
+		if (!data?.paste) return;
+		let code = content ?? decryptedContent ?? data.content ?? '';
 		const lang = (data.paste.syntax ?? '').toLowerCase();
 		let highlighted = '';
 		try {
 			if (lang === 'plaintext') {
-				const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+				const escapeHtml = (s: string) =>
+					s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 				highlighted = escapeHtml(code);
 			} else if (lang && hljs.getLanguage && hljs.getLanguage(lang)) {
 				highlighted = hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
@@ -57,15 +127,115 @@
 			}
 		} catch {
 			if (lang === 'plaintext') {
-				const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+				const escapeHtml = (s: string) =>
+					s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 				highlighted = escapeHtml(code);
 			} else {
 				highlighted = hljs.highlightAuto(code).value;
 			}
 		}
 		const wrapped = `<pre><code class="hljs">${highlighted}</code></pre>`;
-		codeElement.innerHTML = addLineNumbers(wrapped);
+		pasteContent = addLineNumbers(wrapped);
 		contentRendered = true;
+	}
+
+	async function updatePaste(content: string | null, metadata: Paste | null) {
+		editError = '';
+		editLoading = true;
+		try {
+			if (!data?.paste) {
+				editError = 'Paste data is missing.';
+				editLoading = false;
+				return;
+			}
+			const token = getToken();
+			if (!token) {
+				editError = 'Not authenticated.';
+				editLoading = false;
+				return;
+			}
+			if (
+				(content !== (decryptedContent ?? data.content) ||
+					metadata?.visibility === 2 ||
+					data.paste.visibility === 2) &&
+				content !== null
+			) {
+				let rawContent = content;
+				if (metadata?.visibility === 2 || data.paste.visibility === 2) {
+					const password = await promptPassword('encrypt');
+					if (!password) {
+						editError = 'Password required for encryption.';
+						editLoading = false;
+						return;
+					}
+					const encrypted = await encryptAES(content, password);
+					content = encrypted;
+				}
+				const res = await fetch(`/api/paste/${data.paste.id}/edit`, {
+					method: 'PUT',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${token}`
+					},
+					body: content
+				});
+				if (!res.ok) {
+					const err = await res.json().catch(() => ({}));
+					editError = err?.message || 'Failed to update paste content.';
+					editLoading = false;
+					return;
+				}
+				data.content = rawContent;
+				decryptedContent = rawContent;
+				renderCode(rawContent);
+			}
+			if (
+				(metadata?.syntax !== data.paste.syntax ||
+					metadata?.expiresAt !== data.paste.expiresAt ||
+					metadata?.visibility !== data.paste.visibility ||
+					metadata?.title !== data.paste.title) &&
+				metadata !== null
+			) {
+				const res = await fetch(`/api/paste/${data.paste.id}/modify`, {
+					method: 'PATCH',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${token}`
+					},
+					body: JSON.stringify({
+						syntax: metadata.syntax,
+						expiresAt: metadata.expiresAt === 0 ? 0 : Date.now() + (metadata.expiresAt ?? 0),
+						visibility: metadata.visibility,
+						title: metadata.title
+					})
+				});
+				if (!res.ok) {
+					const err = await res.json().catch(() => ({}));
+					editError = err?.message || 'Failed to update paste metadata.';
+					editLoading = false;
+					return;
+				}
+				const resJson = await res.json();
+				data.paste.syntax = resJson.paste.syntax ?? data.paste.syntax;
+				data.paste.expiresAt = resJson.paste.expiresAt ?? data.paste.expiresAt;
+				data.paste.visibility = resJson.paste.visibility ?? data.paste.visibility;
+				data.paste.title = resJson.paste.title ?? data.paste.title;
+			}
+		} catch {
+			editError = 'An error occurred while updating.';
+		} finally {
+			editLoading = false;
+			editing = false;
+			editContent = null;
+		}
+	}
+
+	async function promptPassword(mode: 'decrypt' | 'encrypt' = 'decrypt'): Promise<string> {
+		return new Promise((resolve) => {
+			showPasswordModal = true;
+			passwordModalResolve = resolve;
+			passwordModalMode = mode;
+		});
 	}
 
 	onMount(async () => {
@@ -77,13 +247,30 @@
 					const passwordFromUrl = atob(urlHash);
 					decryptedContent = await decryptAES(data.content, passwordFromUrl);
 					if (decryptedContent === null) {
-						showPasswordModal = true;
+						const password = await promptPassword('decrypt');
+						if (password) {
+							decryptedContent = await decryptAES(data.content, password);
+							if (decryptedContent === null) {
+								decryptError = 'Incorrect password. Please try again.';
+							} else {
+								renderCode();
+								history.replaceState(null, '', window.location.pathname + window.location.search);
+							}
+						}
 					} else {
 						renderCode();
 					}
 					return;
 				}
-				showPasswordModal = true;
+				const password = await promptPassword('decrypt');
+				if (password) {
+					decryptedContent = await decryptAES(data.content, password);
+					if (decryptedContent === null) {
+						decryptError = 'Incorrect password. Please try again.';
+					} else {
+						renderCode();
+					}
+				}
 			} else {
 				renderCode();
 			}
@@ -102,49 +289,25 @@
 		class="max-h-[80vh] w-[95%] max-w-7xl rounded border-2 border-neutral-800 bg-neutral-900 p-4"
 	>
 		{#if data.paste}
-			<h1
-				class="mb-4 truncate text-center text-4xl font-bold"
-				use:tooltip={data.paste.title && data.paste.title.length > 40 ? data.paste.title : ''}
-			>
-				{data.paste.title || 'Untitled Paste'}
-			</h1>
-			<div class="mb-2 flex flex-wrap items-center justify-center gap-4">
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div class="relative flex shrink-0 items-center">
-					<div class="flex" use:tooltip={`True Size: ${formatBytes(data.paste.trueSize)}`}>
-						<FileBox class="mr-2 h-6 w-6 text-neutral-400" />
-						<span class="text-neutral-400">{formatBytes(data.paste.size)}</span>
-					</div>
-				</div>
-
-				<div class="flex shrink-0 items-center">
-					<Eye class="mr-2 h-6 w-6 text-neutral-400" />
-					<span class="text-neutral-400"
-						>{data.paste.views} view{data.paste.views !== 1 ? 's' : ''}</span
-					>
-				</div>
-
-				<div class="flex shrink-0 items-center">
-					<CalendarDays class="mr-2 h-6 w-6 text-neutral-400" />
-					<span
-						class="text-neutral-400"
-						use:tooltip={extractDateFromUUIDv7(data.paste.uuid)?.toLocaleString() ?? 'Unknown Date'}
-					>
-						{extractDateFromUUIDv7(data.paste.uuid)?.toLocaleDateString() ?? 'Unknown Date'}
-					</span>
-				</div>
-
-				{#if data.paste.expiresAt !== 0}
-					<div class="flex shrink-0 items-center">
-						<CalendarOff class="mr-2 h-6 w-6 text-neutral-400" />
-						<span class="text-neutral-400" title={new Date(data.paste.expiresAt).toLocaleString()}>
-							Expires in {dateToRelativeString(new Date(data.paste.expiresAt), false)}
-						</span>
-					</div>
-				{/if}
-
-				<div class="flex shrink-0 items-center">
-					<User class="mr-2 h-6 w-6 text-neutral-400" />
+			<div class="mb-4 w-full text-center">
+				<h1
+					class="mx-auto max-w-[90%] min-w-0 truncate text-3xl leading-tight font-bold sm:text-4xl"
+					use:tooltip={data.paste.title && data.paste.title.length > 40 ? data.paste.title : ''}
+				>
+					{#if !editing}
+						{data.paste.title || 'Untitled Paste'}
+					{:else if editMetadata}
+						<input
+							type="text"
+							bind:value={editMetadata.title}
+							class="w-full rounded border border-neutral-700 bg-neutral-800 p-2 text-white outline-none"
+							placeholder="Untitled Paste"
+							maxlength={data.options.maxTitleLength ?? 500}
+						/>
+					{/if}
+				</h1>
+				<div class="mt-1 flex items-center justify-center gap-2 text-sm text-neutral-400">
+					<User class="inline-block h-4 w-4 text-neutral-400" />
 					{#if data.paste.author}
 						<a
 							href={resolve(`/user/${data.paste.author.username}`)}
@@ -155,22 +318,292 @@
 						<span class="text-neutral-400">Anonymous</span>
 					{/if}
 				</div>
-				<div class="flex shrink-0 items-center">
-					<Code class="mr-2 h-6 w-6 text-neutral-400" />
-					<span class="text-neutral-400">
-						{displayNames[data.paste.syntax] ??
-							data.paste.syntax.charAt(0).toUpperCase() + data.paste.syntax.slice(1)}
-					</span>
+			</div>
+			<div class="mb-2">
+				<div class="flex flex-wrap items-center justify-center gap-4">
+					<div class="relative flex shrink-0 items-center">
+						<div class="flex" use:tooltip={`True Size: ${formatBytes(data.paste.trueSize)}`}>
+							<FileBox class="mr-2 h-6 w-6 text-neutral-400" />
+							<span class="text-neutral-400">{formatBytes(data.paste.size)}</span>
+						</div>
+					</div>
+
+					<div class="flex shrink-0 items-center">
+						<Eye class="mr-2 h-6 w-6 text-neutral-400" />
+						<span class="text-neutral-400"
+							>{data.paste.views} view{data.paste.views !== 1 ? 's' : ''}</span
+						>
+					</div>
+
+					<div class="flex shrink-0 items-center">
+						<CalendarDays class="mr-2 h-6 w-6 text-neutral-400" />
+						<span
+							class="text-neutral-400"
+							use:tooltip={`Created on ${
+								extractDateFromUUIDv7(data.paste.uuid)?.toLocaleString() ?? 'Unknown Date'
+							}
+							${dateToRelativeString(extractDateFromUUIDv7(data.paste.uuid) ?? new Date(), true, true, now, 3)}`}
+						>
+							{extractDateFromUUIDv7(data.paste.uuid)?.toLocaleDateString() ?? 'Unknown Date'}
+						</span>
+					</div>
+					{#if data.paste.editedAt}
+						<div class="flex shrink-0 items-center">
+							<CalendarCog class="mr-2 h-6 w-6 text-neutral-400" />
+							<span
+								class="text-neutral-400"
+								use:tooltip={`Edited on ${new Date(data.paste.editedAt).toLocaleString()}
+								${dateToRelativeString(new Date(data.paste.editedAt), true, true, now, 3)}`}
+							>
+								{#if new Date(data.paste.editedAt).getTime() > new Date().getTime() - 86400000}
+									Edited {dateToRelativeString(new Date(data.paste.editedAt), false, false, now)} ago
+								{:else}
+									{new Date(data.paste.editedAt).toLocaleDateString()}
+								{/if}
+							</span>
+						</div>
+					{/if}
+					{#if data.paste.expiresAt !== 0 || editing}
+						<div class="flex shrink-0 items-center">
+							<CalendarOff class="mr-2 h-6 w-6 text-neutral-400" />
+							{#if !editing}
+								<span
+									class="text-neutral-400"
+									use:tooltip={`Expires on ${new Date(data.paste.expiresAt).toLocaleString()}
+								${dateToRelativeString(new Date(data.paste.expiresAt), true, true, now, 3)}`}
+								>
+									{isExpired ? 'Expired' : 'Expires in'}
+									{dateToRelativeString(new Date(data.paste.expiresAt), false, false, now)}
+									{isExpired ? 'ago' : ''}
+								</span>
+							{:else if editMetadata}
+								<Dropdown
+									options={expiresOptions}
+									bind:value={editMetadata.expiresAt}
+									placeholder="Select expiration..."
+									variant="sm"
+									displayValue={(val) => {
+										const option = expiresOptions.find((opt) => opt.value === val);
+										return option ? option.label : 'Select expiration...';
+									}}
+								/>
+							{/if}
+						</div>
+					{/if}
+
+					<div class="flex shrink-0 items-center">
+						<Code class="mr-2 h-6 w-6 text-neutral-400" />
+						{#if !editing}
+							<span class="text-neutral-400">
+								{displayNames[data.paste.syntax] ??
+									data.paste.syntax.charAt(0).toUpperCase() + data.paste.syntax.slice(1)}
+							</span>
+						{:else if editMetadata}
+							<Dropdown
+								options={syntaxOptions}
+								bind:value={editMetadata.syntax}
+								placeholder="Select syntax..."
+								searchable={true}
+								variant="sm"
+							/>
+						{/if}
+					</div>
+					<div>
+						<div class="flex shrink-0 items-center">
+							{#if data.paste.visibility === 0}
+								<Eye class="mr-2 h-6 w-6 text-neutral-400" />
+								<span class="text-neutral-400">{editing ? '' : 'Public'}</span>
+							{:else if data.paste.visibility === 1}
+								<EyeClosed class="mr-2 h-6 w-6 text-neutral-400" />
+								<span class="text-neutral-400">{editing ? '' : 'Unlisted'}</span>
+							{:else if data.paste.visibility === 2}
+								<EyeOff class="mr-2 h-6 w-6 text-neutral-400" />
+								<span class="text-neutral-400">{editing ? '' : 'Private'}</span>
+							{/if}
+							{#if editing && editMetadata}
+								<Dropdown
+									options={visibilityOptions}
+									bind:value={editMetadata.visibility}
+									placeholder="Select visibility..."
+									variant="sm"
+								/>
+							{/if}
+						</div>
+					</div>
 				</div>
 			</div>
-			<div class="h-15 w-full rounded bg-neutral-800" class:hidden={contentRendered}></div>
-			<code
-				class="codeblock-with-lines hidden max-w-full overflow-x-auto overflow-y-auto"
-				style="max-width:100vw; min-width:0;"
-				class:hidden={!contentRendered}
-				bind:this={codeElement}
-			>
-			</code>
+
+			<div class="overflow-hidden">
+				<div
+					class="flex items-center justify-between gap-2 rounded-t-md border-b border-neutral-700 bg-neutral-800 px-3 py-2"
+				>
+					<div class="flex items-center gap-2 text-sm text-neutral-300">
+						<span class="font-medium text-neutral-100"
+							>{formatNumber((editContent ?? decryptedContent ?? data.content).length)}</span
+						>
+						<span class="text-neutral-400">chars</span>
+						<span class="text-neutral-600">•</span>
+						<span class="font-medium text-neutral-100"
+							>{formatNumber(
+								(editing ? (editContent ?? '') : (decryptedContent ?? data.content)).split('\n')
+									.length
+							)}</span
+						>
+						<span class="text-neutral-400"
+							>line{(editing ? (editContent ?? '') : (decryptedContent ?? data.content)).split('\n')
+								.length !== 1
+								? 's'
+								: ''}</span
+						>
+					</div>
+					<div class="flex shrink-0 flex-wrap items-center gap-2 sm:flex-nowrap">
+						<button
+							type="button"
+							class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
+							on:click={() => {
+								navigator.clipboard.writeText(decryptedContent ?? data.content);
+								copiedPaste = true;
+								setTimeout(() => (copiedPaste = false), 1000);
+							}}
+						>
+							<div class="relative mr-1 h-5 w-5">
+								{#if copiedPaste}
+									<span
+										transition:fade={{ duration: 200 }}
+										class="absolute inset-0 flex items-center justify-center"
+										><Check class="h-5 w-5 text-green-400" /></span
+									>
+								{:else}
+									<span
+										transition:fade={{ duration: 200 }}
+										class="absolute inset-0 flex items-center justify-center"
+										><Copy class="h-5 w-5 text-neutral-400" /></span
+									>
+								{/if}
+							</div>
+
+							<span class="text-neutral-300">Copy</span>
+						</button>
+						<button
+							type="button"
+							class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
+							on:click={() => {
+								const blob = new Blob([decryptedContent ?? data.content], {
+									type: 'text/plain'
+								});
+								const url = URL.createObjectURL(blob);
+								const a = document.createElement('a');
+								a.href = url;
+								a.download = data.paste?.title
+									? data.paste.title.replace(/[^a-z0-9_\-.]/gi, '_').slice(0, 100) + '.txt'
+									: `paste_${data.paste?.id}.txt`;
+								document.body.appendChild(a);
+								a.click();
+								document.body.removeChild(a);
+								URL.revokeObjectURL(url);
+								downloadedPaste = true;
+								setTimeout(() => (downloadedPaste = false), 1000);
+							}}
+						>
+							<div class="relative mr-1 h-5 w-5">
+								{#if downloadedPaste}
+									<span
+										transition:fade={{ duration: 200 }}
+										class="absolute inset-0 flex items-center justify-center"
+										><Check class="h-5 w-5 text-green-400" /></span
+									>
+								{:else}
+									<span
+										transition:fade={{ duration: 200 }}
+										class="absolute inset-0 flex items-center justify-center"
+										><Download class="h-5 w-5 text-neutral-400" /></span
+									>
+								{/if}
+							</div>
+
+							<span class="text-neutral-300">Download</span>
+						</button>
+						{#if $user && ($user.uuid === data.paste?.author?.uuid || ['1', '255'].some( (r) => $user.roles
+											.toString()
+											.split(',')
+											.includes(r) ))}
+							{#if !editing}
+								<button
+									type="button"
+									class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
+									on:click={() => {
+										editContent = decryptedContent ?? data.content;
+										editError = '';
+										editing = true;
+									}}
+								>
+									<Pencil class="mr-1 h-5 w-5 text-neutral-400" />
+									<span class="text-neutral-300">Edit</span>
+								</button>
+								<button
+									type="button"
+									class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-red-900"
+								>
+									<Trash2 class="mr-1 h-5 w-5 text-red-400" />
+									<span class="text-red-300">Delete</span>
+								</button>
+							{:else}
+								<button
+									type="button"
+									class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
+									on:click={async () => {
+										if (editContent !== null || editMetadata !== null) {
+											await updatePaste(editContent, editMetadata);
+										}
+										console.log(editContent, editMetadata);
+									}}
+									disabled={editLoading}
+								>
+									<PencilLine class="mr-1 h-5 w-5 text-neutral-400" />
+									<span class="text-neutral-300">{editLoading ? 'Saving...' : 'Save Edits'}</span>
+								</button>
+								<button
+									type="button"
+									class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
+									on:click={() => {
+										editing = false;
+										editError = '';
+									}}
+								>
+									<PencilOff class="mr-1 h-5 w-5 text-neutral-400" />
+									<span class="text-neutral-300">Cancel Edit</span>
+								</button>
+							{/if}
+						{/if}
+					</div>
+				</div>
+				{#if editing}
+					<textarea
+						class="mb-3 max-h-[60vh] min-h-10 w-full rounded-b bg-neutral-800 p-2 font-mono"
+						rows="14"
+						placeholder="Paste content"
+						bind:value={editContent}
+					></textarea>
+					{#if editError}
+						<div class="mb-3 rounded border border-red-900 bg-red-950 p-2 text-sm text-red-200">
+							{editError}
+						</div>
+					{/if}
+				{:else}
+					<div
+						class="h-15 w-full rounded-b bg-neutral-800"
+						class:hidden={contentRendered && !editing}
+					></div>
+					<code
+						class="codeblock-with-lines hidden max-w-full overflow-x-auto overflow-y-auto"
+						style="max-width:100vw; min-width:0;"
+						class:hidden={!contentRendered}
+					>
+						<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+						{@html pasteContent}
+					</code>
+				{/if}
+			</div>
 		{:else}
 			<h1 class="mb-4 text-center text-4xl font-bold">Paste not found</h1>
 			<h2 class="mt-2 text-center text-xl">The paste you are looking for does not exist.</h2>
@@ -180,25 +613,21 @@
 	{#if showPasswordModal}
 		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
 			<form
-				on:submit|preventDefault={async () => {
-					decryptError = '';
-					try {
-						const decrypted = await decryptAES(data.content ?? '', passwordInput);
-						if (decrypted === null) {
-							decryptError = 'Incorrect password. Please try again.';
-						} else {
-							decryptedContent = decrypted;
-							showPasswordModal = false;
-							renderCode();
-							history.replaceState(null, '', window.location.pathname + window.location.search);
-						}
-					} catch {
-						decryptError = 'An error occurred during decryption. Please try again.';
+				on:submit|preventDefault={() => {
+					if (passwordModalResolve) {
+						passwordModalResolve(passwordInput);
+						passwordModalResolve = null;
 					}
+					showPasswordModal = false;
+					decryptError = '';
 				}}
 				class="w-full max-w-md rounded bg-neutral-900 p-6"
 			>
-				<h2 class="mb-4 text-xl font-semibold">Enter password to decrypt</h2>
+				<h2 class="mb-4 text-xl font-semibold">
+					{passwordModalMode === 'decrypt'
+						? 'Enter password to decrypt'
+						: 'Enter password to encrypt'}
+				</h2>
 				<input
 					type="text"
 					bind:value={passwordInput}
@@ -213,13 +642,17 @@
 					<button
 						type="submit"
 						class="flex-1 cursor-pointer rounded bg-neutral-700 px-4 py-2 font-semibold text-white hover:bg-neutral-800"
-						>Decrypt</button
+						>{passwordModalMode === 'decrypt' ? 'Decrypt' : 'OK'}</button
 					>
 					<button
 						type="button"
 						on:click={() => {
 							showPasswordModal = false;
 							decryptError = '';
+							if (passwordModalResolve) {
+								passwordModalResolve('');
+								passwordModalResolve = null;
+							}
 						}}
 						class="cursor-pointer rounded border border-neutral-700 px-4 py-2 hover:bg-neutral-950"
 						>Cancel</button
@@ -244,7 +677,8 @@
 			position: relative;
 			margin: 0;
 			background: none;
-			border-radius: 0.25em;
+			border-bottom-left-radius: 0.25rem;
+			border-bottom-right-radius: 0.25rem;
 			background-color: var(--color-neutral-800) !important;
 			overflow: auto;
 			box-sizing: border-box;
