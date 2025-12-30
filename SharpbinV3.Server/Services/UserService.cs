@@ -39,5 +39,12 @@ namespace SharpbinV3.Server.Services
                 query = query.Include(u => u.Pastes);
             return query.FirstOrDefaultAsync(u => u.Email == email);
         }
+
+        public async Task<User> Update(User user)
+        {
+            _db.Users.Update(user);
+            await _db.SaveChangesAsync();
+            return user;
+        }
     }
 }

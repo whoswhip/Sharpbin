@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Data.Entities;
+using SharpbinV3.Server.DTOs;
 using SharpbinV3.Server.Services;
+using System.Security.Claims;
 
 namespace SharpbinV3.Server.Controllers
 {
@@ -38,6 +40,35 @@ namespace SharpbinV3.Server.Controllers
 
             var user = await _userService.GetByUUID(Guid.Parse(userUUID), withPastes: true);
             return user == null ? NotFound() : Ok(await BuildUserResponse(user, page));
+        }
+
+        [HttpPatch("uuid/{uuid}")]
+        [Authorize]
+        public async Task<IActionResult> UpdateByUUID(Guid uuid, [FromBody] UpdateUserRequest updatedUser)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+            var jwtUser = HttpContext.User;
+            var uuidClaim = jwtUser?.FindFirst("UUID")?.Value;
+            if (uuidClaim == null || jwtUser == null) return Forbid();
+            var userRoles = jwtUser.Claims
+                .Where(c => c.Type == ClaimTypes.Role)
+                .Select(c => int.Parse(c.Value));
+
+            var user = await _userService.GetByUUID(uuid);
+            if (user == null)
+                return NotFound();
+            if (!userRoles.Any(r => r == 1 || r == 255) && user.UUID != Guid.Parse(uuidClaim))
+                return Forbid();
+
+            user.DisplayName = updatedUser.DisplayName ?? user.DisplayName;
+            if (userRoles.Any(r => r == 255) || user.UUID == Guid.Parse(uuidClaim)) // only admins or self
+            {
+                user.Email = updatedUser.Email ?? user.Email;
+                user.Visibility = updatedUser.Visibility ?? user.Visibility;
+            }
+            await _db.SaveChangesAsync();
+            return Ok(new { message = "User updated successfully." });
         }
 
         private async Task<object> BuildUserResponse(User user, int page = 1)
