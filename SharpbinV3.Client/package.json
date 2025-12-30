@@ -37,6 +37,7 @@
 	},
 	"dependencies": {
 		"@lucide/svelte": "^0.562.0",
+		"@sveltejs/adapter-node": "^5.4.0",
 		"highlight.js": "^11.8.0"
 	}
 }
