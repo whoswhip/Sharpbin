@@ -52,7 +52,7 @@
 				const urlParams = new URLSearchParams(window.location.search);
 				const returnUrl = urlParams.get('return');
 				if (returnUrl) {
-					goto(resolve('/login') + `?return=${encodeURIComponent(returnUrl)}`);
+					goto(resolve(`/login?return=${encodeURIComponent(returnUrl)}`));
 				} else {
 					goto(resolve('/login'));
 				}
