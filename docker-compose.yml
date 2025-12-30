@@ -1,0 +1,32 @@
+version: '3.8'
+services:
+  backend:
+    build:
+      context: ./SharpbinV3
+      dockerfile: Dockerfile
+    container_name: sharpbin-backend
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    volumes:
+      - ./SharpbinV3/appsettings.json:/app/appsettings.json
+      - ./SharpbinV3/appsettings.Development.json:/app/appsettings.Development.json
+      - ./Data/sharpbin.db:/app/sharpbin.db
+    networks:
+      - sharpbin-net
+  frontend:
+    build:
+      context: ./SharpbinV3.Client
+      dockerfile: Dockerfile
+    container_name: sharpbin-frontend
+    environment:
+      - VITE_API_URL=http://backend:8080
+    volumes:
+      - ./SharpbinV3.Client/src:/app/src
+      - ./SharpbinV3.Client/static:/app/static
+    ports:
+      - "5173:5173"
+    networks:
+      - sharpbin-net
+networks:
+  sharpbin-net:
+    driver: bridge
