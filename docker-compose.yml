@@ -1,8 +1,8 @@
 services:
   backend:
     build:
-      context: ./SharpbinV3.Server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: SharpbinV3.Server/Dockerfile
     image: sharpbin-backend
     container_name: sharpbin-backend
     environment:
@@ -32,6 +32,7 @@ services:
 
 volumes:
   sharpbin-data:
+
 
 networks:
   sharpbin-net:
