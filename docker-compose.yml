@@ -2,14 +2,14 @@ version: '3.8'
 services:
   backend:
     build:
-      context: ./SharpbinV3
+      context: ./SharpbinV3.Server
       dockerfile: Dockerfile
     container_name: sharpbin-backend
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
     volumes:
-      - ./SharpbinV3/appsettings.json:/app/appsettings.json
-      - ./SharpbinV3/appsettings.Development.json:/app/appsettings.Development.json
+      - ./SharpbinV3.Server/appsettings.json:/app/appsettings.json
+      - ./SharpbinV3.Server/appsettings.Development.json:/app/appsettings.Development.json
       - ./Data/sharpbin.db:/app/sharpbin.db
     networks:
       - sharpbin-net
