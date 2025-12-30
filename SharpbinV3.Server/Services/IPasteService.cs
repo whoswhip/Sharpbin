@@ -10,7 +10,7 @@ namespace SharpbinV3.Server.Services
         Task<bool> Exists(string id);
         Task<bool> Exists(Guid uuid);
         Task<bool> EditText(Paste paste, string text);
-        Task<Paste> Get(string id);
+        Task<Paste?> Get(string id);
         Task<List<Paste>> GetList(int offset, int count, bool publicOnly = false);
         Task<bool> ValidateSyntax(string syntax);
         Task<bool> ValidateTitle(string title);

@@ -12,19 +12,19 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["SharpbinV3/SharpbinV3.csproj", "SharpbinV3/"]
-RUN dotnet restore "./SharpbinV3/SharpbinV3.csproj"
+COPY ["SharpbinV3.Server.csproj", "./"]
+RUN dotnet restore "./SharpbinV3.Server.csproj"
 COPY . .
 WORKDIR "/src/SharpbinV3"
-RUN dotnet build "./SharpbinV3.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN dotnet build "../SharpbinV3.Server.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./SharpbinV3.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "../SharpbinV3.Server.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "SharpbinV3.dll"]
+ENTRYPOINT ["dotnet", "SharpbinV3.Server.dll"]
