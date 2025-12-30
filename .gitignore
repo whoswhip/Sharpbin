@@ -326,3 +326,4 @@ FodyWeavers.xsd
 **/*.sqlite
 
 Data
+!SharpbinV3.Server/Data
