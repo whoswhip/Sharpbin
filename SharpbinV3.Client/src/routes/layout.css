@@ -1,7 +1,6 @@
 @import 'tailwindcss';
 @import 'highlight.js/styles/github-dark.css';
 
-
 * {
 	box-sizing: border-box;
 }

@@ -6,12 +6,22 @@ const REFRESH_TOKEN_KEY = 'refreshToken';
 
 export function getToken() {
 	if (!browser) return null;
-	return document.cookie.split('; ').find(c => c.startsWith(`${TOKEN_KEY}=`))?.split('=')[1] || null;
+	return (
+		document.cookie
+			.split('; ')
+			.find((c) => c.startsWith(`${TOKEN_KEY}=`))
+			?.split('=')[1] || null
+	);
 }
 
 export function getRefreshToken() {
 	if (!browser) return null;
-	return document.cookie.split('; ').find(c => c.startsWith(`${REFRESH_TOKEN_KEY}=`))?.split('=')[1] || null;
+	return (
+		document.cookie
+			.split('; ')
+			.find((c) => c.startsWith(`${REFRESH_TOKEN_KEY}=`))
+			?.split('=')[1] || null
+	);
 }
 
 export function setTokens(token: string, refreshToken: string) {
@@ -67,19 +77,24 @@ export function startTokenRefreshInterval() {
 }
 
 export function getServerToken(cookies: Cookies) {
-    return cookies.get('token');
+	return cookies.get('token');
 }
 
 export function getServerRefreshToken(cookies: Cookies) {
-    return cookies.get('refreshToken');
+	return cookies.get('refreshToken');
 }
 
 export function setServerTokens(cookies: Cookies, token: string, refreshToken: string) {
-    cookies.set('token', token, { path: '/', httpOnly: true, sameSite: 'strict', secure: true });
-    cookies.set('refreshToken', refreshToken, { path: '/', httpOnly: true, sameSite: 'strict', secure: true });
+	cookies.set('token', token, { path: '/', httpOnly: true, sameSite: 'strict', secure: true });
+	cookies.set('refreshToken', refreshToken, {
+		path: '/',
+		httpOnly: true,
+		sameSite: 'strict',
+		secure: true
+	});
 }
 
 export function clearServerTokens(cookies: Cookies) {
-    cookies.delete('token', { path: '/' });
-    cookies.delete('refreshToken', { path: '/' });
+	cookies.delete('token', { path: '/' });
+	cookies.delete('refreshToken', { path: '/' });
 }

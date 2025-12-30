@@ -78,4 +78,4 @@ export const roles = {
 	1: 'Moderator',
 	255: 'Administrator',
 	403: 'Banned'
-}
+};

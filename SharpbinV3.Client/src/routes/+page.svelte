@@ -38,10 +38,12 @@
 		{ value: 315360000000, label: 'Expire in 10 Years' }
 	];
 
-	const visibilityOptions = data.options.visibilities.map((visibility: { value: number; displayName: string }) => ({
-		value: visibility.value,
-		label: visibility.displayName
-	}));
+	const visibilityOptions = data.options.visibilities.map(
+		(visibility: { value: number; displayName: string }) => ({
+			value: visibility.value,
+			label: visibility.displayName
+		})
+	);
 
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
@@ -91,7 +93,7 @@
 <main
 	class="flex min-h-screen w-full flex-col items-center justify-center bg-neutral-950 text-white"
 >
-	<div class="w-[95%] max-w-5xl rounded border-2 border-neutral-800 bg-neutral-900 p-6">
+	<div class="w-[95%] max-w-7xl rounded border-2 border-neutral-800 bg-neutral-900 p-6">
 		<h1 class="mb-6 text-center text-4xl font-bold">Create a Paste</h1>
 		<form class="mt-4" on:submit|preventDefault={handleSubmit}>
 			<input
@@ -109,7 +111,9 @@
 				spellcheck="false"
 				autocomplete="off"
 				bind:value={content}
-				maxlength={data.options.maxContentSize ? Math.floor(data.options.maxContentSize / 4) : undefined}
+				maxlength={data.options.maxContentSize
+					? Math.floor(data.options.maxContentSize / 4)
+					: undefined}
 			></textarea>
 			<Dropdown
 				options={syntaxOptions}
