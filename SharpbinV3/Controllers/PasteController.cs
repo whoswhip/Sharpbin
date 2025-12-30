@@ -64,6 +64,7 @@ namespace SharpbinV3.Server.Controllers
                 paste.Syntax,
                 paste.Visibility,
                 paste.ExpiresAt,
+                paste.EditedAt,
                 Author = paste.User != null && paste.User.Visibility == 0 ? new
                 {
                     paste.User.UID,
@@ -156,6 +157,21 @@ namespace SharpbinV3.Server.Controllers
                     newPaste.ExpiresAt
                 }
             });
+        }
+        [HttpDelete]
+        [Route("{id}")]
+        [Authorize]
+        public async Task<IActionResult> DeletePaste(string id)
+        {
+            var paste = await _pasteService.Get(id);
+            if (paste == null) return NotFound();
+            var httpUser = HttpContext.User;
+            var userUUID = httpUser?.FindFirst("UUID")?.Value;
+            if (userUUID == null || paste.AuthorUUID != Guid.Parse(userUUID))
+                return Forbid();
+            bool result = await _pasteService.Delete(paste);
+            if (!result) return NotFound();
+            return Ok(new { message = "Paste deleted successfully." });
         }
 
         [HttpGet]
