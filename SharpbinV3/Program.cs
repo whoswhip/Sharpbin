@@ -31,29 +31,34 @@ namespace SharpbinV3.Server
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IPasteService, PasteService>();
 
-            builder.Services.AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-            })
-            .AddJwtBearer(jwt =>
-            {
-                var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-                var key = Encoding.ASCII.GetBytes(jwtSettings["Secret"] ?? string.Empty);
-                jwt.SaveToken = true;
-                jwt.TokenValidationParameters = new TokenValidationParameters
+            builder.Services
+                .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(jwt =>
                 {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(key),
-                    ValidateIssuer = true,
-                    ValidIssuer = jwtSettings["Issuer"],
-                    ValidateAudience = true,
-                    ValidAudience = jwtSettings["Audience"],
-                    RequireExpirationTime = true,
-                    ValidateLifetime = true
-                };
-            });
+                    var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+                    var key = Encoding.UTF8.GetBytes(jwtSettings["Secret"]!);
+
+                    jwt.SaveToken = true;
+                    jwt.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(key),
+
+                        ValidateIssuer = true,
+                        ValidIssuer = jwtSettings["Issuer"],
+
+                        ValidateAudience = true,
+                        ValidAudience = jwtSettings["Audience"],
+
+                        RequireExpirationTime = true,
+                        ValidateLifetime = true,
+                        ClockSkew = TimeSpan.Zero,
+
+                        RequireSignedTokens = true,
+                        ValidAlgorithms = [SecurityAlgorithms.HmacSha256]
+                    };
+                });
+
 
             builder.Services.AddRateLimiter(options =>
             {

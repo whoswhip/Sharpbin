@@ -35,20 +35,34 @@ namespace SharpbinV3.Server.Services
         public async Task<JWTResult> GenerateJWTToken(User user)
         {
             var jwtHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_jwtSettings.Secret);
+            var key = Encoding.UTF8.GetBytes(_jwtSettings.Secret);
+
+            var claims = new List<Claim>
+            {
+                new("UUID", user.UUID.ToString()),
+                new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+
+            if (user.Roles != null)
+            {
+                foreach (var role in user.Roles)
+                    claims.Add(new Claim(ClaimTypes.Role, role.ToString()));
+            }
+            else
+            {
+                claims.Add(new Claim(ClaimTypes.Role, "0"));
+            }
 
             var descriptor = new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity(
-                [
-                    new Claim("UUID", user.UUID.ToString()),
-                    new Claim("Roles", user.Roles != null ? string.Join(",", user.Roles) : "0"),
-                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-                ]),
+                Subject = new ClaimsIdentity(claims),
                 Issuer = _jwtSettings.Issuer,
                 Audience = _jwtSettings.Audience,
                 Expires = DateTime.UtcNow.AddMinutes(15),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+                SigningCredentials = new SigningCredentials(
+                    new SymmetricSecurityKey(key),
+                    SecurityAlgorithms.HmacSha256Signature
+                )
             };
 
             var token = jwtHandler.CreateToken(descriptor);
@@ -90,32 +104,10 @@ namespace SharpbinV3.Server.Services
             };
         }
 
-        public async Task<bool> ValidateJWTToken(string token)
-        {
-            var jwtHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_jwtSettings.Secret);
-            try
-            {
-                jwtHandler.ValidateToken(token, new TokenValidationParameters
-                {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(key),
-                    ValidateIssuer = false,
-                    ValidateAudience = false,
-                    ClockSkew = TimeSpan.Zero
-                }, out SecurityToken validatedToken);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
         public async Task<JWTResult> RefreshJWTToken(string token, string refreshToken)
         {
             var jwtHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_jwtSettings.Secret);
+            var key = Encoding.UTF8.GetBytes(_jwtSettings.Secret);
             try
             {
                 var principal = jwtHandler.ValidateToken(token, new TokenValidationParameters
@@ -127,7 +119,9 @@ namespace SharpbinV3.Server.Services
                     ValidateAudience = true,
                     ValidAudience = _jwtSettings.Audience,
                     ClockSkew = TimeSpan.Zero,
-                    ValidateLifetime = false
+                    ValidateLifetime = false,
+                    RequireSignedTokens = true,
+                    ValidAlgorithms = [SecurityAlgorithms.HmacSha256]
                 }, out SecurityToken validatedToken);
                 var jwtId = validatedToken.Id;
                 var storedRefreshToken = await _db.RefreshTokens
@@ -143,7 +137,7 @@ namespace SharpbinV3.Server.Services
                 await _db.SaveChangesAsync();
                 var userUUID = principal.Claims.First(c => c.Type == "UUID").Value;
                 var user = await _db.Users.FirstOrDefaultAsync(u => u.UUID == Guid.Parse(userUUID));
-                if (user == null)
+                if (user == null || storedRefreshToken.UserUUID != Guid.Parse(userUUID))
                     return new JWTResult() { Success = false, Errors = ["Invalid token."] };
 
                 return await GenerateJWTToken(user);

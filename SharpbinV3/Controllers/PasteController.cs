@@ -5,6 +5,7 @@ using SharpbinV3.Server.Data.Entities;
 using SharpbinV3.Server.DTOs;
 using SharpbinV3.Server.Services;
 using SharpbinV3.Server.Settings;
+using System.Security.Claims;
 
 namespace SharpbinV3.Server.Controllers
 {
@@ -101,9 +102,14 @@ namespace SharpbinV3.Server.Controllers
             if (content == null || id == null) return NotFound();
             var paste = await _pasteService.Get(id);
             if (paste == null) return NotFound();
-            var httpUser = HttpContext.User;
-            var userUUID = httpUser?.FindFirst("UUID")?.Value;
-            if (userUUID == null || paste.AuthorUUID != Guid.Parse(userUUID))
+            var user = HttpContext.User;
+            var uuidClaim = user?.FindFirst("UUID")?.Value;
+            if (uuidClaim == null || user == null) return Forbid();
+            var hasPrivilegedRole = user.Claims
+                .Where(c => c.Type == ClaimTypes.Role)
+                .Select(c => int.Parse(c.Value))
+                .Any(r => r == 1 || r == 255);
+            if (paste.AuthorUUID != Guid.Parse(uuidClaim) || !hasPrivilegedRole)
                 return Forbid();
             bool result = await _pasteService.EditText(paste, content);
             if (!result) return NotFound();
@@ -117,9 +123,14 @@ namespace SharpbinV3.Server.Controllers
         {
             var paste = await _pasteService.Get(id);
             if (paste == null) return NotFound();
-            var httpUser = HttpContext.User;
-            var userUUID = httpUser?.FindFirst("UUID")?.Value;
-            if (userUUID == null || paste.AuthorUUID != Guid.Parse(userUUID))
+            var user = HttpContext.User;
+            var uuidClaim = user?.FindFirst("UUID")?.Value;
+            if (uuidClaim == null || user == null) return Forbid();
+            var hasPrivilegedRole = user.Claims
+                .Where(c => c.Type == ClaimTypes.Role)
+                .Select(c => int.Parse(c.Value))
+                .Any(r => r == 1 || r == 255);
+            if (paste.AuthorUUID != Guid.Parse(uuidClaim) || !hasPrivilegedRole)
                 return Forbid();
             if (request.Title != null)
                 paste.Title = request.Title;
@@ -165,9 +176,14 @@ namespace SharpbinV3.Server.Controllers
         {
             var paste = await _pasteService.Get(id);
             if (paste == null) return NotFound();
-            var httpUser = HttpContext.User;
-            var userUUID = httpUser?.FindFirst("UUID")?.Value;
-            if (userUUID == null || paste.AuthorUUID != Guid.Parse(userUUID))
+            var user = HttpContext.User;
+            var uuidClaim = user?.FindFirst("UUID")?.Value;
+            if (uuidClaim == null || user == null) return Forbid();
+            var hasPrivilegedRole = user.Claims
+                .Where(c => c.Type == ClaimTypes.Role)
+                .Select(c => int.Parse(c.Value))
+                .Any(r => r == 1 || r == 255);
+            if (paste.AuthorUUID != Guid.Parse(uuidClaim) || !hasPrivilegedRole)
                 return Forbid();
             bool result = await _pasteService.Delete(paste);
             if (!result) return NotFound();

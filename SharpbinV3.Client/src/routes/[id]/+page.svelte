@@ -523,10 +523,7 @@
 
 							<span class="text-neutral-300">Download</span>
 						</button>
-						{#if $user && ($user.uuid === data.paste?.author?.uuid || ['1', '255'].some( (r) => $user.roles
-											.toString()
-											.split(',')
-											.includes(r) ))}
+						{#if $user && ($user.uuid === data.paste?.author?.uuid || $user.roles.some((r) => r === 1 || r === 255))}
 							{#if !editing}
 								<button
 									type="button"
