@@ -10,8 +10,8 @@
 		window.location.href = '/';
 	}
 
-	$: currentPath = page.url.pathname;
-	$: returnParam =
+	let currentPath = page.url.pathname;
+	let returnParam =
 		currentPath !== '/' ? `?return=${encodeURIComponent(page.url.pathname + page.url.search)}` : '';
 </script>
 
