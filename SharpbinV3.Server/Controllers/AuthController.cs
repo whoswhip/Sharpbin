@@ -1,24 +1,31 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 using SharpbinV3.Server.Data.Entities;
 using SharpbinV3.Server.DTOs;
 using SharpbinV3.Server.Services;
+using SharpbinV3.Server.Services.Verification;
+using SharpbinV3.Server.Settings;
 using Bcrypt = BCrypt.Net.BCrypt;
 
 namespace SharpbinV3.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class AuthController(IUserService userService, IAuthService authService) : ControllerBase
+    public class AuthController(UserService userService, AuthService authService, IOptions<AuthSettings> options, VerificationService verification) : ControllerBase
     {
-        private readonly IAuthService _authService = authService;
-        private readonly IUserService _userService = userService;
+        private readonly AuthService _authService = authService;
+        private readonly UserService _userService = userService;
+        private readonly VerificationService _verification = verification;
 
         [HttpPost]
         [EnableRateLimiting("Sliding")]
         [Route("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
+            if (!await _verification.VerifyAsync(request.Token, Utilities.GetRequestIP(HttpContext)))
+                return BadRequest(new { message = "Verification failed." });
+
             var existingUser = await _userService.GetByUsername(request.Username);
             if (existingUser != null)
                 return Conflict(new { message = "Username already exists." });
@@ -51,6 +58,7 @@ namespace SharpbinV3.Server.Controllers
             }
             );
         }
+
         [HttpPost]
         [Route("login")]
         [EnableRateLimiting("Sliding")]
@@ -58,6 +66,9 @@ namespace SharpbinV3.Server.Controllers
         {
             if (string.IsNullOrEmpty(request.Username) && string.IsNullOrEmpty(request.Email))
                 return BadRequest(new { message = "Username or email is required." });
+
+            if (!await _verification.VerifyAsync(request.Token, Utilities.GetRequestIP(HttpContext)))
+                return BadRequest(new { message = "Verification failed." });
 
             User? user = null;
             if (!string.IsNullOrEmpty(request.Username))
@@ -86,6 +97,17 @@ namespace SharpbinV3.Server.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
+        }
+
+        [HttpGet]
+        [Route("info")]
+        public async Task<IActionResult> GetSiteInfo()
+        {
+            var authSettings = options.Value;
+            return Ok(new
+            {
+                cf_turnstile_site_key = string.IsNullOrEmpty(authSettings.CF_Turnstile_SiteKey) ? null : authSettings.CF_Turnstile_SiteKey
+            });
         }
 
 

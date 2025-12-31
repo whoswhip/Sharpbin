@@ -11,10 +11,10 @@ namespace SharpbinV3.Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class PasteController(IPasteService pasteService, IUserService userService, IOptions<PasteSettings> options) : ControllerBase
+    public class PasteController(PasteService pasteService, UserService userService, IOptions<PasteSettings> options) : ControllerBase
     {
-        private readonly IPasteService _pasteService = pasteService;
-        private readonly IUserService _userService = userService;
+        private readonly PasteService _pasteService = pasteService;
+        private readonly UserService _userService = userService;
         private readonly PasteSettings _pasteSettings = options.Value;
 
         [HttpPost]

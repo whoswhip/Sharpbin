@@ -9,5 +9,6 @@ namespace SharpbinV3.Server.DTOs
         public string? Email { get; set; }
         [StringLength(128, MinimumLength = 6)]
         public string? Password { get; set; }
+        public string? Token { get; set; }
     }
 }

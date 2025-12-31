@@ -12,7 +12,9 @@
 
 	let currentPath = page.url.pathname;
 	let returnParam =
-		currentPath !== '/' ? `?return=${encodeURIComponent(page.url.pathname + page.url.search)}` : '';
+		currentPath !== '/' && !currentPath.startsWith('/login') && !currentPath.startsWith('/register')
+			? `?return=${encodeURIComponent(page.url.pathname + page.url.search)}`
+			: '';
 </script>
 
 <div class="fixed top-0 left-0 z-100 h-15 w-full bg-neutral-900">

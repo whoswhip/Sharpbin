@@ -12,7 +12,7 @@ using Bcrypt = BCrypt.Net.BCrypt;
 
 namespace SharpbinV3.Server.Services
 {
-    public sealed class AuthService(AppDbContext db, IOptions<JWTSettings> options) : IAuthService
+    public sealed class AuthService(AppDbContext db, IOptions<JWTSettings> options)
     {
         private readonly AppDbContext _db = db;
         private readonly JWTSettings _jwtSettings = options.Value;

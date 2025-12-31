@@ -8,5 +8,23 @@ namespace SharpbinV3.Server.Data
         public DbSet<User> Users => Set<User>();
         public DbSet<Paste> Pastes => Set<Paste>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<Paste>()
+                .HasOne(p => p.User)
+                .WithMany(u => u.Pastes)
+                .HasForeignKey(p => p.AuthorUUID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RefreshToken>()
+                .HasOne(r => r.User)
+                .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(r => r.UserUUID)
+                .OnDelete(DeleteBehavior.Cascade);
+        }
+
     }
 }

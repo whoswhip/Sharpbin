@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Services;
+using SharpbinV3.Server.Services.Verification;
+using SharpbinV3.Server.Services.Verification.Providers;
 using SharpbinV3.Server.Settings;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -27,9 +29,11 @@ namespace SharpbinV3.Server
             });
             builder.Services.AddSingleton<ICompressionService, CompressionService>();
             builder.Services.AddSingleton<IHostedService, PasteCleanUpService>();
-            builder.Services.AddScoped<IUserService, UserService>();
-            builder.Services.AddScoped<IAuthService, AuthService>();
-            builder.Services.AddScoped<IPasteService, PasteService>();
+            builder.Services.AddScoped<UserService>();
+            builder.Services.AddScoped<AuthService>();
+            builder.Services.AddScoped<PasteService>();
+            builder.Services.AddScoped<VerificationService>();
+            builder.Services.AddHttpClient<IVerificationProvider, TurnstileVerificationProvider>();
             
             builder.Services.AddHealthChecks()
                 .AddDbContextCheck<AppDbContext>("Database");
@@ -85,6 +89,7 @@ namespace SharpbinV3.Server
             });
             builder.Services.Configure<PasteSettings>(builder.Configuration.GetSection("PasteSettings"));
             builder.Services.Configure<JWTSettings>(builder.Configuration.GetSection("JWTSettings"));
+            builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection("AuthSettings"));
 
             var app = builder.Build();
             app.UseRateLimiter();

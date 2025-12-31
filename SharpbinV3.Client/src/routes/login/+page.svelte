@@ -1,15 +1,30 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { setTokens, startTokenRefreshInterval } from '$lib/utils/auth';
+	import type { PageData } from './$types';
+
 	let username = '';
 	let password = '';
 	let error = '';
-	import { setTokens, startTokenRefreshInterval } from '$lib/utils/auth';
+	export let data: PageData;
 
 	async function login() {
+		const body: { username: string; password: string; token?: string } = {
+			username,
+			password
+		};
+
+		if (data.options?.cf_turnstile_site_key && (window as any).turnstile) {
+			const token = (window as any).turnstile.getResponse();
+			if (token) {
+				body.token = token;
+			}
+		}
+
 		const res = await fetch('/api/auth/login', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ username, password })
+			body: JSON.stringify(body)
 		});
 		if (res.ok) {
 			const data = await res.json();
@@ -29,6 +44,12 @@
 		}
 	}
 </script>
+
+<svelte:head>
+	{#if data.options?.cf_turnstile_site_key}
+		<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+	{/if}
+</svelte:head>
 
 <main
 	class="flex min-h-screen w-full flex-col items-center justify-center bg-neutral-950 text-white"
@@ -52,6 +73,15 @@
 				autocomplete="current-password"
 				class="focus:bg-neutral-750 w-full rounded border border-neutral-700 bg-neutral-800 p-2 placeholder-neutral-500 transition-colors duration-200 focus:border-neutral-600"
 			/>
+			{#if data.options?.cf_turnstile_site_key}
+				<div class="flex w-full justify-center">
+					<div
+						class="cf-turnstile"
+						data-sitekey={data.options.cf_turnstile_site_key}
+						data-theme="dark"
+					></div>
+				</div>
+			{/if}
 			<button
 				type="submit"
 				class="w-full rounded bg-neutral-700 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-neutral-800 active:bg-neutral-900"

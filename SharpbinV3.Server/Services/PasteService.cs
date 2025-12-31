@@ -7,7 +7,7 @@ using System.Text;
 
 namespace SharpbinV3.Server.Services
 {
-    public sealed class PasteService(AppDbContext db, ICompressionService cs, IOptions<PasteSettings> options) : IPasteService
+    public sealed class PasteService(AppDbContext db, ICompressionService cs, IOptions<PasteSettings> options)
     {
         private readonly AppDbContext _db = db;
         private readonly ICompressionService _cs = cs;

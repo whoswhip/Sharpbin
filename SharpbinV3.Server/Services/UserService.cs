@@ -5,7 +5,7 @@ using SharpbinV3.Server.Data.Entities;
 
 namespace SharpbinV3.Server.Services
 {
-    public sealed class UserService(AppDbContext db) : IUserService
+    public sealed class UserService(AppDbContext db)
     {
         private readonly AppDbContext _db = db;
         public Task<User?> GetByUID(int uid, bool withPastes = false)

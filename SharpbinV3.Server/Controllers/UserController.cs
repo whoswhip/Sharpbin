@@ -11,9 +11,9 @@ namespace SharpbinV3.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class UserController(IUserService userService, AppDbContext db) : ControllerBase
+    public class UserController(UserService userService, AppDbContext db) : ControllerBase
     {
-        private readonly IUserService _userService = userService;
+        private readonly UserService _userService = userService;
         private readonly AppDbContext _db = db;
 
         [HttpGet("{username}")]
