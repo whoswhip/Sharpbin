@@ -14,8 +14,12 @@ services:
       - ./SharpbinV3.Server/appsettings.json:/app/appsettings.json
     networks:
       - sharpbin-net
-    expose:
-      - "8080"
+    healthcheck:
+      test: 'wget --no-verbose --spider http://localhost:8080/health || exit 1'
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
     restart: unless-stopped
 
   frontend:
@@ -30,6 +34,12 @@ services:
       - "5173:5173"
     networks:
       - sharpbin-net
+    healthcheck:
+      test: 'wget --no-verbose --spider http://localhost:5173/health || exit 1'
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
     restart: unless-stopped
 
 volumes:
