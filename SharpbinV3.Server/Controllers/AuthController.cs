@@ -32,6 +32,8 @@ namespace SharpbinV3.Server.Controllers
             }
             if (!IsValidPassword(request.Password))
                 return BadRequest(new { message = "Password should have at least 8 characters, including uppercase, lowercase, and digits." });
+            if (!string.IsNullOrEmpty(request.DisplayName) && request.DisplayName.Length > 26)
+                return BadRequest(new { message = "Display name should not exceed 26 characters." });
 
             var user = await _authService.CreateUser(request.Username, request.Password, request.Email, request.DisplayName);
             return Ok(new

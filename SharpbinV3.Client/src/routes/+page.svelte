@@ -12,12 +12,12 @@
 	let error = '';
 	let title = '';
 	let content = '';
-	let selectedSyntax = data.options.syntaxes[0];
+	let selectedSyntax = data.options?.syntaxes[0];
 	let expiresIn: number = 0;
-	let selectedVisibility = data.options.visibilities[0].value;
+	let selectedVisibility = data.options?.visibilities[0].value;
 	let password = '';
 
-	const syntaxOptions = data.options.syntaxes.map((lang: string) => ({
+	const syntaxOptions = data.options?.syntaxes.map((lang: string) => ({
 		value: lang,
 		label: displayNames[lang] ?? lang.charAt(0).toUpperCase() + lang.slice(1)
 	}));
@@ -38,7 +38,7 @@
 		{ value: 315360000000, label: 'Expire in 10 Years' }
 	];
 
-	const visibilityOptions = data.options.visibilities.map(
+	const visibilityOptions = data.options?.visibilities.map(
 		(visibility: { value: number; displayName: string }) => ({
 			value: visibility.value,
 			label: visibility.displayName

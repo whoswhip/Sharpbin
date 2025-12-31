@@ -14,7 +14,7 @@ namespace SharpbinV3.Server.DTOs
             if (DisplayName != null) {
                 if (DisplayName.Length < 3 || DisplayName.Length > 26)
                 {
-                    results.Add(new ValidationResult("DisplayName must be between 3 and 50 characters.", [nameof(DisplayName)]));
+                    results.Add(new ValidationResult("DisplayName must be between 3 and 26 characters.", [nameof(DisplayName)]));
                 }
             }
             if (Email != null)
