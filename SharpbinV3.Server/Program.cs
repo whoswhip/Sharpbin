@@ -30,6 +30,9 @@ namespace SharpbinV3.Server
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IPasteService, PasteService>();
+            
+            builder.Services.AddHealthChecks()
+                .AddDbContextCheck<AppDbContext>("Database");
 
             builder.Services
                 .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -104,6 +107,8 @@ namespace SharpbinV3.Server
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 db.Database.Migrate();
             }
+
+            app.MapHealthChecks("/health");
 
             app.Run();
         }
