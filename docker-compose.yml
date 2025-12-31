@@ -7,9 +7,10 @@ services:
     container_name: sharpbin-backend
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      SQLITE_CONN: "Data Source=/app/data/sharpbin.db"
+      ConnectionStrings__DefaultConnection: "Data Source=/app/data/sharpbin.db"
     volumes:
       - sharpbin-data:/app/data
+      - ./SharpbinV3.Server/appsettings.json:/app/appsettings.json
     networks:
       - sharpbin-net
     expose:
