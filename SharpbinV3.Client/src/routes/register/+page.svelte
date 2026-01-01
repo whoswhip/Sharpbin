@@ -4,6 +4,7 @@
 	import { Check, X } from '@lucide/svelte';
 	import { slide, fade } from 'svelte/transition';
 	import { resolve } from '$app/paths';
+	import type { PageData } from './$types';
 
 	let username = '';
 	let password = '';
@@ -20,6 +21,9 @@
 		number: false
 	};
 	let passwordValid = false;
+	let loading = false;
+
+	export let data: PageData;
 
 	function validatePassword(pw: string) {
 		passwordChecks.length = pw.length >= 8;
@@ -37,10 +41,17 @@
 
 	async function register() {
 		if (!passwordValid || password !== confirmPassword) return;
+		loading = true;
+		error = '';
+		const body: Record<string, unknown> = { username, password, email, displayName };
+		if (data.options?.cf_turnstile_site_key && (window as any).turnstile) {
+			const token = (window as any).turnstile.getResponse();
+			if (token) body.token = token;
+		}
 		const res = await fetch('/api/auth/register', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ username, password, email, displayName })
+			body: JSON.stringify(body)
 		});
 		if (res.ok) {
 			const data = await res.json();
@@ -58,10 +69,18 @@
 				}
 			}
 		} else {
-			error = 'Registration failed';
+			const payload = await res.json().catch(() => null);
+			error = payload?.message ?? 'Registration failed';
 		}
+		loading = false;
 	}
 </script>
+
+<svelte:head>
+	{#if data.options?.cf_turnstile_site_key}
+		<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+	{/if}
+</svelte:head>
 
 <main
 	class="flex min-h-screen w-full flex-col items-center justify-center bg-neutral-950 text-white"
@@ -176,12 +195,21 @@
 					Passwords do not match.
 				</div>
 			{/if}
+			{#if data.options?.cf_turnstile_site_key}
+				<div class="flex w-full justify-center">
+					<div
+						class="cf-turnstile"
+						data-sitekey={data.options.cf_turnstile_site_key}
+						data-theme="dark"
+					></div>
+				</div>
+			{/if}
 			<button
 				type="submit"
-				disabled={!passwordValid || password !== confirmPassword}
+				disabled={!passwordValid || password !== confirmPassword || loading}
 				class="w-full rounded bg-neutral-700 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-neutral-800 active:bg-neutral-900 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
 			>
-				Register
+				{loading ? 'Registering...' : 'Register'}
 			</button>
 			{#if error}
 				<div class="rounded border border-red-900 bg-red-950 p-2 text-sm text-red-200">
