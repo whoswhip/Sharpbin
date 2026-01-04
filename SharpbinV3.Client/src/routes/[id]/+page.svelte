@@ -34,18 +34,18 @@
 	import { getToken } from '$lib/utils/auth';
 	import { user } from '$lib/stores/user';
 	import Dropdown from '$lib/components/Dropdown.svelte';
+	import Modal from '$lib/components/Modal.svelte';
 	import type { Paste } from '$lib/types/paste';
 	export let data: PageData;
 
-	let showPasswordModal = false;
-	let passwordModalResolve: ((password: string) => void) | null = null;
-	let passwordModalMode: 'decrypt' | 'encrypt' = 'decrypt';
+	let showModal = false;
+	let modalResolve: ((value: string) => void) | null = null;
+	let modalMode: 'decrypt' | 'encrypt' | 'confirm' = 'decrypt';
 	let editing = false;
 	let editContent: string | null = null;
 	let editMetadata: Paste | null = data.paste ? { ...data.paste } : null;
 	let editError = '';
 	let editLoading = false;
-	let passwordInput = '';
 	let pasteContent = '';
 	let decryptedContent: string | null = null;
 	let decryptError = '';
@@ -162,7 +162,7 @@
 			) {
 				let rawContent = content;
 				if (metadata?.visibility === 2 || data.paste.visibility === 2) {
-					const password = await promptPassword('encrypt');
+					const password = await promptUser('encrypt');
 					if (!password) {
 						editError = 'Password required for encryption.';
 						editLoading = false;
@@ -230,11 +230,11 @@
 		}
 	}
 
-	async function promptPassword(mode: 'decrypt' | 'encrypt' = 'decrypt'): Promise<string> {
+	async function promptUser(mode: 'decrypt' | 'encrypt' | 'confirm' = 'decrypt'): Promise<string> {
 		return new Promise((resolve) => {
-			showPasswordModal = true;
-			passwordModalResolve = resolve;
-			passwordModalMode = mode;
+			showModal = true;
+			modalResolve = resolve;
+			modalMode = mode;
 		});
 	}
 
@@ -247,7 +247,7 @@
 					const passwordFromUrl = atob(urlHash);
 					decryptedContent = await decryptAES(data.content, passwordFromUrl);
 					if (decryptedContent === null) {
-						const password = await promptPassword('decrypt');
+						const password = await promptUser('decrypt');
 						if (password) {
 							decryptedContent = await decryptAES(data.content, password);
 							if (decryptedContent === null) {
@@ -262,7 +262,7 @@
 					}
 					return;
 				}
-				const password = await promptPassword('decrypt');
+				const password = await promptUser('decrypt');
 				if (password) {
 					decryptedContent = await decryptAES(data.content, password);
 					if (decryptedContent === null) {
@@ -306,7 +306,7 @@
 						/>
 					{/if}
 				</h1>
-				<div class="mt-1 flex items-center justify-center gap-2 text-sm text-neutral-400">
+				<div class="flex items-center justify-center gap-2 text-sm text-neutral-400">
 					<User class="inline-block h-4 w-4 text-neutral-400" />
 					{#if data.paste.author}
 						<a
@@ -540,6 +540,27 @@
 								<button
 									type="button"
 									class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-red-900"
+									on:click={() => {
+										promptUser('confirm').then(async (value) => {
+											if (value) {
+												const token = getToken();
+												if (!token) {
+													return;
+												}
+												const res = await fetch(`/api/paste/${data.paste?.id}/delete`, {
+													method: 'DELETE',
+													headers: {
+														Authorization: `Bearer ${token}`
+													}
+												});
+												if (res.ok) {
+													window.location.href = resolve('/');
+												} else {
+													alert('Failed to delete paste.');
+												}
+											}
+										})
+									}}
 								>
 									<Trash2 class="mr-1 h-5 w-5 text-red-400" />
 									<span class="text-red-300">Delete</span>
@@ -607,57 +628,34 @@
 		{/if}
 	</div>
 
-	{#if showPasswordModal}
-		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-			<form
-				on:submit|preventDefault={() => {
-					if (passwordModalResolve) {
-						passwordModalResolve(passwordInput);
-						passwordModalResolve = null;
-					}
-					showPasswordModal = false;
-					decryptError = '';
-				}}
-				class="w-full max-w-md rounded bg-neutral-900 p-6"
-			>
-				<h2 class="mb-4 text-xl font-semibold">
-					{passwordModalMode === 'decrypt'
-						? 'Enter password to decrypt'
-						: 'Enter password to encrypt'}
-				</h2>
-				<input
-					type="text"
-					bind:value={passwordInput}
-					class="mb-3 w-full rounded border border-neutral-700 bg-neutral-800 p-2"
-				/>
-				{#if decryptError}
-					<div class="mb-3 rounded border border-red-900 bg-red-950 p-2 text-sm text-red-200">
-						{decryptError}
-					</div>
-				{/if}
-				<div class="flex gap-2">
-					<button
-						type="submit"
-						class="flex-1 cursor-pointer rounded bg-neutral-700 px-4 py-2 font-semibold text-white hover:bg-neutral-800"
-						>{passwordModalMode === 'decrypt' ? 'Decrypt' : 'OK'}</button
-					>
-					<button
-						type="button"
-						on:click={() => {
-							showPasswordModal = false;
-							decryptError = '';
-							if (passwordModalResolve) {
-								passwordModalResolve('');
-								passwordModalResolve = null;
-							}
-						}}
-						class="cursor-pointer rounded border border-neutral-700 px-4 py-2 hover:bg-neutral-950"
-						>Cancel</button
-					>
-				</div>
-			</form>
-		</div>
-	{/if}
+	<Modal
+		bind:show={showModal}
+		mode={modalMode}
+		error={decryptError}
+		onConfirm={(value) => {
+			if (modalResolve) {
+				modalResolve(String(value));
+				modalResolve = null;
+			}
+			showModal = false;
+			decryptError = '';
+		}}
+		onCancel={() => {
+			showModal = false;
+			decryptError = '';
+			if (modalResolve) {
+				modalResolve('');
+				modalResolve = null;
+			}
+		}}
+		title={
+			modalMode === 'decrypt'
+				? 'Decrypt Paste'
+				: modalMode === 'encrypt'
+				? 'Encrypt Paste'
+				: 'Are you sure you want to delete this paste?'
+		}
+	/>
 
 	<style>
 		.hljs {
