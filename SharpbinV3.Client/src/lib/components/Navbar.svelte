@@ -40,11 +40,8 @@
 		{:else}
 			<div class="ml-auto flex items-center space-x-4">
 				<a
-					href={data.options?.registration_enabled ? resolve(`/login${returnParam}`) : '#'}
-					class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800 {data.options
-						?.registration_enabled
-						? ''
-						: 'cursor-not-allowed bg-neutral-800 text-neutral-500!'}">Login</a
+					href={resolve(`/login${returnParam}`)}
+					class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800">Login</a
 				>
 				<a
 					href={data.options?.registration_enabled ? resolve(`/register${returnParam}`) : '#'}
