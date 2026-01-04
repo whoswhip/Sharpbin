@@ -3,10 +3,11 @@ using System.ComponentModel.DataAnnotations;
 
 namespace SharpbinV3.Server.Data.Entities
 {
+    [Index(nameof(UID))]
     [Index(nameof(UUID), IsUnique = true)]
     public sealed class User
     {
-        public int UID { get; set; }
+        public int? UID { get; set; }
         [Key]
         public required Guid UUID { get; set; } = Guid.CreateVersion7(); // uuid v7 includes timestamp
         public required string Username { get; set; }

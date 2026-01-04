@@ -12,15 +12,15 @@
 	let error = '';
 	let title = '';
 	let content = '';
-	let selectedSyntax = data.options?.syntaxes[0];
+	let selectedSyntax = data.options?.syntaxes?.[0];
 	let expiresIn: number = 0;
-	let selectedVisibility = data.options?.visibilities[0].value;
+	let selectedVisibility = data.options?.visibilities?.[0]?.value;
 	let password = '';
 
-	const syntaxOptions = data.options?.syntaxes.map((lang: string) => ({
+	const syntaxOptions = data.options?.syntaxes?.map((lang: string) => ({
 		value: lang,
 		label: displayNames[lang] ?? lang.charAt(0).toUpperCase() + lang.slice(1)
-	}));
+	})) ?? [];
 
 	const expiresOptions = [
 		{ value: 0, label: 'Never Expire' },
@@ -38,12 +38,12 @@
 		{ value: 315360000000, label: 'Expire in 10 Years' }
 	];
 
-	const visibilityOptions = data.options?.visibilities.map(
+	const visibilityOptions = data.options?.visibilities?.map(
 		(visibility: { value: number; displayName: string }) => ({
 			value: visibility.value,
 			label: visibility.displayName
 		})
-	);
+	) ?? [];
 
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
@@ -103,7 +103,7 @@
 				spellcheck="false"
 				autocomplete="off"
 				bind:value={title}
-				maxlength={data.options.maxTitleLength ?? 500}
+				maxlength={data.options?.maxTitleLength ?? 500}
 			/>
 			<textarea
 				placeholder="Your paste content here..."
@@ -111,7 +111,7 @@
 				spellcheck="false"
 				autocomplete="off"
 				bind:value={content}
-				maxlength={data.options.maxContentSize
+				maxlength={data.options?.maxContentSize
 					? Math.floor(data.options.maxContentSize / 4)
 					: undefined}
 			></textarea>

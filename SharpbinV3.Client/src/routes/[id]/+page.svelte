@@ -60,10 +60,10 @@
 			: false;
 
 	let interval: ReturnType<typeof setInterval> | null = null;
-	const syntaxOptions = data.options?.syntaxes.map((lang: string) => ({
+	const syntaxOptions = data.options?.syntaxes?.map((lang: string) => ({
 		value: lang,
 		label: displayNames[lang] ?? lang.charAt(0).toUpperCase() + lang.slice(1)
-	}));
+	})) ?? [];
 	const expiresOptions = [
 		{ value: 0, label: 'Never Expire' },
 		{ value: 600000, label: 'Expire in 10 Minutes' },
@@ -79,12 +79,12 @@
 		{ value: 157680000000, label: 'Expire in 5 Years' },
 		{ value: 315360000000, label: 'Expire in 10 Years' }
 	];
-	const visibilityOptions = data.options?.visibilities.map(
+	const visibilityOptions = data.options?.visibilities?.map(
 		(visibility: { value: number; displayName: string }) => ({
 			value: visibility.value,
 			label: visibility.displayName
 		})
-	);
+	) ?? [];
 
 	onMount(() => {
 		interval = setInterval(() => {
@@ -302,7 +302,7 @@
 							bind:value={editMetadata.title}
 							class="w-full rounded border border-neutral-700 bg-neutral-800 p-2 text-white outline-none"
 							placeholder="Untitled Paste"
-							maxlength={data.options.maxTitleLength ?? 500}
+							maxlength={data.options?.maxTitleLength ?? 500}
 						/>
 					{/if}
 				</h1>
@@ -398,7 +398,7 @@
 								{displayNames[data.paste.syntax] ??
 									data.paste.syntax.charAt(0).toUpperCase() + data.paste.syntax.slice(1)}
 							</span>
-						{:else if editMetadata}
+						{:else if editMetadata && syntaxOptions}
 							<Dropdown
 								options={syntaxOptions}
 								bind:value={editMetadata.syntax}
@@ -573,7 +573,6 @@
 										if (editContent !== null || editMetadata !== null) {
 											await updatePaste(editContent, editMetadata);
 										}
-										console.log(editContent, editMetadata);
 									}}
 									disabled={editLoading}
 								>

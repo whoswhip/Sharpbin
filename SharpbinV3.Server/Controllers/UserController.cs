@@ -71,6 +71,28 @@ namespace SharpbinV3.Server.Controllers
             return Ok(new { message = "User updated successfully." });
         }
 
+        [HttpDelete("uuid/{uuid}")]
+        [Authorize]
+        public async Task<IActionResult> DeleteByUUID(Guid uuid)
+        {
+            var jwtUser = HttpContext.User;
+            var uuidClaim = jwtUser?.FindFirst("UUID")?.Value;
+            if (uuidClaim == null || jwtUser == null) return Forbid();
+            var userRoles = jwtUser.Claims
+                .Where(c => c.Type == ClaimTypes.Role)
+                .Select(c => int.Parse(c.Value));
+
+            var user = await _userService.GetByUUID(uuid);
+            if (user == null)
+                return NotFound();
+            if (!userRoles.Any(r => r == 255) && user.UUID != Guid.Parse(uuidClaim))
+                return Forbid();
+
+            _db.Users.Remove(user);
+            await _db.SaveChangesAsync();
+            return Ok(new { message = "User deleted successfully." });
+        }
+
         private async Task<object> BuildUserResponse(User user, int page = 1)
         {
             var isAuthenticatedUser = HttpContext.User?.FindFirst("UUID")?.Value == user.UUID.ToString();

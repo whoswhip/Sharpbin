@@ -13,8 +13,6 @@
 
 	export let data: PageData;
 
-	console.log(data);
-
 	let currentPath = page.url.pathname;
 	let returnParam =
 		currentPath !== '/' && !currentPath.startsWith('/login') && !currentPath.startsWith('/register')

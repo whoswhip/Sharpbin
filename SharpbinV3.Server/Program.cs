@@ -111,6 +111,19 @@ namespace SharpbinV3.Server
             {
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 db.Database.Migrate();
+
+                // this is temporary since the migration doesnt seem to work properly
+                db.Database.ExecuteSql($"""
+                    CREATE TRIGGER IF NOT EXISTS Users_UID_AutoIncrement
+                    AFTER INSERT ON Users
+                    BEGIN
+                        UPDATE Users
+                        SET UID = (
+                            SELECT IFNULL(MAX(UID), 0) + 1 FROM Users
+                        )
+                        WHERE rowid = NEW.rowid AND NEW.UID IS NULL;
+                    END;
+                    """);
             }
 
             app.MapHealthChecks("/health");

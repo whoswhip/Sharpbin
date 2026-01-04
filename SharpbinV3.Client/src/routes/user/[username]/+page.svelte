@@ -1,31 +1,45 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import type { PageData } from './$types';
-	import type { Pagination } from '$lib/types/pagination';
-	import { User, CalendarDays, ShieldUser, Ban, File, AtSign } from '@lucide/svelte';
-	import { extractDateFromUUIDv7, tooltip } from '$lib/utils/misc';
+    import type { Pagination } from '$lib/types/pagination';
+	import { User, CalendarDays, ShieldUser, Ban, File, AtSign, Pencil, Trash2, Clock, Hash } from '@lucide/svelte';
+	import { extractDateFromUUIDv7, tooltip, dateToRelativeString } from '$lib/utils/misc';
 	import { roles } from '$lib/consts';
-	import { getToken } from '$lib/utils/auth';
+    import { getToken, getUserUUIDFromToken } from '$lib/utils/auth';
+	import Modal from '$lib/components/Modal.svelte';
 
 	export let data: PageData;
 
 	let currentPage = data.user.pagination?.page ?? 1;
 	let pagination: Pagination = data.user.pagination ?? {
-		page: 1,
-		pageSize: 50,
-		totalCount: 0,
-		totalPages: 1
-	};
+        page: 1,
+        pageSize: 50,
+        totalCount: 0,
+        totalPages: 1
+    };
 	let pastes = data.user.pastes ?? [];
 	let loading = false;
+	let isOwner = false;
+	let showEditModal = false;
+	let showDeleteModal = false;
+	let modalError = '';
+	let newDisplayName = '';
+
+	$: {
+		const userUUID = getUserUUIDFromToken();
+		isOwner = !!userUUID && userUUID === data.user.uuid;
+	}
 
 	async function fetchPage(pageNum: number) {
 		if (pageNum < 1 || pageNum > (pagination.totalPages || 1) || loading) return;
 		loading = true;
-		const token = getToken();
-		const res = await fetch(`/api/user/${data.user.username}?page=${pageNum}`, {
-			headers: token ? { Authorization: `Bearer ${token}` } : {}
-		});
+        const token = getToken();
+        const res = await fetch(
+            `/api/user/${data.user.username}?page=${pageNum}`,
+            {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            }
+        );
 		if (!res.ok) {
 			loading = false;
 			return;
@@ -35,6 +49,51 @@
 		pagination = json.pagination ?? pagination;
 		currentPage = pagination.page ?? pageNum;
 		loading = false;
+	}
+
+	async function handleEditDisplayName(displayName: string) {
+		if (!displayName.trim()) {
+			modalError = 'Display name cannot be empty';
+			return;
+		}
+		loading = true;
+		const token = getToken();
+		const res = await fetch(`/api/user/uuid/${data.user.uuid}`, {
+			method: 'PATCH',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${token}`
+			},
+			body: JSON.stringify({ displayName: displayName.trim() })
+		});
+		loading = false;
+		if (!res.ok) {
+			const err = await res.json();
+			modalError = err.message || 'Failed to update display name';
+			return;
+		}
+		showEditModal = false;
+		data.user.displayName = displayName;
+		modalError = '';
+	}
+
+	async function handleDeleteAccount() {
+		loading = true;
+		const token = getToken();
+		const res = await fetch(`/api/user/uuid/${data.user.uuid}`, {
+			method: 'DELETE',
+			headers: {
+				Authorization: `Bearer ${token}`
+			}
+		});
+		loading = false;
+		if (!res.ok) {
+			const err = await res.json();
+			modalError = err.message || 'Failed to delete account';
+			return;
+		}
+		showDeleteModal = false;
+		window.location.href = '/';
 	}
 </script>
 
@@ -75,7 +134,7 @@
 				<span class="text-neutral-400">{data.user.username}</span>
 			</div>
 		{/if}
-		<div class="mb-2 flex flex-wrap items-center justify-center gap-4">
+		<div class="mb-2 flex flex-wrap items-center justify-center gap-4 text-sm">
 			<div class="flex shrink-0 items-center">
 				<CalendarDays class="mr-2 h-6 w-6 text-neutral-400" />
 				<span
@@ -91,7 +150,49 @@
 					>{pagination.totalCount} paste{pagination.totalCount !== 1 ? 's' : ''}</span
 				>
 			</div>
+			<div class="flex shrink-0 items-center">
+				<Hash class="mr-1 h-6 w-6 text-neutral-400" />
+				<span class="text-neutral-400" use:tooltip={`User #${data.user.uid}`}>
+					{data.user.uid}
+				</span>
+			</div>
+			{#if isOwner && data.user.lastLogin}
+				<div class="flex shrink-0 items-center">
+					<Clock class="mr-2 h-6 w-6 text-neutral-400" />
+					<span
+						class="text-neutral-400"
+						use:tooltip={new Date(data.user.lastLogin).toLocaleString()}
+					>
+						Last login {dateToRelativeString(new Date(data.user.lastLogin))}
+					</span>
+				</div>
+			{/if}
 		</div>
+		{#if isOwner}
+			<div class="mt-4 flex gap-2 justify-center flex-wrap">
+				<button
+					on:click={() => {
+						showEditModal = true;
+						newDisplayName = data.user.displayName || data.user.username;
+						modalError = '';
+					}}
+					class="flex items-center gap-2 rounded bg-neutral-700 hover:bg-neutral-600 px-4 py-2 text-sm font-medium transition-colors"
+				>
+					<Pencil class="h-4 w-4" />
+					Edit Display Name
+				</button>
+				<button
+					on:click={() => {
+						showDeleteModal = true;
+						modalError = '';
+					}}
+					class="flex items-center gap-2 rounded bg-red-900 hover:bg-red-800 px-4 py-2 text-sm font-medium transition-colors"
+				>
+					<Trash2 class="h-4 w-4" />
+					Delete Account
+				</button>
+			</div>
+		{/if}
 		<div class="mt-6 max-h-[60vh] space-y-4 overflow-y-auto">
 			{#if pastes && pastes.length > 0}
 				{#each pastes.slice().sort((a, b) => b.uuid.localeCompare(a.uuid)) as paste (paste.uuid)}
@@ -108,7 +209,7 @@
 					</a>
 				{/each}
 			{:else}
-				<p class="text-center text-neutral-400">This user has not created any pastes yet.</p>
+				<p class="text-center text-neutral-400">{isOwner ? 'You have' : 'This user has'} not created any pastes yet.</p>
 			{/if}
 		</div>
 		{#if pagination.totalPages && pagination.totalPages > 1}
@@ -134,3 +235,37 @@
 		{/if}
 	</div>
 </main>
+
+<Modal
+	show={showEditModal}
+	mode="prompt"
+	title="Edit Display Name	"
+	placeholder="New Display Name"
+	bind:error={modalError}
+	onConfirm={(value) => handleEditDisplayName(value as string)}
+	onCancel={() => {
+		showEditModal = false;
+		modalError = '';
+	}}
+/>
+
+<Modal
+	show={showDeleteModal}
+	mode="confirm"
+	title="Delete Account"
+	message="This action cannot be undone. All your pastes and account data will be permanently deleted."
+	confirmButtonText="Delete Account"
+	error={modalError}
+	onConfirm={() => handleDeleteAccount()}
+	onCancel={() => {
+		showDeleteModal = false;
+		modalError = '';
+	}}
+/>
+
+<style>
+	:global(body) {
+		margin: 0;
+		padding: 0;
+	}
+</style>

@@ -1,10 +1,14 @@
 <script lang="ts">
 	export let show = false;
-	export let mode: 'decrypt' | 'encrypt' | 'confirm' = 'decrypt';
+	export let mode: 'decrypt' | 'encrypt' | 'confirm' | 'prompt' = 'decrypt';
 	export let title = '';
+	export let message = '';
 	export let error = '';
+	export let placeholder = '';
+	export let inputType = 'text';
 	export let onConfirm: (value: string | boolean) => void;
 	export let onCancel: () => void;
+	export let confirmButtonText = '';
 
 	let inputValue = '';
 
@@ -26,9 +30,17 @@
 			? 'Enter password to decrypt'
 			: mode === 'encrypt'
 				? 'Enter password to encrypt'
-				: 'Confirm action');
+				: mode === 'confirm'
+					? 'Confirm action'
+					: 'Enter value');
 
-	$: confirmLabel = mode === 'decrypt' ? 'Decrypt' : mode === 'encrypt' ? 'Encrypt' : 'Confirm';
+	$: confirmLabel = 
+		confirmButtonText || 
+		(mode === 'decrypt' ? 'Decrypt' : 
+		mode === 'encrypt' ? 'Encrypt' : 
+		mode === 'confirm' ? 'Delete' :
+		'Confirm');
+	$: shouldShowInput = mode !== 'confirm';
 </script>
 
 {#if show}
@@ -41,12 +53,18 @@
 				{displayTitle}
 			</h2>
 
-			{#if mode !== 'confirm'}
+			{#if message}
+				<p class="mb-4 text-neutral-300">
+					{message}
+				</p>
+			{/if}
+
+			{#if shouldShowInput}
 				<input
-					type="text"
+					type={inputType}
 					bind:value={inputValue}
 					class="mb-3 w-full rounded border border-neutral-700 bg-neutral-800 p-2 text-white outline-none"
-					placeholder="Enter value..."
+					{placeholder}
 				/>
 			{/if}
 
@@ -59,7 +77,9 @@
 			<div class="flex gap-2">
 				<button
 					type="submit"
-					class="flex-1 cursor-pointer rounded bg-neutral-700 px-4 py-2 font-semibold text-white hover:bg-neutral-800"
+					class={`flex-1 cursor-pointer rounded px-4 py-2 font-semibold text-white transition-colors ${
+						mode === 'confirm' ? 'bg-red-900 hover:bg-red-800' : 'bg-neutral-700 hover:bg-neutral-800'
+					}`}
 				>
 					{confirmLabel}
 				</button>
