@@ -3,12 +3,17 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { clearTokens } from '$lib/utils/auth';
+	import type { PageData } from '../../routes/$types';
 
 	function logout() {
 		clearTokens();
 		user.set(null);
 		window.location.href = '/';
 	}
+
+	export let data: PageData;
+
+	console.log(data);
 
 	let currentPath = page.url.pathname;
 	let returnParam =
@@ -35,12 +40,18 @@
 		{:else}
 			<div class="ml-auto flex items-center space-x-4">
 				<a
-					href={resolve(`/login${returnParam}`)}
-					class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800">Login</a
+					href={data.options?.registration_enabled ? resolve(`/login${returnParam}`) : '#'}
+					class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800 {data.options
+						?.registration_enabled
+						? ''
+						: 'cursor-not-allowed bg-neutral-800 text-neutral-500!'}">Login</a
 				>
 				<a
-					href={resolve(`/register${returnParam}`)}
-					class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800">Register</a
+					href={data.options?.registration_enabled ? resolve(`/register${returnParam}`) : '#'}
+					class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800 {data.options
+						?.registration_enabled
+						? ''
+						: 'cursor-not-allowed bg-neutral-800 text-neutral-500!'}">Register</a
 				>
 			</div>
 		{/if}

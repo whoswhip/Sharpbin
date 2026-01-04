@@ -45,5 +45,5 @@
 	{/if}
 </svelte:head>
 
-<Navbar />
+<Navbar {data} />
 <slot />

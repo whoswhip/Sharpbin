@@ -23,6 +23,8 @@ namespace SharpbinV3.Server.Controllers
         [Route("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
+            if (!options.Value.Registration_Enabled)
+                return BadRequest(new { message = "Registration is disabled." });
             if (!await _verification.VerifyAsync(request.Token, Utilities.GetRequestIP(HttpContext)))
                 return BadRequest(new { message = "Verification failed." });
 
@@ -106,7 +108,8 @@ namespace SharpbinV3.Server.Controllers
             var authSettings = options.Value;
             return Ok(new
             {
-                cf_turnstile_site_key = string.IsNullOrEmpty(authSettings.CF_Turnstile_SiteKey) ? null : authSettings.CF_Turnstile_SiteKey
+                cf_turnstile_site_key = string.IsNullOrEmpty(authSettings.CF_Turnstile_SiteKey) ? null : authSettings.CF_Turnstile_SiteKey,
+                registration_enabled = authSettings.Registration_Enabled
             });
         }
 
