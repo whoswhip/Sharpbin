@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 		};
 	}
 	const pasteData = (await paste.json()) as Paste;
-	const pasteContent = await fetch(`/api/paste/raw/${id}`);
+	const pasteContent = await fetch(`/api/paste/${id}/raw`);
 	const pasteOptions = await fetch('/api/paste/create/options');
 	const options = await pasteOptions.json();
 	const content = await pasteContent.text();

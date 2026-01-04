@@ -77,7 +77,7 @@ namespace SharpbinV3.Server.Controllers
             });
         }
         [HttpGet]
-        [Route("raw/{id}")]
+        [Route("{id}/raw")]
         public async Task<IActionResult> GetRawPasteByID(string id)
         {
             var paste = await _pasteService.Get(id);
@@ -109,7 +109,7 @@ namespace SharpbinV3.Server.Controllers
                 .Where(c => c.Type == ClaimTypes.Role)
                 .Select(c => int.Parse(c.Value))
                 .Any(r => r == 1 || r == 255);
-            if (paste.AuthorUUID != Guid.Parse(uuidClaim) || !hasPrivilegedRole)
+            if (paste.AuthorUUID != Guid.Parse(uuidClaim) && !hasPrivilegedRole)
                 return Forbid();
             bool result = await _pasteService.EditText(paste, content);
             if (!result) return NotFound();
@@ -130,7 +130,7 @@ namespace SharpbinV3.Server.Controllers
                 .Where(c => c.Type == ClaimTypes.Role)
                 .Select(c => int.Parse(c.Value))
                 .Any(r => r == 1 || r == 255);
-            if (paste.AuthorUUID != Guid.Parse(uuidClaim) || !hasPrivilegedRole)
+            if (paste.AuthorUUID != Guid.Parse(uuidClaim) && !hasPrivilegedRole)
                 return Forbid();
             if (request.Title != null)
                 paste.Title = request.Title;
@@ -170,7 +170,7 @@ namespace SharpbinV3.Server.Controllers
             });
         }
         [HttpDelete]
-        [Route("{id}")]
+        [Route("{id}/delete")]
         [Authorize]
         public async Task<IActionResult> DeletePaste(string id)
         {
@@ -183,7 +183,7 @@ namespace SharpbinV3.Server.Controllers
                 .Where(c => c.Type == ClaimTypes.Role)
                 .Select(c => int.Parse(c.Value))
                 .Any(r => r == 1 || r == 255);
-            if (paste.AuthorUUID != Guid.Parse(uuidClaim) || !hasPrivilegedRole)
+            if (paste.AuthorUUID != Guid.Parse(uuidClaim) && !hasPrivilegedRole)
                 return Forbid();
             bool result = await _pasteService.Delete(paste);
             if (!result) return NotFound();
