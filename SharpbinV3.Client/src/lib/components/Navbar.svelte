@@ -2,10 +2,10 @@
 	import { user } from '$lib/stores/user';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { clearTokens } from '$lib/utils/auth';
 
 	function logout() {
-		localStorage.removeItem('token');
-		localStorage.removeItem('refreshToken');
+		clearTokens();
 		user.set(null);
 		window.location.href = '/';
 	}

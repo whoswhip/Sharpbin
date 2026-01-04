@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { setTokens, startTokenRefreshInterval } from '$lib/utils/auth';
+	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 
 	let username = '';
@@ -8,14 +9,35 @@
 	let error = '';
 	export let data: PageData;
 
+	onMount(() => {
+		const render = () => {
+			if (window.turnstile && data.options?.cf_turnstile_site_key) {
+				window.turnstile.render('.cf-turnstile', {
+					sitekey: data.options.cf_turnstile_site_key,
+					theme: 'dark'
+				});
+			}
+		};
+
+		if (window.turnstile) {
+			render();
+		} else {
+			window.addEventListener('turnstile:loaded', render, { once: true });
+		}
+
+		return () => {
+			window.removeEventListener('turnstile:loaded', render);
+		};
+	});
+
 	async function login() {
 		const body: { username: string; password: string; token?: string } = {
 			username,
 			password
 		};
 
-		if (data.options?.cf_turnstile_site_key && (window as any).turnstile) {
-			const token = (window as any).turnstile.getResponse();
+		if (data.options?.cf_turnstile_site_key && window.turnstile) {
+			const token = window.turnstile.getResponse();
 			if (token) {
 				body.token = token;
 			}
@@ -45,12 +67,6 @@
 	}
 </script>
 
-<svelte:head>
-	{#if data.options?.cf_turnstile_site_key}
-		<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-	{/if}
-</svelte:head>
-
 <main
 	class="flex min-h-screen w-full flex-col items-center justify-center bg-neutral-950 text-white"
 >
@@ -75,16 +91,12 @@
 			/>
 			{#if data.options?.cf_turnstile_site_key}
 				<div class="flex w-full justify-center">
-					<div
-						class="cf-turnstile"
-						data-sitekey={data.options.cf_turnstile_site_key}
-						data-theme="dark"
-					></div>
+					<div class="cf-turnstile"></div>
 				</div>
 			{/if}
 			<button
 				type="submit"
-				class="w-full rounded bg-neutral-700 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-neutral-800 active:bg-neutral-900"
+				class="w-full cursor-pointer rounded bg-neutral-700 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-neutral-800 active:bg-neutral-900"
 			>
 				Login
 			</button>

@@ -1,34 +1,31 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import type { PageData } from './$types';
-    import type { Pagination } from '$lib/types/pagination';
+	import type { Pagination } from '$lib/types/pagination';
 	import { User, CalendarDays, ShieldUser, Ban, File, AtSign } from '@lucide/svelte';
 	import { extractDateFromUUIDv7, tooltip } from '$lib/utils/misc';
 	import { roles } from '$lib/consts';
-    import { getToken } from '$lib/utils/auth';
+	import { getToken } from '$lib/utils/auth';
 
 	export let data: PageData;
 
 	let currentPage = data.user.pagination?.page ?? 1;
 	let pagination: Pagination = data.user.pagination ?? {
-        page: 1,
-        pageSize: 50,
-        totalCount: 0,
-        totalPages: 1
-    };
+		page: 1,
+		pageSize: 50,
+		totalCount: 0,
+		totalPages: 1
+	};
 	let pastes = data.user.pastes ?? [];
 	let loading = false;
 
 	async function fetchPage(pageNum: number) {
 		if (pageNum < 1 || pageNum > (pagination.totalPages || 1) || loading) return;
 		loading = true;
-        const token = getToken();
-        const res = await fetch(
-            `/api/user/${data.user.username}?page=${pageNum}`,
-            {
-                headers: token ? { Authorization: `Bearer ${token}` } : {}
-            }
-        );
+		const token = getToken();
+		const res = await fetch(`/api/user/${data.user.username}?page=${pageNum}`, {
+			headers: token ? { Authorization: `Bearer ${token}` } : {}
+		});
 		if (!res.ok) {
 			loading = false;
 			return;
