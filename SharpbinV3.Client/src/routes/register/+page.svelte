@@ -28,7 +28,11 @@
 
 	onMount(() => {
 		const render = () => {
-			if (window.turnstile && data.options?.cf_turnstile_site_key) {
+			if (
+				window.turnstile &&
+				data.options?.cf_turnstile_site_key &&
+				data.options?.registration_enabled
+			) {
 				window.turnstile.render('.cf-turnstile', {
 					sitekey: data.options.cf_turnstile_site_key,
 					theme: 'dark'
@@ -103,6 +107,13 @@
 >
 	<div class="w-full max-w-md rounded border-2 border-neutral-800 bg-neutral-900 p-6">
 		<h1 class="mb-6 text-center text-3xl font-bold">Register</h1>
+		{#if data.options?.registration_enabled === false}
+			<div
+				class="mb-4 rounded border border-yellow-600/80 bg-yellow-600/40 p-2 text-sm text-yellow-200"
+			>
+				Registration is currently disabled.
+			</div>
+		{/if}
 		<form on:submit|preventDefault={register} class="space-y-4">
 			<input
 				type="text"
@@ -110,6 +121,7 @@
 				bind:value={username}
 				autocomplete="username"
 				required
+				disabled={loading || !data.options?.registration_enabled}
 				class="focus:bg-neutral-750 w-full rounded border border-neutral-700 bg-neutral-800 p-2 placeholder-neutral-500 transition-colors duration-200 focus:border-neutral-600"
 			/>
 			<div>
@@ -118,6 +130,7 @@
 					placeholder="Email (optional)"
 					bind:value={email}
 					autocomplete="email"
+					disabled={loading || !data.options?.registration_enabled}
 					class="focus:bg-neutral-750 w-full rounded border border-neutral-700 bg-neutral-800 p-2 placeholder-neutral-500 transition-colors duration-200 focus:border-neutral-600"
 				/>
 			</div>
@@ -127,6 +140,7 @@
 					placeholder="Display Name (optional)"
 					bind:value={displayName}
 					autocomplete="name"
+					disabled={loading || !data.options?.registration_enabled}
 					class="focus:bg-neutral-750 w-full rounded border border-neutral-700 bg-neutral-800 p-2 placeholder-neutral-500 transition-colors duration-200 focus:border-neutral-600"
 				/>
 			</div>
@@ -138,9 +152,10 @@
 				on:focus={() => (passwordFocused = true)}
 				on:blur={() => (passwordFocused = false)}
 				autocomplete="new-password"
+				disabled={loading || !data.options?.registration_enabled}
 				class="focus:bg-neutral-750 w-full rounded border border-neutral-700 bg-neutral-800 p-2 placeholder-neutral-500 transition-colors duration-200 focus:border-neutral-600"
 			/>
-			{#if passwordFocused}
+			{#if passwordFocused && !data.options?.registration_enabled}
 				<ul
 					transition:slide
 					class="space-y-2 rounded border border-neutral-700 bg-neutral-800 p-3 text-sm"
@@ -201,6 +216,7 @@
 				bind:value={confirmPassword}
 				required
 				autocomplete="new-password"
+				disabled={loading || !data.options?.registration_enabled}
 				class="focus:bg-neutral-750 w-full rounded border border-neutral-700 bg-neutral-800 p-2 placeholder-neutral-500 transition-colors duration-200 focus:border-neutral-600"
 			/>
 			{#if confirmPassword && password !== confirmPassword}
@@ -211,15 +227,18 @@
 					Passwords do not match.
 				</div>
 			{/if}
-			{#if data.options?.cf_turnstile_site_key}
+			{#if data.options?.cf_turnstile_site_key && data.options?.registration_enabled}
 				<div class="flex w-full justify-center">
 					<div class="cf-turnstile"></div>
 				</div>
 			{/if}
 			<button
 				type="submit"
-				disabled={!passwordValid || password !== confirmPassword || loading}
-				class="w-full cursor-pointer rounded bg-neutral-700 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-neutral-800 active:bg-neutral-900 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
+				disabled={!passwordValid ||
+					password !== confirmPassword ||
+					loading ||
+					!data.options?.registration_enabled}
+				class="w-full cursor-pointer rounded bg-neutral-700 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-neutral-800 active:bg-neutral-900"
 			>
 				{loading ? 'Registering...' : 'Register'}
 			</button>
@@ -237,3 +256,15 @@
 		</p>
 	</div>
 </main>
+
+<style>
+	*:disabled {
+		cursor: not-allowed;
+		background-color: var(--color-neutral-800);
+		color: var(--color-neutral-600) !important;
+		border: none;
+	}
+	*:disabled::placeholder {
+		color: var(--color-neutral-600) !important;
+	}
+</style>
