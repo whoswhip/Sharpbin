@@ -15,7 +15,8 @@ The server configuration is managed in `appsettings.json`. For development, ensu
 
 - `ConnectionStrings:DefaultConnection`: The SQLite connection string (e.g., `Data Source=sharpbin.db`).
 - `JwtSettings:Secret`: A secure key for JWT signing.
-- `CloudflareSettings:TurnstileSecret`: Your Cloudflare Turnstile secret key (if using captcha).
+- `AuthSettings:CF_Turnstile_SecretKey`: Your Cloudflare Turnstile secret key (if using captcha).
+- `AuthSettings:CF_Turnstile_SiteKey`: Your Cloudflare Turnstile site key (if using captcha).
 
 ### Database Migrations
 

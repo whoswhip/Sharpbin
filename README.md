@@ -33,4 +33,20 @@ git clone https://github.com/whoswhip/Sharpbin.git
 docker-compose up -d
 ```
 
+### Configuration
+
+You can configure the application using environment variables. When using Docker Compose, these can be set in the `docker-compose.yml` file.
+
+#### Backend (SharpbinV3.Server)
+
+- `ConnectionStrings__DefaultConnection`: SQLite connection string (e.g., `Data Source=/app/data/sharpbin.db`).
+- `JwtSettings__Secret`: A secure string used for signing JWT tokens.
+- `AuthSettings__CF_Turnstile_SecretKey`: Your Cloudflare Turnstile secret key.
+- `AuthSettings__CF_Turnstile_SiteKey`: Your Cloudflare Turnstile site key.
+- `ASPNETCORE_ENVIRONMENT`: Set to `Production` or `Development`.
+
+#### Frontend (SharpbinV3.Client)
+
+- `VITE_API_URL`: The URL of the backend API (e.g., `http://localhost:8080`).
+
 The frontend will be accessible at http://localhost:5173.
