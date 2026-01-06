@@ -30,7 +30,7 @@ namespace SharpbinV3.Server.Services
             };
 
             if (_authSettings.First_User_Admin && !await _db.Users.AnyAsync())
-                user.Roles = [255];
+                user.Roles = [0,1,255];
 
             _db.Users.Add(user);
             await _db.SaveChangesAsync();

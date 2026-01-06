@@ -2,7 +2,7 @@ import type { PageServerLoad } from './$types';
 import { getServerToken } from '$lib/utils/auth';
 import type { User } from '$lib/types/user';
 
-export const load: PageServerLoad = async ({ params, fetch, cookies }) => {
+export const load: PageServerLoad = async ({ params, fetch, cookies, url }) => {
 	const { username } = params;
 	const token = getServerToken(cookies);
 	const res = await fetch(`/api/user/${username}`, {
@@ -12,5 +12,5 @@ export const load: PageServerLoad = async ({ params, fetch, cookies }) => {
 	});
 
 	const user = (await res.json()) as User;
-	return { user };
+	return { user, url: url.href };
 };

@@ -113,6 +113,17 @@
 	}
 </script>
 
+<svelte:head>
+	<title>{data.user.displayName || data.user.username} - User Profile</title>
+
+	<meta property="og:title" content="{data.user.displayName || data.user.username} - User Profile" />
+	<meta property="og:description" content="View the profile and {pagination.totalCount} paste{pagination.totalCount !== 1 ? 's' : ''} of {data.user.displayName || data.user.username} on Sharpbin." />
+	<meta property="og:type" content="profile" />
+	<meta property="og:url" content="{data.url}" />
+	<meta property="og:site_name" content="Sharpbin" />
+	<meta property="profile:username" content="{data.user.username}" />
+</svelte:head>
+
 <main
 	class="flex min-h-screen w-full flex-col items-center justify-center bg-neutral-950 text-white"
 >

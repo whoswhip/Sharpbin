@@ -90,6 +90,15 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Create a Paste - Sharpbin</title>
+	<meta property="og:title" content="Create a Paste - Sharpbin" />
+	<meta property="og:description" content="Create and share your pastes easily with Sharpbin." />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="{data.url}" />
+	<meta property="og:site_name" content="Sharpbin" />
+</svelte:head>
+
 <main
 	class="flex min-h-screen w-full flex-col items-center justify-center bg-neutral-950 text-white"
 >

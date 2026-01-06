@@ -18,7 +18,7 @@ namespace SharpbinV3.Server.Data.Entities
         public required string ID { get; set; }
         public string? Title { get; set; }
 
-        public required Guid AuthorUUID { get; set; } = Guid.Empty; // uuid of the user who created the paste, or Guid.Empty for anonymous pastes
+        public Guid? AuthorUUID { get; set; } // uuid of the user who created the paste, or null for anonymous pastes
         public User? User { get; set; }
 
         public long? EditedAt { get; set; }

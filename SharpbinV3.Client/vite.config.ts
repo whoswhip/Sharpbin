@@ -10,9 +10,11 @@ const allowedHosts = process.env.VITE_ALLOWED_HOSTS
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 	server: {
+		host: true,
 		proxy: {
 			'/api': apiUrl
-		}
+		},
+		allowedHosts: allowedHosts
 	},
 	preview: {
 		allowedHosts: allowedHosts

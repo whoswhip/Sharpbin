@@ -21,7 +21,7 @@ namespace SharpbinV3.Server.Services
                 UUID = Guid.CreateVersion7(),
                 ID = Utilities.GenerateRandomString(8),
                 Title = title,
-                AuthorUUID = author?.UUID ?? Guid.Empty,
+                AuthorUUID = author?.UUID,
                 User = author,
                 Content = compressedData,
                 Size = compressedData.Length,

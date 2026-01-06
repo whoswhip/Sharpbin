@@ -282,6 +282,31 @@
 	$: if (data?.paste && (data.paste.visibility !== 2 || decryptedContent !== null)) renderCode();
 </script>
 
+<svelte:head>
+	<title>{data.paste ? (data.paste.title || 'Untitled Paste') + ' - Sharpbin' : 'Paste Not Found - Sharpbin'}</title>
+	{#if data.paste}
+		<meta property="og:title" content={data.paste.title || 'Untitled Paste'} />
+		<meta
+			property="og:description"
+			content={`A paste on Sharpbin created by ${
+				data.paste.author ? data.paste.author.username : 'Anonymous'
+			}, created on ${
+				extractDateFromUUIDv7(data.paste.uuid)?.toLocaleDateString() ?? 'Unknown Date'
+			}.`}
+		/>
+		<meta property="og:type" content="article" />
+		<meta property="og:url" content={data.url} />
+		<meta property="og:site_name" content="Sharpbin" />
+		<meta property="og:article:published_time" content={extractDateFromUUIDv7(data.paste.uuid)?.toISOString() ?? ''} />
+		{#if data.paste.editedAt}
+			<meta property="og:article:modified_time" content={new Date(data.paste.editedAt).toISOString()} />
+		{/if}
+		{#if data.paste.author}
+			<meta property="og:article:author" content={data.paste.author.username} />
+		{/if}
+	{/if}
+</svelte:head>
+
 <main
 	class="flex min-h-screen w-full flex-col items-center justify-center bg-neutral-950 text-white"
 >

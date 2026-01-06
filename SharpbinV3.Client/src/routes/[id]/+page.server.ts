@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 import type { Paste } from '$lib/types/paste';
 
-export const load: PageServerLoad = async ({ params, fetch }) => {
+export const load: PageServerLoad = async ({ params, fetch, url }) => {
 	const { id } = params;
 
 	const paste = await fetch(`/api/paste/${id}`);
@@ -17,5 +17,5 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 	const options = await pasteOptions.json();
 	const content = await pasteContent.text();
 
-	return { paste: pasteData, content, options };
+	return { paste: pasteData, content, options, url: url.href };
 };
