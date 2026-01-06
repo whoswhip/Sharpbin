@@ -36,11 +36,7 @@ namespace SharpbinV3.Server.Controllers
                 var existingEmailUser = await _userService.GetByEmail(request.Email);
                 if (existingEmailUser != null)
                     return Conflict(new { message = "Email already in use." });
-                if (!IsValidEmail(request.Email))
-                    return BadRequest(new { message = "Invalid email." });
             }
-            if (!IsValidPassword(request.Password))
-                return BadRequest(new { message = "Password should have at least 8 characters, including uppercase, lowercase, and digits." });
             if (!string.IsNullOrEmpty(request.DisplayName) && request.DisplayName.Length > 26)
                 return BadRequest(new { message = "Display name should not exceed 26 characters." });
 
@@ -111,32 +107,6 @@ namespace SharpbinV3.Server.Controllers
                 cf_turnstile_site_key = string.IsNullOrEmpty(authSettings.CF_Turnstile_SiteKey) ? null : authSettings.CF_Turnstile_SiteKey,
                 registration_enabled = authSettings.Registration_Enabled
             });
-        }
-
-
-        private static bool IsValidPassword(string password)
-        {
-            if (password.Length < 6)
-                return false;
-            if (!password.Any(char.IsUpper))
-                return false;
-            if (!password.Any(char.IsLower))
-                return false;
-            if (!password.Any(char.IsDigit))
-                return false;
-            return true;
-        }
-        private static bool IsValidEmail(string email)
-        {
-            try
-            {
-                var addr = new System.Net.Mail.MailAddress(email);
-                return addr.Address == email;
-            }
-            catch
-            {
-                return false;
-            }
         }
     }
 }

@@ -23,6 +23,8 @@ namespace SharpbinV3.Server.DTOs
             var results = new List<ValidationResult>();
             if (!ValidateUsername().IsMatch(Username))
                 results.Add(new ValidationResult("Username can only contain letters, numbers, underscores, and dots.", [nameof(Username)]));
+            if (!ValidatePassword().IsMatch(Password))
+                results.Add(new ValidationResult("Password should have at least 8 characters, including uppercase, lowercase, and digits.", [nameof(Password)]));
 
             if (DisplayName != null)
             {
@@ -42,5 +44,7 @@ namespace SharpbinV3.Server.DTOs
 
         [GeneratedRegex("^[A-Za-z0-9_.]+$")]
         private static partial Regex ValidateUsername();
+        [GeneratedRegex("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$")]
+        public static partial Regex ValidatePassword();
     }
 }
