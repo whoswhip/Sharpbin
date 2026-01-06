@@ -43,6 +43,7 @@ You can configure the application using environment variables. When using Docker
 - `JwtSettings__Secret`: A secure string used for signing JWT tokens.
 - `AuthSettings__CF_Turnstile_SecretKey`: Your Cloudflare Turnstile secret key.
 - `AuthSettings__CF_Turnstile_SiteKey`: Your Cloudflare Turnstile site key.
+- `AuthSettings__First_User_Admin`: Gives the first user the admin role, it is recommended to disable this after use.
 - `ASPNETCORE_ENVIRONMENT`: Set to `Production` or `Development`.
 
 #### Frontend (SharpbinV3.Client)

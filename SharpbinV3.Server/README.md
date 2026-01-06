@@ -13,10 +13,11 @@ This is the backend API for SharpbinV3, built with ASP.NET Core and Entity Frame
 
 The server configuration is managed in `appsettings.json`. For development, ensure you have set the following in `appsettings.Development.json` or as environment variables:
 
-- `ConnectionStrings:DefaultConnection`: The SQLite connection string (e.g., `Data Source=sharpbin.db`).
-- `JwtSettings:Secret`: A secure key for JWT signing.
-- `AuthSettings:CF_Turnstile_SecretKey`: Your Cloudflare Turnstile secret key (if using captcha).
-- `AuthSettings:CF_Turnstile_SiteKey`: Your Cloudflare Turnstile site key (if using captcha).
+- `ConnectionStrings__DefaultConnection`: SQLite connection string (e.g., `Data Source=/app/data/sharpbin.db`).
+- `JwtSettings__Secret`: A secure string used for signing JWT tokens.
+- `AuthSettings__CF_Turnstile_SecretKey`: Your Cloudflare Turnstile secret key.
+- `AuthSettings__CF_Turnstile_SiteKey`: Your Cloudflare Turnstile site key.
+- `AuthSettings__First_User_Admin`: Gives the first user the admin role, it is recommended to disable this after use.
 
 ### Database Migrations
 
