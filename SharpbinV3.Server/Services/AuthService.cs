@@ -12,10 +12,11 @@ using Bcrypt = BCrypt.Net.BCrypt;
 
 namespace SharpbinV3.Server.Services
 {
-    public sealed class AuthService(AppDbContext db, IOptions<JWTSettings> options)
+    public sealed class AuthService(AppDbContext db, IOptions<JWTSettings> jwtOptions, IOptions<AuthSettings> authOptions)
     {
         private readonly AppDbContext _db = db;
-        private readonly JWTSettings _jwtSettings = options.Value;
+        private readonly JWTSettings _jwtSettings = jwtOptions.Value;
+        private readonly AuthSettings _authSettings = authOptions.Value;
 
         public async Task<User> CreateUser(string username, string password, string? email, string? displayName)
         {
@@ -27,6 +28,9 @@ namespace SharpbinV3.Server.Services
                 DisplayName = displayName,
                 UUID = Guid.CreateVersion7()
             };
+
+            if (_authSettings.First_User_Admin && !await _db.Users.AnyAsync())
+                user.Roles = [255];
 
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
