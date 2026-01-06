@@ -98,15 +98,3 @@ export function clearServerTokens(cookies: Cookies) {
 	cookies.delete('token', { path: '/' });
 	cookies.delete('refreshToken', { path: '/' });
 }
-
-export function getUserUUIDFromToken() {
-	if (!browser) return null;
-	const token = getToken();
-	if (!token) return null;
-	try {
-		const payload = JSON.parse(atob(token.split('.')[1]));
-		return payload.UUID || null;
-	} catch {
-		return null;
-	}
-}

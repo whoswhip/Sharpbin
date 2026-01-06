@@ -17,10 +17,11 @@
 	let selectedVisibility = data.options?.visibilities?.[0]?.value;
 	let password = '';
 
-	const syntaxOptions = data.options?.syntaxes?.map((lang: string) => ({
-		value: lang,
-		label: displayNames[lang] ?? lang.charAt(0).toUpperCase() + lang.slice(1)
-	})) ?? [];
+	const syntaxOptions =
+		data.options?.syntaxes?.map((lang: string) => ({
+			value: lang,
+			label: displayNames[lang] ?? lang.charAt(0).toUpperCase() + lang.slice(1)
+		})) ?? [];
 
 	const expiresOptions = [
 		{ value: 0, label: 'Never Expire' },
@@ -38,12 +39,11 @@
 		{ value: 315360000000, label: 'Expire in 10 Years' }
 	];
 
-	const visibilityOptions = data.options?.visibilities?.map(
-		(visibility: { value: number; displayName: string }) => ({
+	const visibilityOptions =
+		data.options?.visibilities?.map((visibility: { value: number; displayName: string }) => ({
 			value: visibility.value,
 			label: visibility.displayName
-		})
-	) ?? [];
+		})) ?? [];
 
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
@@ -143,7 +143,7 @@
 			{/if}
 			<button
 				type="submit"
-				class="w-full rounded bg-neutral-700 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-neutral-800 active:bg-neutral-900 cursor-pointer"
+				class="w-full cursor-pointer rounded bg-neutral-700 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-neutral-800 active:bg-neutral-900"
 				>Create Paste</button
 			>
 			{#if error}

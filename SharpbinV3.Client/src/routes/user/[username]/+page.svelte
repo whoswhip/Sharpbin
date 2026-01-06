@@ -1,45 +1,59 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import type { PageData } from './$types';
-    import type { Pagination } from '$lib/types/pagination';
-	import { User, CalendarDays, ShieldUser, Ban, File, AtSign, Pencil, Trash2, Clock, Hash } from '@lucide/svelte';
+	import type { Pagination } from '$lib/types/pagination';
+	import {
+		User,
+		CalendarDays,
+		ShieldUser,
+		Ban,
+		File,
+		AtSign,
+		Pencil,
+		Trash2,
+		Clock,
+		Hash
+	} from '@lucide/svelte';
 	import { extractDateFromUUIDv7, tooltip, dateToRelativeString } from '$lib/utils/misc';
 	import { roles } from '$lib/consts';
-    import { getToken, getUserUUIDFromToken } from '$lib/utils/auth';
+	import { getToken } from '$lib/utils/auth';
 	import Modal from '$lib/components/Modal.svelte';
+	import { user } from '$lib/stores/user';
 
 	export let data: PageData;
 
 	let currentPage = data.user.pagination?.page ?? 1;
 	let pagination: Pagination = data.user.pagination ?? {
-        page: 1,
-        pageSize: 50,
-        totalCount: 0,
-        totalPages: 1
-    };
+		page: 1,
+		pageSize: 50,
+		totalCount: 0,
+		totalPages: 1
+	};
 	let pastes = data.user.pastes ?? [];
 	let loading = false;
 	let isOwner = false;
 	let showEditModal = false;
 	let showDeleteModal = false;
+	let showRoleModal = false;
 	let modalError = '';
 	let newDisplayName = '';
 
-	$: {
-		const userUUID = getUserUUIDFromToken();
-		isOwner = !!userUUID && userUUID === data.user.uuid;
-	}
+	$: isOwner = data.user && $user ? data.user.uuid === $user.uuid : false;
+
+	const roleOptions = [
+		{ label: 'Member', value: 0 },
+		{ label: 'Moderator', value: 1 },
+		{ label: 'Administrator', value: 255 },
+		{ label: 'Banned', value: 403 }
+	];
 
 	async function fetchPage(pageNum: number) {
 		if (pageNum < 1 || pageNum > (pagination.totalPages || 1) || loading) return;
 		loading = true;
-        const token = getToken();
-        const res = await fetch(
-            `/api/user/${data.user.username}?page=${pageNum}`,
-            {
-                headers: token ? { Authorization: `Bearer ${token}` } : {}
-            }
-        );
+		const token = getToken();
+		const res = await fetch(`/api/user/${data.user.username}?page=${pageNum}`, {
+			headers: token ? { Authorization: `Bearer ${token}` } : {}
+		});
 		if (!res.ok) {
 			loading = false;
 			return;
@@ -51,11 +65,7 @@
 		loading = false;
 	}
 
-	async function handleEditDisplayName(displayName: string) {
-		if (!displayName.trim()) {
-			modalError = 'Display name cannot be empty';
-			return;
-		}
+	async function handleUserUpdate(displayName?: string, selectedRoles?: number[]) {
 		loading = true;
 		const token = getToken();
 		const res = await fetch(`/api/user/uuid/${data.user.uuid}`, {
@@ -64,7 +74,10 @@
 				'Content-Type': 'application/json',
 				Authorization: `Bearer ${token}`
 			},
-			body: JSON.stringify({ displayName: displayName.trim() })
+			body: JSON.stringify({
+				...(displayName !== undefined ? { displayName: displayName.trim() } : {}),
+				...(selectedRoles !== undefined ? { roles: selectedRoles } : {})
+			})
 		});
 		loading = false;
 		if (!res.ok) {
@@ -73,7 +86,11 @@
 			return;
 		}
 		showEditModal = false;
-		data.user.displayName = displayName;
+		showRoleModal = false;
+		data.user.displayName = displayName || data.user.displayName;
+		if (selectedRoles !== undefined) {
+			data.user.roles = selectedRoles;
+		}
 		modalError = '';
 	}
 
@@ -102,24 +119,17 @@
 >
 	<div class="w-[95%] max-w-5xl rounded border-2 border-neutral-800 bg-neutral-900 p-6">
 		<h1 class="flex items-center justify-center gap-4 text-center text-4xl font-bold">
-			{#if data.user.roles.includes(1) || data.user.roles.includes(255)}
-				{#if Math.max(...data.user.roles.filter((r) => r !== 403)) !== -Infinity}
-					<span
-						use:tooltip={roles[
-							Math.max(...data.user.roles.filter((r) => r !== 403)) as keyof typeof roles
-						]}
-					>
-						<ShieldUser class="h-8 w-8 text-neutral-400" />
-					</span>
-				{:else}
-					<span use:tooltip={'User'}>
-						<User class="h-8 w-8 text-neutral-400" />
-					</span>
-				{/if}
-			{:else if data.user.roles.includes(403)}
-				<span class="relative flex items-center justify-center" use:tooltip={roles[403]}>
-					<User class="h-8 w-8 text-neutral-500 opacity-90" />
+			{#if data.user.roles.includes(403)}
+				<span
+					class="relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-full"
+					use:tooltip={roles[403]}
+				>
+					<User class="h-8 w-8 text-neutral-500" />
 					<Ban class="absolute h-7 w-7 text-red-500" />
+				</span>
+			{:else if data.user.roles.includes(1) || data.user.roles.includes(255)}
+				<span use:tooltip={roles[Math.max(...data.user.roles) as keyof typeof roles]}>
+					<ShieldUser class="h-8 w-8 text-neutral-400" />
 				</span>
 			{:else}
 				<span use:tooltip={'User'}>
@@ -168,29 +178,43 @@
 				</div>
 			{/if}
 		</div>
-		{#if isOwner}
-			<div class="mt-4 flex gap-2 justify-center flex-wrap">
+		{#if isOwner || $user?.roles.some((r) => r === 255 || r === 1)}
+			<div class="mt-4 flex flex-wrap justify-center gap-2">
 				<button
 					on:click={() => {
 						showEditModal = true;
 						newDisplayName = data.user.displayName || data.user.username;
 						modalError = '';
 					}}
-					class="flex items-center gap-2 rounded bg-neutral-700 hover:bg-neutral-600 px-4 py-2 text-sm font-medium transition-colors"
+					class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
 				>
 					<Pencil class="h-4 w-4" />
 					Edit Display Name
 				</button>
-				<button
-					on:click={() => {
-						showDeleteModal = true;
-						modalError = '';
-					}}
-					class="flex items-center gap-2 rounded bg-red-900 hover:bg-red-800 px-4 py-2 text-sm font-medium transition-colors"
-				>
-					<Trash2 class="h-4 w-4" />
-					Delete Account
-				</button>
+				{#if $user?.roles.some((r) => r === 255)}
+					<button
+						on:click={() => {
+							showRoleModal = true;
+							modalError = '';
+						}}
+						class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
+					>
+						<ShieldUser class="h-4 w-4" />
+						Edit Roles
+					</button>
+				{/if}
+				{#if isOwner || $user?.roles.some((r) => r === 255)}
+					<button
+						on:click={() => {
+							showDeleteModal = true;
+							modalError = '';
+						}}
+						class="flex items-center gap-2 rounded bg-red-900 px-4 py-2 text-sm font-medium transition-colors hover:bg-red-800"
+					>
+						<Trash2 class="h-4 w-4" />
+						Delete Account
+					</button>
+				{/if}
 			</div>
 		{/if}
 		<div class="mt-6 max-h-[60vh] space-y-4 overflow-y-auto">
@@ -209,7 +233,9 @@
 					</a>
 				{/each}
 			{:else}
-				<p class="text-center text-neutral-400">{isOwner ? 'You have' : 'This user has'} not created any pastes yet.</p>
+				<p class="text-center text-neutral-400">
+					{isOwner ? 'You have' : 'This user has'} not created any pastes yet.
+				</p>
 			{/if}
 		</div>
 		{#if pagination.totalPages && pagination.totalPages > 1}
@@ -242,7 +268,7 @@
 	title="Edit Display Name	"
 	placeholder="New Display Name"
 	bind:error={modalError}
-	onConfirm={(value) => handleEditDisplayName(value as string)}
+	onConfirm={(value) => handleUserUpdate(value as string)}
 	onCancel={() => {
 		showEditModal = false;
 		modalError = '';
@@ -253,7 +279,7 @@
 	show={showDeleteModal}
 	mode="confirm"
 	title="Delete Account"
-	message="This action cannot be undone. All your pastes and account data will be permanently deleted."
+	message={`This action cannot be undone. ${isOwner ? 'All your' : 'This user\'s'} pastes and account data will be permanently deleted.`}
 	confirmButtonText="Delete Account"
 	error={modalError}
 	onConfirm={() => handleDeleteAccount()}
@@ -263,9 +289,22 @@
 	}}
 />
 
+<Modal
+	show={showRoleModal}
+	mode="multiselect"
+	title="Edit User Roles"
+	items={roleOptions}
+	initialValue={data.user.roles}
+	error={modalError}
+	onConfirm={(value) => handleUserUpdate(undefined, value as number[])}
+	onCancel={() => {
+		showRoleModal = false;
+		modalError = '';
+	}}
+/>
+
 <style>
-	:global(body) {
-		margin: 0;
-		padding: 0;
+	button {
+		cursor: pointer;
 	}
 </style>

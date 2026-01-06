@@ -1,19 +1,26 @@
 <script lang="ts">
 	export let show = false;
-	export let mode: 'decrypt' | 'encrypt' | 'confirm' | 'prompt' = 'decrypt';
+	export let mode: 'decrypt' | 'encrypt' | 'confirm' | 'prompt' | 'multiselect' = 'decrypt';
 	export let title = '';
 	export let message = '';
 	export let error = '';
 	export let placeholder = '';
 	export let inputType = 'text';
-	export let onConfirm: (value: string | boolean) => void;
+	export let items: { label: string; value: any }[] = [];
+	export let initialValue: any = null;
+	export let onConfirm: (value: any) => void;
 	export let onCancel: () => void;
 	export let confirmButtonText = '';
 
-	let inputValue = '';
+	let inputValue: any = '';
 
 	$: if (!show) {
-		inputValue = '';
+		inputValue =
+			initialValue !== null
+				? JSON.parse(JSON.stringify(initialValue))
+				: mode === 'multiselect'
+					? []
+					: '';
 	}
 
 	function handleSubmit() {
@@ -32,15 +39,20 @@
 				? 'Enter password to encrypt'
 				: mode === 'confirm'
 					? 'Confirm action'
-					: 'Enter value');
+					: mode === 'multiselect'
+						? 'Select items'
+						: 'Enter value');
 
-	$: confirmLabel = 
-		confirmButtonText || 
-		(mode === 'decrypt' ? 'Decrypt' : 
-		mode === 'encrypt' ? 'Encrypt' : 
-		mode === 'confirm' ? 'Delete' :
-		'Confirm');
-	$: shouldShowInput = mode !== 'confirm';
+	$: confirmLabel =
+		confirmButtonText ||
+		(mode === 'decrypt'
+			? 'Decrypt'
+			: mode === 'encrypt'
+				? 'Encrypt'
+				: mode === 'confirm'
+					? 'Delete'
+					: 'Confirm');
+	$: shouldShowInput = mode !== 'confirm' && mode !== 'multiselect';
 </script>
 
 {#if show}
@@ -68,6 +80,26 @@
 				/>
 			{/if}
 
+			{#if mode === 'multiselect'}
+				<div
+					class="mb-4 max-h-60 overflow-y-auto rounded border border-neutral-700 bg-neutral-800 p-2"
+				>
+					{#each items as item}
+						<label
+							class="flex cursor-pointer items-center gap-2 rounded p-2 text-white hover:bg-neutral-700"
+						>
+							<input
+								type="checkbox"
+								bind:group={inputValue}
+								value={item.value}
+								class="h-4 w-4 rounded border-neutral-600 bg-neutral-700 text-neutral-500"
+							/>
+							<span>{item.label}</span>
+						</label>
+					{/each}
+				</div>
+			{/if}
+
 			{#if error}
 				<div class="mb-3 rounded border border-red-900 bg-red-950 p-2 text-sm text-red-200">
 					{error}
@@ -78,7 +110,9 @@
 				<button
 					type="submit"
 					class={`flex-1 cursor-pointer rounded px-4 py-2 font-semibold text-white transition-colors ${
-						mode === 'confirm' ? 'bg-red-900 hover:bg-red-800' : 'bg-neutral-700 hover:bg-neutral-800'
+						mode === 'confirm'
+							? 'bg-red-900 hover:bg-red-800'
+							: 'bg-neutral-700 hover:bg-neutral-800'
 					}`}
 				>
 					{confirmLabel}

@@ -60,10 +60,11 @@
 			: false;
 
 	let interval: ReturnType<typeof setInterval> | null = null;
-	const syntaxOptions = data.options?.syntaxes?.map((lang: string) => ({
-		value: lang,
-		label: displayNames[lang] ?? lang.charAt(0).toUpperCase() + lang.slice(1)
-	})) ?? [];
+	const syntaxOptions =
+		data.options?.syntaxes?.map((lang: string) => ({
+			value: lang,
+			label: displayNames[lang] ?? lang.charAt(0).toUpperCase() + lang.slice(1)
+		})) ?? [];
 	const expiresOptions = [
 		{ value: 0, label: 'Never Expire' },
 		{ value: 600000, label: 'Expire in 10 Minutes' },
@@ -79,12 +80,11 @@
 		{ value: 157680000000, label: 'Expire in 5 Years' },
 		{ value: 315360000000, label: 'Expire in 10 Years' }
 	];
-	const visibilityOptions = data.options?.visibilities?.map(
-		(visibility: { value: number; displayName: string }) => ({
+	const visibilityOptions =
+		data.options?.visibilities?.map((visibility: { value: number; displayName: string }) => ({
 			value: visibility.value,
 			label: visibility.displayName
-		})
-	) ?? [];
+		})) ?? [];
 
 	onMount(() => {
 		interval = setInterval(() => {
@@ -559,7 +559,7 @@
 													alert('Failed to delete paste.');
 												}
 											}
-										})
+										});
 									}}
 								>
 									<Trash2 class="mr-1 h-5 w-5 text-red-400" />
@@ -647,13 +647,11 @@
 				modalResolve = null;
 			}
 		}}
-		title={
-			modalMode === 'decrypt'
-				? 'Decrypt Paste'
-				: modalMode === 'encrypt'
+		title={modalMode === 'decrypt'
+			? 'Decrypt Paste'
+			: modalMode === 'encrypt'
 				? 'Encrypt Paste'
-				: 'Are you sure you want to delete this paste?'
-		}
+				: 'Are you sure you want to delete this paste?'}
 	/>
 
 	<style>

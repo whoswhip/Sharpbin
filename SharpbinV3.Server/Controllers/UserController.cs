@@ -67,6 +67,10 @@ namespace SharpbinV3.Server.Controllers
                 user.Email = updatedUser.Email ?? user.Email;
                 user.Visibility = updatedUser.Visibility ?? user.Visibility;
             }
+            if (userRoles.Any(r => r == 255))
+            {
+                user.Roles = updatedUser.Roles ?? user.Roles;
+            }
             await _db.SaveChangesAsync();
             return Ok(new { message = "User updated successfully." });
         }
