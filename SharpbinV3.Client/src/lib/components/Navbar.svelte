@@ -20,7 +20,7 @@
 			: '';
 </script>
 
-<div class="fixed top-0 left-0 z-100 h-15 w-full bg-neutral-900">
+<div class="z-100 h-15 w-full bg-neutral-900">
 	<div class="mx-auto flex h-15 max-w-5xl items-center px-4 py-2">
 		<a href={resolve('/')} class="text-xl font-bold text-white hover:text-neutral-300">Sharpbin</a>
 		{#if $user}
