@@ -1,38 +1,54 @@
-# sv
+# SharpbinV3 Client
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+This is the SvelteKit frontend for SharpbinV3.
 
-## Creating a project
+## Development Setup
 
-If you're seeing this, you've probably already done this step. Congrats!
+### Prerequisites
 
-```sh
-# create a new project in the current directory
-npx sv create
+- Node.js (v20 or newer recommended)
+- npm
 
-# create a new project in my-app
-npx sv create my-app
+### Installation
+
+Install the project dependencies:
+
+```bash
+npm install
 ```
 
-## Developing
+### Environment Configuration
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+The application requires an environment variable to point to the backend API. Create a `.env` file in this directory or set the variable in your environment:
 
-```sh
+```env
+VITE_API_URL=http://localhost:8080
+```
+
+### Running in Development
+
+Start the development server with Hot Module Replacement (HMR):
+
+```bash
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
+The application will be available at http://localhost:5173.
 
-To create a production version of your app:
+## Script Reference
 
-```sh
-npm run build
-```
+- `npm run dev`: Start the Vite development server.
+- `npm run build`: Create a production build of the application.
+- `npm run preview`: Locally preview the production build.
+- `npm run check`: Run type checking with svelte-check.
+- `npm run lint`: Run ESLint and Prettier checks.
+- `npm run format`: Format the codebase with Prettier.
 
-You can preview the production build with `npm run preview`.
+## Tech Stack
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+- Svelte 5 with SvelteKit.
+- Tailwind CSS for styling.
+- Lucide Svelte for icons.
+- Highlight.js for syntax highlighting.
+- TypeScript for type safety.
+
