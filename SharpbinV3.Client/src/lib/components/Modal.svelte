@@ -6,13 +6,13 @@
 	export let error = '';
 	export let placeholder = '';
 	export let inputType = 'text';
-	export let items: { label: string; value: any }[] = [];
-	export let initialValue: any = null;
-	export let onConfirm: (value: any) => void;
+	export let items: { label: string; value: unknown }[] = [];
+	export let initialValue: unknown = null;
+	export let onConfirm: (value: unknown) => void;
 	export let onCancel: () => void;
 	export let confirmButtonText = '';
 
-	let inputValue: any = '';
+	let inputValue: string | unknown[] | boolean = '';
 
 	$: if (!show) {
 		inputValue =
@@ -84,7 +84,7 @@
 				<div
 					class="mb-4 max-h-60 overflow-y-auto rounded border border-neutral-700 bg-neutral-800 p-2"
 				>
-					{#each items as item}
+					{#each items as item (item.label)}
 						<label
 							class="flex cursor-pointer items-center gap-2 rounded p-2 text-white hover:bg-neutral-700"
 						>

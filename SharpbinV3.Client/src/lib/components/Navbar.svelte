@@ -41,6 +41,7 @@
 					href={resolve(`/login${returnParam}`)}
 					class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800">Login</a
 				>
+				<!-- eslint-disable svelte/no-navigation-without-resolve -->
 				<a
 					href={data.options?.registration_enabled ? resolve(`/register${returnParam}`) : '#'}
 					class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800 {data.options
@@ -48,6 +49,7 @@
 						? ''
 						: 'cursor-not-allowed bg-neutral-800 text-neutral-500!'}">Register</a
 				>
+				<!-- eslint-enable svelte/no-navigation-without-resolve -->
 			</div>
 		{/if}
 	</div>

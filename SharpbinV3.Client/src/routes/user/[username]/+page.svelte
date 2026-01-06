@@ -36,7 +36,6 @@
 	let showDeleteModal = false;
 	let showRoleModal = false;
 	let modalError = '';
-	let newDisplayName = '';
 
 	$: isOwner = data.user && $user ? data.user.uuid === $user.uuid : false;
 
@@ -183,7 +182,6 @@
 				<button
 					on:click={() => {
 						showEditModal = true;
-						newDisplayName = data.user.displayName || data.user.username;
 						modalError = '';
 					}}
 					class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
@@ -279,7 +277,7 @@
 	show={showDeleteModal}
 	mode="confirm"
 	title="Delete Account"
-	message={`This action cannot be undone. ${isOwner ? 'All your' : 'This user\'s'} pastes and account data will be permanently deleted.`}
+	message={`This action cannot be undone. ${isOwner ? 'All your' : "This user's"} pastes and account data will be permanently deleted.`}
 	confirmButtonText="Delete Account"
 	error={modalError}
 	onConfirm={() => handleDeleteAccount()}
