@@ -160,7 +160,7 @@
 				disabled={loading || !data.options?.registration_enabled}
 				class="focus:bg-neutral-750 w-full rounded border border-neutral-700 bg-neutral-800 p-2 placeholder-neutral-500 transition-colors duration-200 focus:border-neutral-600"
 			/>
-			{#if passwordFocused && !data.options?.registration_enabled}
+			{#if passwordFocused}
 				<ul
 					transition:slide
 					class="space-y-2 rounded border border-neutral-700 bg-neutral-800 p-3 text-sm"
