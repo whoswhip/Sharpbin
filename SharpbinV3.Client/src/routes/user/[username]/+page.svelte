@@ -259,10 +259,12 @@
 					{data.user?.uid}
 				</span>
 			</div>
-			<div class="flex shrink-0 items-center">
-				<ShieldUser class="mr-2 h-6 w-6 text-neutral-400" />
-				<span class="text-neutral-400">2FA {totpEnabled ? 'enabled' : 'disabled'}</span>
-			</div>
+			{#if isOwner}
+				<div class="flex shrink-0 items-center">
+					<ShieldUser class="mr-2 h-6 w-6 text-neutral-400" />
+					<span class="text-neutral-400">2FA {totpEnabled ? 'enabled' : 'disabled'}</span>
+				</div>
+			{/if}
 			{#if isOwner && data.user?.lastLogin}
 				<div class="flex shrink-0 items-center">
 					<Clock class="mr-2 h-6 w-6 text-neutral-400" />
