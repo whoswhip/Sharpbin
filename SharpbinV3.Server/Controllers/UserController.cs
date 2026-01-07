@@ -60,6 +60,8 @@ namespace SharpbinV3.Server.Controllers
                 return NotFound();
             if (!userRoles.Any(r => r == 1 || r == 255) && user.UUID != Guid.Parse(uuidClaim))
                 return Forbid();
+            if (user.Roles.Contains(255) && !userRoles.Contains(255))
+                return Forbid();
 
             user.DisplayName = updatedUser.DisplayName ?? user.DisplayName;
             if (userRoles.Any(r => r == 255) || user.UUID == Guid.Parse(uuidClaim)) // only admins or self
@@ -71,6 +73,7 @@ namespace SharpbinV3.Server.Controllers
             {
                 user.Roles = updatedUser.Roles ?? user.Roles;
             }
+
             await _db.SaveChangesAsync();
             return Ok(new { message = "User updated successfully." });
         }
