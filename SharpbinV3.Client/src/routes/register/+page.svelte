@@ -95,8 +95,13 @@
 				}
 			}
 		} else {
-			const payload = await res.json().catch(() => null);
-			error = payload?.message ?? 'Registration failed';
+			const resData = await res.json();
+			if (resData.errors) {
+				const messages = Object.values(resData.errors).flat();
+				error = messages.join('\n');
+			} else {
+				error = resData.message || 'Registration failed. Please try again.';
+			}
 		}
 		loading = false;
 	}
