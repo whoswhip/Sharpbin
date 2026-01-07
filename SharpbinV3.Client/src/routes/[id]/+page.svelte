@@ -311,7 +311,7 @@
 	class="flex w-full min-h-[calc(100vh-60px)] flex-col items-center justify-center bg-neutral-950 text-white pt-5 pb-5"
 >
 	<div
-		class="max-h-[80vh] w-[95%] max-w-7xl rounded border-2 border-neutral-800 bg-neutral-900 p-4"
+		class="max-h-[90vh] w-[95%] max-w-7xl rounded border-2 border-neutral-800 bg-neutral-900 p-4"
 	>
 		{#if data.paste}
 			<div class="mb-4 w-full text-center">
@@ -688,7 +688,6 @@
 			max-width: 100%;
 			overflow: hidden;
 			flex: 1 1 auto;
-			max-height: 1%;
 		}
 		.codeblock-with-lines pre {
 			display: block;
@@ -698,7 +697,8 @@
 			border-bottom-left-radius: 0.25rem;
 			border-bottom-right-radius: 0.25rem;
 			background-color: var(--color-neutral-800) !important;
-			overflow: auto;
+			overflow-y: auto;
+			overflow-x: hidden;
 			box-sizing: border-box;
 			min-width: 0;
 			width: 100%;
