@@ -62,7 +62,13 @@
 			}
 			window.location.href = '/';
 		} else {
-			error = 'Invalid username or password';
+			const resData = await res.json();
+			if (resData.errors) {
+				const messages = Object.values(resData.errors).flat();
+				error = messages.join('\n');
+			} else {
+				error = resData.message || 'Login failed. Please try again.';
+			}
 		}
 	}
 </script>
@@ -101,7 +107,9 @@
 				Login
 			</button>
 			{#if error}
-				<div class="rounded border border-red-900 bg-red-950 p-2 text-sm text-red-200">
+				<div
+					class="rounded border border-red-900 bg-red-950 p-2 text-sm whitespace-pre-line text-red-200"
+				>
 					{error}
 				</div>
 			{/if}
