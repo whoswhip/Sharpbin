@@ -19,6 +19,7 @@
 	import { getToken } from '$lib/utils/auth';
 	import Modal from '$lib/components/Modal.svelte';
 	import { user } from '$lib/stores/user';
+	import { onMount } from 'svelte';
 
 	export let data: PageData;
 
@@ -36,6 +37,8 @@
 	let showDeleteModal = false;
 	let showRoleModal = false;
 	let modalError = '';
+	let now = new Date();
+	let interval: ReturnType<typeof setInterval> | null = null;
 
 	$: isOwner = data.user && $user ? data.user?.uuid === $user.uuid : false;
 
@@ -111,6 +114,15 @@
 		showDeleteModal = false;
 		window.location.href = '/';
 	}
+
+	onMount(() => {
+		interval = setInterval(() => {
+			now = new Date();
+		}, 1000);
+		return () => {
+			if (interval) clearInterval(interval);
+		};
+	});
 </script>
 
 <svelte:head>
@@ -146,7 +158,9 @@
 					<User class="h-8 w-8 text-neutral-400" />
 				</span>
 			{/if}
-			{data.user?.displayName || data.user?.username}
+			<span use:tooltip={data.user?.uuid || 'Unknown UUID'}>
+				{data.user?.displayName || data.user?.username}
+			</span>
 		</h1>
 		{#if data.user?.displayName && data.user?.displayName !== data.user?.username}
 			<div class="mb-2 flex items-center justify-center">
@@ -183,7 +197,7 @@
 						class="text-neutral-400"
 						use:tooltip={new Date(data.user?.lastLogin).toLocaleString()}
 					>
-						Last login {dateToRelativeString(new Date(data.user?.lastLogin))}
+						Last login {dateToRelativeString(new Date(data.user?.lastLogin), true, false, now)}
 					</span>
 				</div>
 			{/if}

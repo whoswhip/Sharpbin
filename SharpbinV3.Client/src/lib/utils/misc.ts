@@ -74,9 +74,16 @@ export function tooltip(node: HTMLElement, text: string) {
 		if (!currentText || currentText.trim() === '') return;
 		const el = document.createElement('div');
 		el.className =
-			'fixed z-50 rounded bg-neutral-800 px-2 py-1 text-sm text-white shadow-lg opacity-0 pointer-events-none transition-opacity duration-150';
+			'fixed z-50 rounded bg-neutral-800 px-2 py-1 text-sm text-white shadow-lg opacity-0 transition-opacity duration-150';
 		el.style.maxWidth = '90%';
 		el.style.wordBreak = 'break-word';
+
+		el.addEventListener('mouseover', () => {
+			clearTimeout(hideTimeout);
+			if (tooltipEl) tooltipEl.style.opacity = '1';
+		});
+		el.addEventListener('mouseout', mouseOut);
+
 		const lines = currentText.split('\n');
 		if (lines.length > 1) {
 			el.innerHTML = '';
@@ -172,6 +179,7 @@ export function tooltip(node: HTMLElement, text: string) {
 
 	function mouseOver() {
 		clearTimeout(hideTimeout);
+		if (tooltipEl) tooltipEl.style.opacity = '1';
 		showTimeout = setTimeout(() => {
 			if (!tooltipEl) createTooltip();
 			else updateContent();
