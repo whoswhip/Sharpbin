@@ -8,7 +8,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection:-Data Source=/app/data/sharpbin.db}
-      DATA_PROTECTION_KEY_PATH: ${DATA_PROTECTION_KEY_PATH:-"/app/data/keys"}
+      DATA_PROTECTION_KEY_PATH: ${DATA_PROTECTION_KEY_PATH:-/app/data/keys}
       JwtSettings__Secret: ${JwtSettings__Secret}
       AuthSettings__First_User_Admin: ${AuthSettings__First_User_Admin}
       AuthSettings__CF_Turnstile_SecretKey: ${AuthSettings__CF_Turnstile_SecretKey}
