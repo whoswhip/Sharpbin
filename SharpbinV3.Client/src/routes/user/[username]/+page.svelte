@@ -22,14 +22,14 @@
 
 	export let data: PageData;
 
-	let currentPage = data.user.pagination?.page ?? 1;
-	let pagination: Pagination = data.user.pagination ?? {
+	let currentPage = data.user?.pagination?.page ?? 1;
+	let pagination: Pagination = data.user?.pagination ?? {
 		page: 1,
 		pageSize: 50,
 		totalCount: 0,
 		totalPages: 1
 	};
-	let pastes = data.user.pastes ?? [];
+	let pastes = data.user?.pastes ?? [];
 	let loading = false;
 	let isOwner = false;
 	let showEditModal = false;
@@ -37,7 +37,7 @@
 	let showRoleModal = false;
 	let modalError = '';
 
-	$: isOwner = data.user && $user ? data.user.uuid === $user.uuid : false;
+	$: isOwner = data.user && $user ? data.user?.uuid === $user.uuid : false;
 
 	const roleOptions = [
 		{ label: 'Member', value: 0 },
@@ -50,7 +50,7 @@
 		if (pageNum < 1 || pageNum > (pagination.totalPages || 1) || loading) return;
 		loading = true;
 		const token = getToken();
-		const res = await fetch(`/api/user/${data.user.username}?page=${pageNum}`, {
+		const res = await fetch(`/api/user/${data.user?.username}?page=${pageNum}`, {
 			headers: token ? { Authorization: `Bearer ${token}` } : {}
 		});
 		if (!res.ok) {
@@ -67,7 +67,7 @@
 	async function handleUserUpdate(displayName?: string, selectedRoles?: number[]) {
 		loading = true;
 		const token = getToken();
-		const res = await fetch(`/api/user/uuid/${data.user.uuid}`, {
+		const res = await fetch(`/api/user/uuid/${data.user?.uuid}`, {
 			method: 'PATCH',
 			headers: {
 				'Content-Type': 'application/json',
@@ -86,9 +86,9 @@
 		}
 		showEditModal = false;
 		showRoleModal = false;
-		data.user.displayName = displayName || data.user.displayName;
+		data.user!.displayName = displayName || data.user!.displayName;
 		if (selectedRoles !== undefined) {
-			data.user.roles = selectedRoles;
+			data.user!.roles = selectedRoles;
 		}
 		modalError = '';
 	}
@@ -96,7 +96,7 @@
 	async function handleDeleteAccount() {
 		loading = true;
 		const token = getToken();
-		const res = await fetch(`/api/user/uuid/${data.user.uuid}`, {
+		const res = await fetch(`/api/user/uuid/${data.user?.uuid}`, {
 			method: 'DELETE',
 			headers: {
 				Authorization: `Bearer ${token}`
@@ -114,22 +114,22 @@
 </script>
 
 <svelte:head>
-	<title>{data.user.displayName || data.user.username} - User Profile</title>
+	<title>{data.user?.displayName || data.user?.username} - User Profile</title>
 
-	<meta property="og:title" content="{data.user.displayName || data.user.username} - User Profile" />
-	<meta property="og:description" content="View the profile and {pagination.totalCount} paste{pagination.totalCount !== 1 ? 's' : ''} of {data.user.displayName || data.user.username} on Sharpbin." />
+	<meta property="og:title" content="{data.user?.displayName || data.user?.username} - User Profile" />
+	<meta property="og:description" content="View the profile and {pagination.totalCount} paste{pagination.totalCount !== 1 ? 's' : ''} of {data.user?.displayName || data.user?.username} on Sharpbin." />
 	<meta property="og:type" content="profile" />
 	<meta property="og:url" content="{data.url}" />
 	<meta property="og:site_name" content="Sharpbin" />
-	<meta property="profile:username" content="{data.user.username}" />
+	<meta property="profile:username" content="{data.user?.username}" />
 </svelte:head>
 
 <main
-	class="flex min-h-screen w-full flex-col items-center justify-center bg-neutral-950 text-white"
+	class="flex min-h-[calc(100vh-60px)] w-full flex-col items-center justify-center bg-neutral-950 text-white pt-5"
 >
 	<div class="w-[95%] max-w-5xl rounded border-2 border-neutral-800 bg-neutral-900 p-6">
 		<h1 class="flex items-center justify-center gap-4 text-center text-4xl font-bold">
-			{#if data.user.roles.includes(403)}
+			{#if data.user?.roles.includes(403)}
 				<span
 					class="relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-full"
 					use:tooltip={roles[403]}
@@ -137,8 +137,8 @@
 					<User class="h-8 w-8 text-neutral-500" />
 					<Ban class="absolute h-7 w-7 text-red-500" />
 				</span>
-			{:else if data.user.roles.includes(1) || data.user.roles.includes(255)}
-				<span use:tooltip={roles[Math.max(...data.user.roles) as keyof typeof roles]}>
+			{:else if data.user?.roles.includes(1) || data.user?.roles.includes(255)}
+				<span use:tooltip={roles[Math.max(...data.user?.roles) as keyof typeof roles]}>
 					<ShieldUser class="h-8 w-8 text-neutral-400" />
 				</span>
 			{:else}
@@ -146,12 +146,12 @@
 					<User class="h-8 w-8 text-neutral-400" />
 				</span>
 			{/if}
-			{data.user.displayName || data.user.username}
+			{data.user?.displayName || data.user?.username}
 		</h1>
-		{#if data.user.displayName && data.user.displayName !== data.user.username}
+		{#if data.user?.displayName && data.user?.displayName !== data.user?.username}
 			<div class="mb-2 flex items-center justify-center">
 				<AtSign class="mr-2 inline h-5 w-5 text-neutral-400" />
-				<span class="text-neutral-400">{data.user.username}</span>
+				<span class="text-neutral-400">{data.user?.username}</span>
 			</div>
 		{/if}
 		<div class="mb-2 flex flex-wrap items-center justify-center gap-4 text-sm">
@@ -159,9 +159,9 @@
 				<CalendarDays class="mr-2 h-6 w-6 text-neutral-400" />
 				<span
 					class="text-neutral-400"
-					use:tooltip={extractDateFromUUIDv7(data.user.uuid)?.toLocaleString() ?? 'Unknown'}
+					use:tooltip={extractDateFromUUIDv7(data.user?.uuid)?.toLocaleString() ?? 'Unknown'}
 				>
-					Joined {extractDateFromUUIDv7(data.user.uuid)?.toLocaleDateString() ?? 'Unknown'}
+					Joined {extractDateFromUUIDv7(data.user?.uuid)?.toLocaleDateString() ?? 'Unknown'}
 				</span>
 			</div>
 			<div class="flex shrink-0 items-center">
@@ -172,18 +172,18 @@
 			</div>
 			<div class="flex shrink-0 items-center">
 				<Hash class="mr-1 h-6 w-6 text-neutral-400" />
-				<span class="text-neutral-400" use:tooltip={`User #${data.user.uid}`}>
-					{data.user.uid}
+				<span class="text-neutral-400" use:tooltip={`User #${data.user?.uid}`}>
+					{data.user?.uid}
 				</span>
 			</div>
-			{#if isOwner && data.user.lastLogin}
+			{#if isOwner && data.user?.lastLogin}
 				<div class="flex shrink-0 items-center">
 					<Clock class="mr-2 h-6 w-6 text-neutral-400" />
 					<span
 						class="text-neutral-400"
-						use:tooltip={new Date(data.user.lastLogin).toLocaleString()}
+						use:tooltip={new Date(data.user?.lastLogin).toLocaleString()}
 					>
-						Last login {dateToRelativeString(new Date(data.user.lastLogin))}
+						Last login {dateToRelativeString(new Date(data.user?.lastLogin))}
 					</span>
 				</div>
 			{/if}
@@ -303,7 +303,7 @@
 	mode="multiselect"
 	title="Edit User Roles"
 	items={roleOptions}
-	initialValue={data.user.roles}
+	initialValue={data.user?.roles}
 	error={modalError}
 	onConfirm={(value) => handleUserUpdate(undefined, value as number[])}
 	onCancel={() => {

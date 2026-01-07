@@ -103,9 +103,9 @@ namespace SharpbinV3.Server.Controllers
             var pasteQuery = _db.Pastes.AsNoTracking().Where(p => p.AuthorUUID == user.UUID);
             if (!isAuthenticatedUser)
             {
-                if (user.Visibility == 1 || user.Visibility == 2)
+                if (user.Visibility == 2)
                     return NotFound();
-                else
+                else if (user.Visibility != 1)
                     pasteQuery = pasteQuery.Where(p => p.Visibility == 0);
             }
 

@@ -308,7 +308,7 @@
 </svelte:head>
 
 <main
-	class="flex min-h-screen w-full flex-col items-center justify-center bg-neutral-950 text-white"
+	class="flex w-full min-h-[calc(100vh-60px)] flex-col items-center justify-center bg-neutral-950 text-white pt-5 pb-5"
 >
 	<div
 		class="max-h-[80vh] w-[95%] max-w-7xl rounded border-2 border-neutral-800 bg-neutral-900 p-4"
@@ -460,7 +460,7 @@
 
 			<div class="overflow-hidden">
 				<div
-					class="flex items-center justify-between gap-2 rounded-t-md border-b border-neutral-700 bg-neutral-800 px-3 py-2"
+					class="flex flex-col md:flex-row items-center justify-between gap-2 rounded-t-md border-b border-neutral-700 bg-neutral-800 px-3 py-2"
 				>
 					<div class="flex items-center gap-2 text-sm text-neutral-300">
 						<span class="font-medium text-neutral-100"
@@ -621,7 +621,7 @@
 				</div>
 				{#if editing}
 					<textarea
-						class="mb-3 max-h-[60vh] min-h-10 w-full rounded-b bg-neutral-800 p-2 font-mono"
+						class="mb-3 max-h-[40vh] min-h-10 w-full rounded-b bg-neutral-800 p-2 font-mono"
 						rows="14"
 						placeholder="Paste content"
 						bind:value={editContent}
@@ -637,8 +637,7 @@
 						class:hidden={contentRendered && !editing}
 					></div>
 					<code
-						class="codeblock-with-lines hidden max-w-full overflow-x-auto overflow-y-auto"
-						style="max-width:100vw; min-width:0;"
+						class="codeblock-with-lines overflow-x-auto overflow-y-auto"
 						class:hidden={!contentRendered}
 					>
 						<!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -687,7 +686,9 @@
 			display: block;
 			width: 100%;
 			max-width: 100%;
-			overflow: visible;
+			overflow: hidden;
+			flex: 1 1 auto;
+			max-height: 1%;
 		}
 		.codeblock-with-lines pre {
 			display: block;
@@ -701,7 +702,7 @@
 			box-sizing: border-box;
 			min-width: 0;
 			width: 100%;
-			max-height: 60vh;
+			max-height: 40vh;
 		}
 		.code-row {
 			display: flex;
