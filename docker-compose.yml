@@ -6,10 +6,14 @@ services:
     image: sharpbin-backend
     container_name: sharpbin-backend
     environment:
-      ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__DefaultConnection: "Data Source=/app/data/sharpbin.db"
-      ASPNETCORE_URLS: "http://+:8080"
-      DATA_PROTECTION_KEY_PATH: "/app/data/keys"
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection:-"Data Source=/app/data/sharpbin.db"}
+      DATA_PROTECTION_KEY_PATH: ${DATA_PROTECTION_KEY_PATH:-"/app/data/keys"}
+      JwtSettings__Secret: ${JwtSettings__Secret}
+      AuthSettings__First_User_Admin: ${AuthSettings__First_User_Admin}
+      AuthSettings__CF_Turnstile_SecretKey: ${AuthSettings__CF_Turnstile_SecretKey}
+      AuthSettings_CF_Turnstile_SiteKey: ${AuthSettings_CF_Turnstile_SiteKey}
+
     volumes:
       - sharpbin-data:/app/data
       - ./SharpbinV3.Server/appsettings.json:/app/appsettings.json
@@ -31,6 +35,7 @@ services:
     container_name: sharpbin-frontend
     environment:
       VITE_API_URL: http://backend:8080
+      VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-"localhost"}
     ports:
       - "5173:5173"
     networks:
