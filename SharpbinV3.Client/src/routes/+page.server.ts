@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ fetch,url }) => {
+export const load: PageServerLoad = async ({ fetch, url }) => {
 	try {
 		const res = await fetch('/api/paste/create/options');
 		const options = await res.json();

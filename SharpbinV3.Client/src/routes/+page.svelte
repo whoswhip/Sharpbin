@@ -95,12 +95,12 @@
 	<meta property="og:title" content="Create a Paste - Sharpbin" />
 	<meta property="og:description" content="Create and share your pastes easily with Sharpbin." />
 	<meta property="og:type" content="website" />
-	<meta property="og:url" content="{data.url}" />
+	<meta property="og:url" content={data.url} />
 	<meta property="og:site_name" content="Sharpbin" />
 </svelte:head>
 
 <main
-	class="flex min-h-[calc(100vh-60px)] w-full flex-col items-center justify-center bg-neutral-950 text-white pt-5"
+	class="flex min-h-[calc(100vh-60px)] w-full flex-col items-center justify-center bg-neutral-950 pt-5 text-white"
 >
 	<div class="w-[95%] max-w-7xl rounded border-2 border-neutral-800 bg-neutral-900 p-6">
 		<h1 class="mb-6 text-center text-4xl font-bold">Create a Paste</h1>
@@ -158,7 +158,7 @@
 			{#if error}
 				<div
 					transition:fly={{ y: 40, duration: 300 }}
-					class="rounded border border-red-900 bg-red-950 p-2 text-sm text-red-200 mt-2"
+					class="mt-2 rounded border border-red-900 bg-red-950 p-2 text-sm text-red-200"
 				>
 					{error}
 				</div>

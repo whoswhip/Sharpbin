@@ -283,7 +283,11 @@
 </script>
 
 <svelte:head>
-	<title>{data.paste ? (data.paste.title || 'Untitled Paste') + ' - Sharpbin' : 'Paste Not Found - Sharpbin'}</title>
+	<title
+		>{data.paste
+			? (data.paste.title || 'Untitled Paste') + ' - Sharpbin'
+			: 'Paste Not Found - Sharpbin'}</title
+	>
 	{#if data.paste}
 		<meta property="og:title" content={data.paste.title || 'Untitled Paste'} />
 		<meta
@@ -297,9 +301,15 @@
 		<meta property="og:type" content="article" />
 		<meta property="og:url" content={data.url} />
 		<meta property="og:site_name" content="Sharpbin" />
-		<meta property="og:article:published_time" content={extractDateFromUUIDv7(data.paste.uuid)?.toISOString() ?? ''} />
+		<meta
+			property="og:article:published_time"
+			content={extractDateFromUUIDv7(data.paste.uuid)?.toISOString() ?? ''}
+		/>
 		{#if data.paste.editedAt}
-			<meta property="og:article:modified_time" content={new Date(data.paste.editedAt).toISOString()} />
+			<meta
+				property="og:article:modified_time"
+				content={new Date(data.paste.editedAt).toISOString()}
+			/>
 		{/if}
 		{#if data.paste.author}
 			<meta property="og:article:author" content={data.paste.author.username} />
@@ -308,7 +318,7 @@
 </svelte:head>
 
 <main
-	class="flex w-full min-h-[calc(100vh-60px)] flex-col items-center justify-center bg-neutral-950 text-white pt-5 pb-5"
+	class="flex min-h-[calc(100vh-60px)] w-full flex-col items-center justify-center bg-neutral-950 pt-5 pb-5 text-white"
 >
 	<div
 		class="max-h-[90vh] w-[95%] max-w-7xl rounded border-2 border-neutral-800 bg-neutral-900 p-4"
@@ -460,7 +470,7 @@
 
 			<div class="overflow-hidden">
 				<div
-					class="flex flex-col md:flex-row items-center justify-between gap-2 rounded-t-md border-b border-neutral-700 bg-neutral-800 px-3 py-2"
+					class="flex flex-col items-center justify-between gap-2 rounded-t-md border-b border-neutral-700 bg-neutral-800 px-3 py-2 md:flex-row"
 				>
 					<div class="flex items-center gap-2 text-sm text-neutral-300">
 						<span class="font-medium text-neutral-100"

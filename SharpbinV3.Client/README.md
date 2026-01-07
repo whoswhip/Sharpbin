@@ -51,4 +51,3 @@ The application will be available at http://localhost:5173.
 - Lucide Svelte for icons.
 - Highlight.js for syntax highlighting.
 - TypeScript for type safety.
-

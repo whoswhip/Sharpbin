@@ -128,16 +128,25 @@
 <svelte:head>
 	<title>{data.user?.displayName || data.user?.username} - User Profile</title>
 
-	<meta property="og:title" content="{data.user?.displayName || data.user?.username} - User Profile" />
-	<meta property="og:description" content="View the profile and {pagination.totalCount} paste{pagination.totalCount !== 1 ? 's' : ''} of {data.user?.displayName || data.user?.username} on Sharpbin." />
+	<meta
+		property="og:title"
+		content="{data.user?.displayName || data.user?.username} - User Profile"
+	/>
+	<meta
+		property="og:description"
+		content="View the profile and {pagination.totalCount !== 0
+			? pagination.totalCount
+			: ''} paste{pagination.totalCount !== 1 ? 's' : ''} of {data.user?.displayName ||
+			data.user?.username} on Sharpbin."
+	/>
 	<meta property="og:type" content="profile" />
-	<meta property="og:url" content="{data.url}" />
+	<meta property="og:url" content={data.url} />
 	<meta property="og:site_name" content="Sharpbin" />
-	<meta property="profile:username" content="{data.user?.username}" />
+	<meta property="profile:username" content={data.user?.username} />
 </svelte:head>
 
 <main
-	class="flex min-h-[calc(100vh-60px)] w-full flex-col items-center justify-center bg-neutral-950 text-white pt-5"
+	class="flex min-h-[calc(100vh-60px)] w-full flex-col items-center justify-center bg-neutral-950 pt-5 text-white"
 >
 	<div class="w-[95%] max-w-5xl rounded border-2 border-neutral-800 bg-neutral-900 p-6">
 		<h1 class="flex items-center justify-center gap-4 text-center text-4xl font-bold">
@@ -150,9 +159,11 @@
 					<Ban class="absolute h-7 w-7 text-red-500" />
 				</span>
 			{:else if data.user?.roles.includes(1) || data.user?.roles.includes(255)}
-				<span use:tooltip={roles[Math.max(...data.user?.roles) as keyof typeof roles]}>
-					<ShieldUser class="h-8 w-8 text-neutral-400" />
-				</span>
+				{#if data.user?.roles?.length}
+					<span use:tooltip={roles[Math.max(...data.user.roles) as keyof typeof roles]}>
+						<ShieldUser class="h-8 w-8 text-neutral-400" />
+					</span>
+				{/if}
 			{:else}
 				<span use:tooltip={'User'}>
 					<User class="h-8 w-8 text-neutral-400" />
