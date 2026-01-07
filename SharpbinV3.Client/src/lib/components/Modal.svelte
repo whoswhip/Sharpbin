@@ -161,7 +161,7 @@
 		const res = await fetch('/api/auth/totp/enable', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-			body: JSON.stringify({ secret: totpSecret, totpcode: code })
+			body: JSON.stringify({ secret: totpSecret, code: code })
 		});
 		if (!res.ok) {
 			const data = await res.json().catch(() => null);
@@ -184,7 +184,7 @@
 		const res = await fetch('/api/auth/totp/disable', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-			body: JSON.stringify({ totpcode: code })
+			body: JSON.stringify({ code: code })
 		});
 		if (!res.ok) {
 			const data = await res.json().catch(() => null);
