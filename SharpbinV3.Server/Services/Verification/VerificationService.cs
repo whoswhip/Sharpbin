@@ -14,18 +14,17 @@ namespace SharpbinV3.Server.Services.Verification
                 .FirstOrDefault();
         }
 
-        public async Task<bool> VerifyAsync(string? token, string? ip)
+        public async Task<bool> VerifyAsync(VerificationContext context, IVerificationProvider? provider = null)
         {
-            var provider = GetActiveProvider();
+            var activeProvider = provider ?? GetActiveProvider();
 
-            if (provider is null)
+            if (activeProvider is null)
                 return true;
 
-            if (string.IsNullOrWhiteSpace(token))
+            if (string.IsNullOrWhiteSpace(context.Token))
                 return false;
 
-            return await provider.VerifyAsync(token, ip);
+            return await activeProvider.VerifyAsync(context);
         }
     }
-
 }

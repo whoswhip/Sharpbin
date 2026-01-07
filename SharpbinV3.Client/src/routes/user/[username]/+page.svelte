@@ -17,6 +17,7 @@
 	import { extractDateFromUUIDv7, tooltip, dateToRelativeString } from '$lib/utils/misc';
 	import { roles } from '$lib/consts';
 	import { getToken } from '$lib/utils/auth';
+	import { needsAdminTotp } from '$lib/utils/totp';
 	import Modal from '$lib/components/Modal.svelte';
 	import { user } from '$lib/stores/user';
 	import { onMount } from 'svelte';
@@ -36,11 +37,19 @@
 	let showEditModal = false;
 	let showDeleteModal = false;
 	let showRoleModal = false;
+	let showTotpModal = false;
+	let showRoleTotpModal = false;
+	let showDeleteTotpModal = false;
 	let modalError = '';
+	let totpEnabled = false;
+	let pendingRoles: number[] | null = null;
+	let roleTotpCode = '';
+	let deleteTotpCode = '';
 	let now = new Date();
 	let interval: ReturnType<typeof setInterval> | null = null;
 
 	$: isOwner = data.user && $user ? data.user?.uuid === $user.uuid : false;
+	$: totpEnabled = Boolean($user?.totpEnabled);
 
 	const roleOptions = [
 		{ label: 'Member', value: 0 },
@@ -69,7 +78,16 @@
 
 	async function handleUserUpdate(displayName?: string, selectedRoles?: number[]) {
 		loading = true;
+		modalError = '';
 		const token = getToken();
+		const currentRoles = data.user?.roles ?? [];
+		const nextRoles = selectedRoles ?? currentRoles;
+		if (needsAdminTotp(totpEnabled, currentRoles, nextRoles) && !roleTotpCode) {
+			pendingRoles = nextRoles;
+			showRoleTotpModal = true;
+			loading = false;
+			return;
+		}
 		const res = await fetch(`/api/user/uuid/${data.user?.uuid}`, {
 			method: 'PATCH',
 			headers: {
@@ -78,7 +96,8 @@
 			},
 			body: JSON.stringify({
 				...(displayName !== undefined ? { displayName: displayName.trim() } : {}),
-				...(selectedRoles !== undefined ? { roles: selectedRoles } : {})
+				...(selectedRoles !== undefined ? { roles: selectedRoles } : {}),
+				...(roleTotpCode ? { totpcode: roleTotpCode } : {})
 			})
 		});
 		loading = false;
@@ -93,17 +112,36 @@
 		if (selectedRoles !== undefined) {
 			data.user!.roles = selectedRoles;
 		}
+		roleTotpCode = '';
+		showRoleTotpModal = false;
+		pendingRoles = null;
 		modalError = '';
+	}
+
+	function handleRoleTotpConfirm(value: unknown) {
+		if (typeof value === 'string') {
+			roleTotpCode = value.trim();
+		}
+		showRoleTotpModal = false;
+		if (!roleTotpCode) return;
+		handleUserUpdate(undefined, pendingRoles ?? data.user?.roles ?? []);
 	}
 
 	async function handleDeleteAccount() {
 		loading = true;
+		modalError = '';
 		const token = getToken();
+		if (totpEnabled && !deleteTotpCode) {
+			showDeleteTotpModal = true;
+			loading = false;
+			return;
+		}
 		const res = await fetch(`/api/user/uuid/${data.user?.uuid}`, {
 			method: 'DELETE',
 			headers: {
 				Authorization: `Bearer ${token}`
-			}
+			},
+			body: totpEnabled && deleteTotpCode ? JSON.stringify({ totpcode: deleteTotpCode }) : undefined
 		});
 		loading = false;
 		if (!res.ok) {
@@ -112,7 +150,27 @@
 			return;
 		}
 		showDeleteModal = false;
+		showDeleteTotpModal = false;
+		deleteTotpCode = '';
 		window.location.href = '/';
+	}
+
+	function handleTotpConfirm(value: unknown) {
+		if (value && typeof value === 'object' && 'enabled' in value) {
+			totpEnabled = Boolean((value as { enabled?: boolean }).enabled);
+		}
+		user.update((u) => (u ? { ...u, totpEnabled } : u));
+		showTotpModal = false;
+		modalError = '';
+	}
+
+	function handleDeleteTotpConfirm(value: unknown) {
+		if (typeof value === 'string') {
+			deleteTotpCode = value.trim();
+		}
+		showDeleteTotpModal = false;
+		if (!deleteTotpCode) return;
+		handleDeleteAccount();
 	}
 
 	onMount(() => {
@@ -201,6 +259,10 @@
 					{data.user?.uid}
 				</span>
 			</div>
+			<div class="flex shrink-0 items-center">
+				<ShieldUser class="mr-2 h-6 w-6 text-neutral-400" />
+				<span class="text-neutral-400">2FA {totpEnabled ? 'enabled' : 'disabled'}</span>
+			</div>
 			{#if isOwner && data.user?.lastLogin}
 				<div class="flex shrink-0 items-center">
 					<Clock class="mr-2 h-6 w-6 text-neutral-400" />
@@ -225,6 +287,18 @@
 					<Pencil class="h-4 w-4" />
 					Edit Display Name
 				</button>
+				{#if isOwner}
+					<button
+						on:click={() => {
+							showTotpModal = true;
+							modalError = '';
+						}}
+						class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
+					>
+						<ShieldUser class="h-4 w-4" />
+						{totpEnabled ? 'Manage 2FA' : 'Enable 2FA'}
+					</button>
+				{/if}
 				{#if $user?.roles.some((r) => r === 255)}
 					<button
 						on:click={() => {
@@ -324,6 +398,22 @@
 />
 
 <Modal
+	show={showDeleteTotpModal}
+	mode="totp"
+	title="Enter TOTP to delete"
+	placeholder="Enter 6-digit code"
+	inputType="text"
+	error={modalError}
+	confirmButtonText="Delete Account"
+	onConfirm={(value) => handleDeleteTotpConfirm(value)}
+	onCancel={() => {
+		showDeleteTotpModal = false;
+		deleteTotpCode = '';
+		modalError = '';
+	}}
+/>
+
+<Modal
 	show={showRoleModal}
 	mode="multiselect"
 	title="Edit User Roles"
@@ -333,6 +423,38 @@
 	onConfirm={(value) => handleUserUpdate(undefined, value as number[])}
 	onCancel={() => {
 		showRoleModal = false;
+		modalError = '';
+	}}
+/>
+
+<Modal
+	show={showTotpModal}
+	mode="totpSetup"
+	title="Two-Factor Authentication"
+	message={totpEnabled
+		? 'Two-factor authentication is currently enabled.'
+		: 'Enable two-factor authentication with an authenticator app.'}
+	error={modalError}
+	totpActive={totpEnabled}
+	onConfirm={(value) => handleTotpConfirm(value)}
+	onCancel={() => {
+		showTotpModal = false;
+		modalError = '';
+	}}
+/>
+<Modal
+	show={showRoleTotpModal}
+	mode="totp"
+	title="Admin role requires TOTP"
+	placeholder="Enter 6-digit code"
+	inputType="text"
+	error={modalError}
+	confirmButtonText="Continue"
+	onConfirm={(value) => handleRoleTotpConfirm(value)}
+	onCancel={() => {
+		showRoleTotpModal = false;
+		roleTotpCode = '';
+		pendingRoles = null;
 		modalError = '';
 	}}
 />

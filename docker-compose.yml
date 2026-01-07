@@ -9,6 +9,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__DefaultConnection: "Data Source=/app/data/sharpbin.db"
       ASPNETCORE_URLS: "http://+:8080"
+      DATA_PROTECTION_KEY_PATH: "/app/data/keys"
     volumes:
       - sharpbin-data:/app/data
       - ./SharpbinV3.Server/appsettings.json:/app/appsettings.json

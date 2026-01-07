@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Data.Entities;
-using SharpbinV3.Server.DTOs;
+using SharpbinV3.Server.DTOs.Auth;
 using SharpbinV3.Server.Settings;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -12,6 +12,15 @@ using Bcrypt = BCrypt.Net.BCrypt;
 
 namespace SharpbinV3.Server.Services
 {
+    public class JwtUser
+    {
+        public Guid UUID { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public bool TotpEnabled { get; set; }
+        public int[] Roles { get; set; } = [];
+        public DateTime Expires { get; set; }
+    }
     public sealed class AuthService(AppDbContext db, IOptions<JWTSettings> jwtOptions, IOptions<AuthSettings> authOptions)
     {
         private readonly AppDbContext _db = db;
@@ -30,20 +39,24 @@ namespace SharpbinV3.Server.Services
             };
 
             if (_authSettings.First_User_Admin && !await _db.Users.AnyAsync())
-                user.Roles = [0,1,255];
+                user.Roles = [0, 1, 255];
 
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
             return user;
         }
-        public async Task<JWTResult> GenerateJWTToken(User user)
+        public async Task<CreateJWT> GenerateJWTToken(User user)
         {
             var jwtHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes(_jwtSettings.Secret);
 
+            var totpEnabled = await _db.UserTotps.AnyAsync(t => t.UserUUID == user.UUID);
             var claims = new List<Claim>
             {
                 new("UUID", user.UUID.ToString()),
+                new("Username", user.Username),
+                new("DisplayName", user.DisplayName ?? ""),
+                new("TOTP_Enabled", totpEnabled.ToString()),
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
@@ -100,7 +113,7 @@ namespace SharpbinV3.Server.Services
 
             await _db.SaveChangesAsync();
 
-            return new JWTResult()
+            return new CreateJWT()
             {
                 Token = jwtToken,
                 Success = true,
@@ -108,7 +121,7 @@ namespace SharpbinV3.Server.Services
             };
         }
 
-        public async Task<JWTResult> RefreshJWTToken(string token, string refreshToken)
+        public async Task<CreateJWT> RefreshJWTToken(string token, string refreshToken)
         {
             var jwtHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes(_jwtSettings.Secret);
@@ -135,20 +148,20 @@ namespace SharpbinV3.Server.Services
                     || storedRefreshToken.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                     || storedRefreshToken.JwtId != jwtId)
                 {
-                    return new JWTResult() { Success = false, Errors = ["Invalid refresh token, possibly already used or expired."] };
+                    return new CreateJWT() { Success = false, Errors = ["Invalid refresh token, possibly already used or expired."] };
                 }
                 storedRefreshToken.Used = true;
                 await _db.SaveChangesAsync();
                 var userUUID = principal.Claims.First(c => c.Type == "UUID").Value;
                 var user = await _db.Users.FirstOrDefaultAsync(u => u.UUID == Guid.Parse(userUUID));
                 if (user == null || storedRefreshToken.UserUUID != Guid.Parse(userUUID))
-                    return new JWTResult() { Success = false, Errors = ["Invalid token."] };
+                    return new CreateJWT() { Success = false, Errors = ["Invalid token."] };
 
                 return await GenerateJWTToken(user);
             }
             catch
             {
-                return new JWTResult() { Success = false, Errors = ["Server Error"] };
+                return new CreateJWT() { Success = false, Errors = ["Server Error"] };
             }
         }
 
@@ -171,6 +184,15 @@ namespace SharpbinV3.Server.Services
             existingUser.LastLogin = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             _db.Users.Update(existingUser);
             await _db.SaveChangesAsync();
+        }
+
+        public async Task<User?> GetUserFromHttpContext(HttpContext context)
+        {
+            var uuidClaim = context.User.Claims.FirstOrDefault(c => c.Type == "UUID")?.Value;
+            if (uuidClaim == null)
+                return null;
+            var userUUID = Guid.Parse(uuidClaim);
+            return await _db.Users.FirstOrDefaultAsync(u => u.UUID == userUUID);
         }
     }
 }

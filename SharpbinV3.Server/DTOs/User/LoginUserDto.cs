@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SharpbinV3.Server.DTOs
+namespace SharpbinV3.Server.DTOs.User
 {
-    public class LoginRequest
+    public class LoginUserDto
     {
         [StringLength(50, MinimumLength = 3)]
         public string? Username { get; set; }
@@ -10,5 +10,6 @@ namespace SharpbinV3.Server.DTOs
         [StringLength(128, MinimumLength = 6)]
         public string? Password { get; set; }
         public string? Token { get; set; }
+        public string? TotpCode { get; set; }
     }
 }

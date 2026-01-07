@@ -100,6 +100,11 @@
 				const messages = Object.values(resData.errors).flat();
 				error = messages.join('\n');
 			} else {
+				if (resData.message === 'Verification failed.') {
+					if (window.turnstile) {
+						window.turnstile.reset();
+					}
+				}
 				error = resData.message || 'Registration failed. Please try again.';
 			}
 		}

@@ -5,6 +5,7 @@
 	import Navbar from '$lib/components/Navbar.svelte';
 	import { user } from '$lib/stores/user';
 	import { startTokenRefreshInterval, getToken, refreshTokenIfNeeded } from '$lib/utils/auth';
+	import { parseTotpEnabled } from '$lib/utils/totp';
 	import { page } from '$app/state';
 	import type { LayoutData } from './$types';
 
@@ -27,7 +28,8 @@
 		});
 
 		if (res.ok) {
-			user.set(await res.json());
+			const me = await res.json();
+			user.set({ ...me, totpEnabled: parseTotpEnabled(getToken()) });
 		} else {
 			user.set(null);
 		}

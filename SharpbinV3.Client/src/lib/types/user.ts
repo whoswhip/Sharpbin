@@ -13,3 +13,7 @@ export interface User {
 	pastes: Paste[] | null;
 	pagination: Pagination | null;
 }
+
+export interface AuthUser extends User {
+	totpEnabled: boolean;
+}

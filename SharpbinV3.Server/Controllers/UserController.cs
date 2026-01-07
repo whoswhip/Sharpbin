@@ -4,17 +4,23 @@ using Microsoft.EntityFrameworkCore;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Data.Entities;
 using SharpbinV3.Server.DTOs;
+using SharpbinV3.Server.DTOs.User;
+using SharpbinV3.Server.Extensions;
 using SharpbinV3.Server.Services;
-using System.Security.Claims;
+using SharpbinV3.Server.Services.Verification;
+using SharpbinV3.Server.Services.Verification.Providers;
 
 namespace SharpbinV3.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class UserController(UserService userService, AppDbContext db) : ControllerBase
+    public class UserController(UserService userService, AppDbContext db, AuthService authService, TotpVerificationProvider totp, VerificationService verificationService) : ControllerBase
     {
         private readonly UserService _userService = userService;
         private readonly AppDbContext _db = db;
+        private readonly AuthService _authService = authService;
+        private readonly TotpVerificationProvider _totp = totp;
+        private readonly VerificationService _verificationService = verificationService;
 
         [HttpGet("{username}")]
         public async Task<IActionResult> GetByUsername(string username, [FromQuery] int page = 1)
@@ -44,33 +50,39 @@ namespace SharpbinV3.Server.Controllers
 
         [HttpPatch("uuid/{uuid}")]
         [Authorize]
-        public async Task<IActionResult> UpdateByUUID(Guid uuid, [FromBody] UpdateUserRequest updatedUser)
+        public async Task<IActionResult> UpdateByUUID(Guid uuid, [FromBody] UpdateUserDto updatedUser)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
-            var jwtUser = HttpContext.User;
-            var uuidClaim = jwtUser?.FindFirst("UUID")?.Value;
-            if (uuidClaim == null || jwtUser == null) return Forbid();
-            var userRoles = jwtUser.Claims
-                .Where(c => c.Type == ClaimTypes.Role)
-                .Select(c => int.Parse(c.Value));
-
+            var jwtUser = HttpContext.GetJwtUser();
+            if (jwtUser == null) return Forbid();
             var user = await _userService.GetByUUID(uuid);
             if (user == null)
                 return NotFound();
-            if (!userRoles.Any(r => r == 1 || r == 255) && user.UUID != Guid.Parse(uuidClaim))
+            if (!jwtUser.Roles.Any(r => r == 1 || r == 255) && user.UUID != jwtUser.UUID)
                 return Forbid();
-            if (user.Roles.Contains(255) && !userRoles.Contains(255))
+            if (user.Roles.Contains(255) && !jwtUser.Roles.Contains(255))
                 return Forbid();
 
             user.DisplayName = updatedUser.DisplayName ?? user.DisplayName;
-            if (userRoles.Any(r => r == 255) || user.UUID == Guid.Parse(uuidClaim)) // only admins or self
+            if (jwtUser.Roles.Any(r => r == 255) || user.UUID == jwtUser.UUID) // only admins or self
             {
                 user.Email = updatedUser.Email ?? user.Email;
                 user.Visibility = updatedUser.Visibility ?? user.Visibility;
             }
-            if (userRoles.Any(r => r == 255))
+            if (jwtUser.Roles.Contains(255))
             {
+                if (updatedUser.Roles.Contains(255) && jwtUser.TotpEnabled)
+                {
+                    if (string.IsNullOrEmpty(updatedUser.TotpCode) || !await _totp.VerifyAsync(new VerificationContext
+                    {
+                        UserUUID = jwtUser.UUID,
+                        Code = updatedUser.TotpCode
+                    }))
+                    {
+                        return Unauthorized(new { message = "Invalid TOTP code." });
+                    }
+                }
                 user.Roles = updatedUser.Roles ?? user.Roles;
             }
 
@@ -79,22 +91,39 @@ namespace SharpbinV3.Server.Controllers
         }
 
         [HttpDelete("uuid/{uuid}")]
-        [Authorize]
-        public async Task<IActionResult> DeleteByUUID(Guid uuid)
+        [Authorize(Policy = "AuthAndNotBanned")]
+        public async Task<IActionResult> DeleteByUUID(Guid uuid, [FromBody] DeleteUserDto dto)
         {
-            var jwtUser = HttpContext.User;
-            var uuidClaim = jwtUser?.FindFirst("UUID")?.Value;
-            if (uuidClaim == null || jwtUser == null) return Forbid();
-            var userRoles = jwtUser.Claims
-                .Where(c => c.Type == ClaimTypes.Role)
-                .Select(c => int.Parse(c.Value));
-
+            var jwtUser = HttpContext.GetJwtUser();
+            if (jwtUser == null) return Forbid();
             var user = await _userService.GetByUUID(uuid);
-            if (user == null)
-                return NotFound();
-            if (!userRoles.Any(r => r == 255) && user.UUID != Guid.Parse(uuidClaim))
+            if (user == null) return Forbid();
+            if (!jwtUser.Roles.Any(r => r == 255) && user.UUID != jwtUser.UUID)
                 return Forbid();
 
+            if (jwtUser.TotpEnabled)
+            {
+                if (string.IsNullOrEmpty(dto.TotpCode) || !await _totp.VerifyAsync(new VerificationContext
+                {
+                    UserUUID = jwtUser.UUID,
+                    Code = dto.TotpCode
+                }))
+                {
+                    return Unauthorized(new { message = "Invalid TOTP code." });
+                }
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(dto.Token) || !await _verificationService.VerifyAsync(new VerificationContext
+                {
+                    Token = dto.Token,
+                    Ip = HttpContext.GetRequestIP()
+                }))
+                {
+                    return Unauthorized(new { message = "Invalid verification token." });
+                }
+            }
+            
             _db.Users.Remove(user);
             await _db.SaveChangesAsync();
             return Ok(new { message = "User deleted successfully." });
@@ -138,7 +167,6 @@ namespace SharpbinV3.Server.Controllers
                     p.ExpiresAt
                 })
                 .ToListAsync();
-
 
             var pagination = new
             {

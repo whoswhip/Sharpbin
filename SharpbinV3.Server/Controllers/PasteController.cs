@@ -2,23 +2,25 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using SharpbinV3.Server.Data.Entities;
-using SharpbinV3.Server.DTOs;
+using SharpbinV3.Server.DTOs.Paste;
+using SharpbinV3.Server.Extensions;
 using SharpbinV3.Server.Services;
 using SharpbinV3.Server.Settings;
-using System.Security.Claims;
 
 namespace SharpbinV3.Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class PasteController(PasteService pasteService, UserService userService, IOptions<PasteSettings> options) : ControllerBase
+    public class PasteController(PasteService pasteService, UserService userService, AuthService authService, IOptions<PasteSettings> options) : ControllerBase
     {
         private readonly PasteService _pasteService = pasteService;
         private readonly UserService _userService = userService;
+        private readonly AuthService _authService = authService;
         private readonly PasteSettings _pasteSettings = options.Value;
 
         [HttpPost]
         [Route("create")]
+        [Authorize(Policy = "NotBanned")]
         public async Task<IActionResult> CreatePaste(string title = "", string syntax = "plaintext", int visibility = 0, long expiresAt = 0)
         {
             if (!await _pasteService.ValidateExpiresAt(expiresAt))
@@ -33,9 +35,7 @@ namespace SharpbinV3.Server.Controllers
             string content = await new StreamReader(Request.Body).ReadToEndAsync();
             if (System.Text.Encoding.UTF8.GetByteCount(content) > _pasteSettings.MaxPasteSizeInBytes)
                 return BadRequest(new { message = $"Paste size exceeds the maximum allowed size of {_pasteSettings.MaxPasteSizeInBytes} bytes." });
-            var httpUser = HttpContext.User;
-            var userUUID = httpUser?.FindFirst("UUID")?.Value;
-            User? user = userUUID is not null ? await _userService.GetByUUID(Guid.Parse(userUUID)) : null;
+            var user = await _authService.GetUserFromHttpContext(HttpContext);
             Paste paste = await _pasteService.Create(user, content, title, syntax, visibility, expiresAt);
             return Ok(new
             {
@@ -95,21 +95,17 @@ namespace SharpbinV3.Server.Controllers
 
         [HttpPut]
         [Route("{id}/edit")]
-        [Authorize]
+        [Authorize(Policy = "AuthAndNotBanned")]
         public async Task<IActionResult> EditPaste(string id)
         {
             string content = await new StreamReader(Request.Body).ReadToEndAsync();
             if (content == null || id == null) return NotFound();
             var paste = await _pasteService.Get(id);
             if (paste == null) return NotFound();
-            var user = HttpContext.User;
-            var uuidClaim = user?.FindFirst("UUID")?.Value;
-            if (uuidClaim == null || user == null) return Forbid();
-            var hasPrivilegedRole = user.Claims
-                .Where(c => c.Type == ClaimTypes.Role)
-                .Select(c => int.Parse(c.Value))
-                .Any(r => r == 1 || r == 255);
-            if (paste.AuthorUUID != Guid.Parse(uuidClaim) && !hasPrivilegedRole)
+            var user = HttpContext.GetJwtUser();
+            if (user == null) return Forbid();
+            var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
+            if (paste.AuthorUUID != user.UUID && !hasPrivilegedRole)
                 return Forbid();
             bool result = await _pasteService.EditText(paste, content);
             if (!result) return NotFound();
@@ -118,19 +114,15 @@ namespace SharpbinV3.Server.Controllers
 
         [HttpPatch]
         [Route("{id}/modify")]
-        [Authorize]
-        public async Task<IActionResult> ModifyPasteMetadata(string id, [FromBody] PasteMetadataUpdateRequest request)
+        [Authorize(Policy = "AuthAndNotBanned")]
+        public async Task<IActionResult> ModifyPasteMetadata(string id, [FromBody] UpdatePasteDto request)
         {
             var paste = await _pasteService.Get(id);
             if (paste == null) return NotFound();
-            var user = HttpContext.User;
-            var uuidClaim = user?.FindFirst("UUID")?.Value;
-            if (uuidClaim == null || user == null) return Forbid();
-            var hasPrivilegedRole = user.Claims
-                .Where(c => c.Type == ClaimTypes.Role)
-                .Select(c => int.Parse(c.Value))
-                .Any(r => r == 1 || r == 255);
-            if (paste.AuthorUUID != Guid.Parse(uuidClaim) && !hasPrivilegedRole)
+            var user = HttpContext.GetJwtUser();
+            if (user == null) return Forbid();
+            var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
+            if (paste.AuthorUUID != user.UUID && !hasPrivilegedRole)
                 return Forbid();
             if (request.Title != null)
                 paste.Title = request.Title;
@@ -171,19 +163,15 @@ namespace SharpbinV3.Server.Controllers
         }
         [HttpDelete]
         [Route("{id}/delete")]
-        [Authorize]
+        [Authorize(Policy = "AuthAndNotBanned")]
         public async Task<IActionResult> DeletePaste(string id)
         {
             var paste = await _pasteService.Get(id);
             if (paste == null) return NotFound();
-            var user = HttpContext.User;
-            var uuidClaim = user?.FindFirst("UUID")?.Value;
-            if (uuidClaim == null || user == null) return Forbid();
-            var hasPrivilegedRole = user.Claims
-                .Where(c => c.Type == ClaimTypes.Role)
-                .Select(c => int.Parse(c.Value))
-                .Any(r => r == 1 || r == 255);
-            if (paste.AuthorUUID != Guid.Parse(uuidClaim) && !hasPrivilegedRole)
+            var user = HttpContext.GetJwtUser();
+            if (user == null) return Forbid();
+            var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
+            if (paste.AuthorUUID != user.UUID && !hasPrivilegedRole)
                 return Forbid();
             bool result = await _pasteService.Delete(paste);
             if (!result) return NotFound();

@@ -82,7 +82,11 @@
 			}
 			window.location.href = `/${result.id}`;
 		} else {
-			error = 'Failed to create paste. Please try again.';
+			if (response.status === 403) {
+				error = 'You are banned from creating new pastes.';
+			} else {
+				error = 'Failed to create paste. Please try again.';
+			}
 			setInterval(() => {
 				error = '';
 			}, 5000);
@@ -152,7 +156,8 @@
 			{/if}
 			<button
 				type="submit"
-				class="w-full cursor-pointer rounded bg-neutral-700 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-neutral-800 active:bg-neutral-900"
+				disabled={$user?.roles && $user.roles.includes(403)}
+				class="w-full cursor-pointer rounded bg-neutral-700 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-neutral-800 active:bg-neutral-900 disabled:cursor-not-allowed disabled:bg-neutral-950/50 disabled:text-neutral-400"
 				>Create Paste</button
 			>
 			{#if error}
@@ -161,6 +166,14 @@
 					class="mt-2 rounded border border-red-900 bg-red-950 p-2 text-sm text-red-200"
 				>
 					{error}
+				</div>
+			{/if}
+			{#if $user?.roles && $user.roles.includes(403)}
+				<div
+					transition:fly={{ y: 40, duration: 300 }}
+					class="mt-2 rounded border border-red-900 bg-red-950 p-2 text-sm text-red-200"
+				>
+					You are banned from creating new pastes.
 				</div>
 			{/if}
 		</form>

@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using SharpbinV3.Server.Authorization;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Services;
 using SharpbinV3.Server.Services.Verification;
@@ -33,8 +36,10 @@ namespace SharpbinV3.Server
             builder.Services.AddScoped<AuthService>();
             builder.Services.AddScoped<PasteService>();
             builder.Services.AddScoped<VerificationService>();
+            builder.Services.AddScoped<TotpVerificationProvider>();
             builder.Services.AddHttpClient<IVerificationProvider, TurnstileVerificationProvider>();
-            
+            builder.Services.AddMemoryCache();
+
             builder.Services.AddHealthChecks()
                 .AddDbContextCheck<AppDbContext>("Database");
 
@@ -65,6 +70,14 @@ namespace SharpbinV3.Server
                         ValidAlgorithms = [SecurityAlgorithms.HmacSha256]
                     };
                 });
+            builder.Services.AddAuthorizationBuilder()
+                .AddPolicy("NotBanned", policy =>
+                    policy.Requirements.Add(new NotBannedRequirement()));
+            builder.Services.AddAuthorizationBuilder()
+                .AddPolicy("AuthAndNotBanned", policy =>
+                    policy.Requirements.Add(new NotBannedRequirement()));
+            builder.Services.AddSingleton<IAuthorizationHandler>(new NotBannedHandler(false));
+            builder.Services.AddSingleton<IAuthorizationHandler>(new NotBannedHandler(true));
 
 
             builder.Services.AddRateLimiter(options =>
@@ -90,6 +103,10 @@ namespace SharpbinV3.Server
             builder.Services.Configure<PasteSettings>(builder.Configuration.GetSection("PasteSettings"));
             builder.Services.Configure<JWTSettings>(builder.Configuration.GetSection("JWTSettings"));
             builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection("AuthSettings"));
+
+            builder.Services.AddDataProtection()
+                .PersistKeysToFileSystem(GetDataProtectionKeyDirectory(builder.Environment))
+                .SetApplicationName("SharpbinV3");
 
             var app = builder.Build();
             app.UseRateLimiter();
@@ -129,6 +146,20 @@ namespace SharpbinV3.Server
             app.MapHealthChecks("/health");
 
             app.Run();
+        }
+        static DirectoryInfo GetDataProtectionKeyDirectory(IHostEnvironment env)
+        {
+            var overridepath = Environment.GetEnvironmentVariable("DATA_PROTECTION_KEY_PATH");
+            if (!string.IsNullOrEmpty(overridepath))
+                return new DirectoryInfo(overridepath);
+
+            var basePath = env.IsDevelopment()
+                ? Environment.CurrentDirectory
+                : Environment.SpecialFolder.ApplicationData.ToString();
+
+            var path = Path.Combine(basePath, "SharpbinV3", "DataProtectionKeys");
+
+            return new DirectoryInfo(path);
         }
     }
 }

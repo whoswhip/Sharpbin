@@ -3,12 +3,13 @@ using System.Text.RegularExpressions;
 
 namespace SharpbinV3.Server.DTOs
 {
-    public partial class UpdateUserRequest
+    public partial class UpdateUserDto
     {
         public string? DisplayName { get; set; }
         public string? Email { get; set; }
         public int? Visibility { get; set; } = 0;
         public int[]? Roles { get; set; }
+        public string? TotpCode { get; set; }
 
         public IEnumerable<ValidationResult> Validate()
         {

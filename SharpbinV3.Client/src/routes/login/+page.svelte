@@ -7,6 +7,8 @@
 	let username = '';
 	let password = '';
 	let error = '';
+	let totpEnabled = false;
+	let totpCode = '';
 	export let data: PageData;
 
 	onMount(() => {
@@ -31,7 +33,7 @@
 	});
 
 	async function login() {
-		const body: { username: string; password: string; token?: string } = {
+		const body: { username: string; password: string; token?: string; totpcode?: string } = {
 			username,
 			password
 		};
@@ -41,6 +43,10 @@
 			if (token) {
 				body.token = token;
 			}
+		}
+
+		if (totpEnabled && totpCode) {
+			body.totpcode = totpCode;
 		}
 
 		const res = await fetch('/api/auth/login', {
@@ -67,6 +73,14 @@
 				const messages = Object.values(resData.errors).flat();
 				error = messages.join('\n');
 			} else {
+				if (resData.message === 'TOTP code is required.') {
+					totpEnabled = true;
+				}
+				if (resData.message === 'Verification failed.') {
+					if (window.turnstile) {
+						window.turnstile.reset();
+					}
+				}
 				error = resData.message || 'Login failed. Please try again.';
 			}
 		}
@@ -95,6 +109,24 @@
 				autocomplete="current-password"
 				class="focus:bg-neutral-750 w-full rounded border border-neutral-700 bg-neutral-800 p-2 placeholder-neutral-500 transition-colors duration-200 focus:border-neutral-600"
 			/>
+			{#if totpEnabled}
+				<input
+					type="text"
+					placeholder="TOTP Code"
+					bind:value={totpCode}
+					maxlength="6"
+					inputmode="numeric"
+					pattern="[0-9]*"
+					required
+					on:input={(e) => {
+						if (e.target instanceof HTMLInputElement) {
+							e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+							totpCode = e.target.value;
+						}
+					}}
+					class="focus:bg-neutral-750 w-full rounded border border-neutral-700 bg-neutral-800 p-2 placeholder-neutral-500 transition-colors duration-200 focus:border-neutral-600"
+				/>
+			{/if}
 			{#if data.options?.cf_turnstile_site_key}
 				<div class="flex w-full justify-center">
 					<div class="cf-turnstile"></div>

@@ -1,6 +1,6 @@
-﻿namespace SharpbinV3.Server.DTOs
+﻿namespace SharpbinV3.Server.DTOs.Paste
 {
-    public class PasteMetadataUpdateRequest
+    public class UpdatePasteDto
     {
         public string? Title { get; set; }
         public string? Syntax { get; set; }

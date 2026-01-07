@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SharpbinV3.Server.DTOs
+namespace SharpbinV3.Server.DTOs.Auth
 {
-    public class RefreshTokenRequest
+    public class RefreshTokenDto
     {
         [Required]
         public required string Token { get; set; }

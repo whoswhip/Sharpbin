@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace SharpbinV3.Server.DTOs
 {
-    public partial class RegisterRequest
+    public partial class RegisterUserDto
     {
         [Required]
         [StringLength(50, MinimumLength = 3)]

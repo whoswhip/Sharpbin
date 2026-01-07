@@ -1,6 +1,6 @@
-﻿namespace SharpbinV3.Server.DTOs
+﻿namespace SharpbinV3.Server.DTOs.Auth
 {
-    public class JWTResult
+    public class CreateJWT
     {
         public string? Token { get; set; }
         public string? RefreshToken { get; set; }

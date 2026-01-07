@@ -4,6 +4,6 @@
     {
         int Priority { get; }
         bool IsConfigured { get; }
-        Task<bool> VerifyAsync(string token, string? ip);
+        Task<bool> VerifyAsync(VerificationContext context);
     }
 }
