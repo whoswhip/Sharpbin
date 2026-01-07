@@ -12,7 +12,7 @@ services:
       JwtSettings__Secret: ${JwtSettings__Secret}
       AuthSettings__First_User_Admin: ${AuthSettings__First_User_Admin}
       AuthSettings__CF_Turnstile_SecretKey: ${AuthSettings__CF_Turnstile_SecretKey}
-      AuthSettings_CF_Turnstile_SiteKey: ${AuthSettings_CF_Turnstile_SiteKey}
+      AuthSettings__CF_Turnstile_SiteKey: ${AuthSettings__CF_Turnstile_SiteKey}
 
     volumes:
       - sharpbin-data:/app/data
