@@ -5,23 +5,25 @@ using SharpbinV3.Server.Data.Entities;
 using SharpbinV3.Server.DTOs.Paste;
 using SharpbinV3.Server.Extensions;
 using SharpbinV3.Server.Services;
+using SharpbinV3.Server.Services.Verification;
 using SharpbinV3.Server.Settings;
 
 namespace SharpbinV3.Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class PasteController(PasteService pasteService, UserService userService, AuthService authService, IOptions<PasteSettings> options) : ControllerBase
+    public class PasteController(PasteService pasteService, VerificationService verificationService, AuthService authService, IOptions<PasteSettings> options, IOptions<AuthSettings> authSettings) : ControllerBase
     {
         private readonly PasteService _pasteService = pasteService;
-        private readonly UserService _userService = userService;
+        private readonly VerificationService _verificationService = verificationService;
         private readonly AuthService _authService = authService;
         private readonly PasteSettings _pasteSettings = options.Value;
+        private readonly AuthSettings _authSettings = authSettings.Value;
 
         [HttpPost]
         [Route("create")]
         [Authorize(Policy = "NotBanned")]
-        public async Task<IActionResult> CreatePaste(string title = "", string syntax = "plaintext", int visibility = 0, long expiresAt = 0)
+        public async Task<IActionResult> CreatePaste(string title = "", string syntax = "plaintext", int visibility = 0, long expiresAt = 0, string? token = null)
         {
             if (!await _pasteService.ValidateExpiresAt(expiresAt))
                 return BadRequest(new { message = "Invalid expiration time." });
@@ -33,10 +35,20 @@ namespace SharpbinV3.Server.Controllers
                 return BadRequest(new { message = $"Invalid title. Must be less than {_pasteSettings.MaxTitleLength} characters." });
 
             string content = await new StreamReader(Request.Body).ReadToEndAsync();
+            if (content.Length == 0)
+                return BadRequest(new { message = "Paste content cannot be empty." });
             if (System.Text.Encoding.UTF8.GetByteCount(content) > _pasteSettings.MaxPasteSizeInBytes)
                 return BadRequest(new { message = $"Paste size exceeds the maximum allowed size of {_pasteSettings.MaxPasteSizeInBytes} bytes." });
+
+            if (_pasteSettings.RequiresVerfication && !await _verificationService.VerifyAsync(new VerificationContext
+            {
+                Token = token,
+                Ip = HttpContext.GetRequestIP()
+            }))
+                return BadRequest(new { message = "Verification failed." });
+
             var user = await _authService.GetUserFromHttpContext(HttpContext);
-            Paste paste = await _pasteService.Create(user, content, title, syntax, visibility, expiresAt);
+            Paste paste = await _pasteService.Create(user, content, title, syntax, visibility, expiresAt, _pasteSettings.EnablePasteCompression);
             return Ok(new
             {
                 paste.ID,
@@ -102,11 +114,16 @@ namespace SharpbinV3.Server.Controllers
             if (content == null || id == null) return NotFound();
             var paste = await _pasteService.Get(id);
             if (paste == null) return NotFound();
+
             var user = HttpContext.GetJwtUser();
             if (user == null) return Forbid();
+
             var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
             if (paste.AuthorUUID != user.UUID && !hasPrivilegedRole)
                 return Forbid();
+            if (user.Roles.Contains(255) && !user.TotpEnabled && _authSettings.Admins_Require_2FA)
+                return Forbid();
+
             bool result = await _pasteService.EditText(paste, content);
             if (!result) return NotFound();
             return Ok(new { message = "Paste edited successfully." });
@@ -119,10 +136,15 @@ namespace SharpbinV3.Server.Controllers
         {
             var paste = await _pasteService.Get(id);
             if (paste == null) return NotFound();
+
             var user = HttpContext.GetJwtUser();
             if (user == null) return Forbid();
+
             var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
+
             if (paste.AuthorUUID != user.UUID && !hasPrivilegedRole)
+                return Forbid();
+            if (user.Roles.Contains(255) && !user.TotpEnabled && _authSettings.Admins_Require_2FA)
                 return Forbid();
             if (request.Title != null)
                 paste.Title = request.Title;
@@ -168,11 +190,16 @@ namespace SharpbinV3.Server.Controllers
         {
             var paste = await _pasteService.Get(id);
             if (paste == null) return NotFound();
+
             var user = HttpContext.GetJwtUser();
             if (user == null) return Forbid();
+
             var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
             if (paste.AuthorUUID != user.UUID && !hasPrivilegedRole)
                 return Forbid();
+            if (user.Roles.Contains(255) && !user.TotpEnabled && _authSettings.Admins_Require_2FA)
+                return Forbid();
+
             bool result = await _pasteService.Delete(paste);
             if (!result) return NotFound();
             return Ok(new { message = "Paste deleted successfully." });
@@ -192,7 +219,8 @@ namespace SharpbinV3.Server.Controllers
                     new { value = 2, displayName = "Private" }
                 },
                 maxTitleLength = _pasteSettings.MaxTitleLength,
-                maxPasteSize = _pasteSettings.MaxPasteSizeInBytes
+                maxPasteSize = _pasteSettings.MaxPasteSizeInBytes,
+                requiresVerification = _pasteSettings.RequiresVerfication
             };
             return Ok(options);
         }

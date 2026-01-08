@@ -1,16 +1,16 @@
 export function formatBytes(bytes: number, decimals = 2): string {
-    if (bytes === 0) return '0 Bytes';
+	if (bytes === 0) return '0 Bytes';
 
-    const unit = 1024;
-    const units = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+	const unit = 1024;
+	const units = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
 
-    const exponent = Math.floor(Math.log(bytes) / Math.log(unit));
-    const value = bytes / Math.pow(unit, exponent);
+	const exponent = Math.floor(Math.log(bytes) / Math.log(unit));
+	const value = bytes / Math.pow(unit, exponent);
 
-    const unitLabel = value === 1 && exponent === 0 ? 'Byte' : units[exponent];
-    const formattedValue = Number.isInteger(value) ? value : value.toFixed(decimals);
+	const unitLabel = value === 1 && exponent === 0 ? 'Byte' : units[exponent];
+	const formattedValue = Number.isInteger(value) ? value : value.toFixed(decimals);
 
-    return `${formattedValue} ${unitLabel}`;
+	return `${formattedValue} ${unitLabel}`;
 }
 
 export function formatNumber(num: number): string {

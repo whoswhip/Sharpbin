@@ -2,9 +2,11 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ fetch, url }) => {
 	try {
-		const res = await fetch('/api/paste/create/options');
-		const options = await res.json();
-		return { options, url: url.href };
+		const optionsRes = await fetch('/api/paste/create/options');
+		const authInfo = await fetch('/api/auth/info');
+		const options = await optionsRes.json();
+		const auth = await authInfo.json();
+		return { options, auth, url: url.href };
 	} catch {
 		return { options: null, url: url.href };
 	}

@@ -204,7 +204,7 @@
 </svelte:head>
 
 <main
-	class="flex min-h-[calc(100vh-60px)] w-full flex-col items-center justify-center bg-neutral-950 pt-5 text-white"
+	class="flex min-h-[calc(100vh-60px)] w-full flex-col items-center justify-center pt-5 pb-5 text-white"
 >
 	<div class="w-[95%] max-w-5xl rounded border-2 border-neutral-800 bg-neutral-900 p-6">
 		<h1 class="flex items-center justify-center gap-4 text-center text-4xl font-bold">
@@ -259,12 +259,6 @@
 					{data.user?.uid}
 				</span>
 			</div>
-			{#if isOwner}
-				<div class="flex shrink-0 items-center">
-					<ShieldUser class="mr-2 h-6 w-6 text-neutral-400" />
-					<span class="text-neutral-400">2FA {totpEnabled ? 'enabled' : 'disabled'}</span>
-				</div>
-			{/if}
 			{#if isOwner && data.user?.lastLogin}
 				<div class="flex shrink-0 items-center">
 					<Clock class="mr-2 h-6 w-6 text-neutral-400" />
@@ -433,9 +427,6 @@
 	show={showTotpModal}
 	mode="totpSetup"
 	title="Two-Factor Authentication"
-	message={totpEnabled
-		? 'Two-factor authentication is currently enabled.'
-		: 'Enable two-factor authentication with an authenticator app.'}
 	error={modalError}
 	totpActive={totpEnabled}
 	onConfirm={(value) => handleTotpConfirm(value)}

@@ -38,7 +38,7 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	{#if data.options?.cf_turnstile_site_key && (page.url.pathname === '/login' || page.url.pathname === '/register')}
+	{#if data.options?.cf_turnstile_site_key && (page.url.pathname === '/login' || page.url.pathname === '/register' || page.url.pathname === '/')}
 		<script
 			src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=turnstileLoaded"
 			async

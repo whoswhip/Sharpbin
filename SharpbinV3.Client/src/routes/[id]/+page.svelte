@@ -318,7 +318,7 @@
 </svelte:head>
 
 <main
-	class="flex min-h-[calc(100vh-60px)] w-full flex-col items-center justify-center bg-neutral-950 pt-5 pb-5 text-white"
+	class="flex min-h-[calc(100vh-60px)] w-full flex-col items-center justify-center pt-5 pb-5 text-white"
 >
 	<div
 		class="max-h-[90vh] w-[95%] max-w-7xl rounded border-2 border-neutral-800 bg-neutral-900 p-4"

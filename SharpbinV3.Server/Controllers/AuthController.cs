@@ -19,7 +19,7 @@ namespace SharpbinV3.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class AuthController(UserService userService, AuthService authService, IOptions<AuthSettings> options, 
+    public class AuthController(UserService userService, AuthService authService, IOptions<AuthSettings> options,
         VerificationService verification, TotpVerificationProvider totp, AppDbContext db) : ControllerBase
     {
         private readonly AuthService _authService = authService;

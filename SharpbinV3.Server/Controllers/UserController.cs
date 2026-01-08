@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Data.Entities;
 using SharpbinV3.Server.DTOs;
@@ -9,18 +10,19 @@ using SharpbinV3.Server.Extensions;
 using SharpbinV3.Server.Services;
 using SharpbinV3.Server.Services.Verification;
 using SharpbinV3.Server.Services.Verification.Providers;
+using SharpbinV3.Server.Settings;
 
 namespace SharpbinV3.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class UserController(UserService userService, AppDbContext db, AuthService authService, TotpVerificationProvider totp, VerificationService verificationService) : ControllerBase
+    public class UserController(UserService userService, AppDbContext db, TotpVerificationProvider totp, VerificationService verificationService, IOptions<AuthSettings> authSettings) : ControllerBase
     {
         private readonly UserService _userService = userService;
         private readonly AppDbContext _db = db;
-        private readonly AuthService _authService = authService;
         private readonly TotpVerificationProvider _totp = totp;
         private readonly VerificationService _verificationService = verificationService;
+        private readonly AuthSettings _authSettings = authSettings.Value;
 
         [HttpGet("{username}")]
         public async Task<IActionResult> GetByUsername(string username, [FromQuery] int page = 1)
@@ -63,6 +65,8 @@ namespace SharpbinV3.Server.Controllers
                 return Forbid();
             if (user.Roles.Contains(255) && !jwtUser.Roles.Contains(255))
                 return Forbid();
+            if (jwtUser.Roles.Contains(255) && !jwtUser.TotpEnabled && _authSettings.Admins_Require_2FA)
+                return Forbid();
 
             user.DisplayName = updatedUser.DisplayName ?? user.DisplayName;
             if (jwtUser.Roles.Any(r => r == 255) || user.UUID == jwtUser.UUID) // only admins or self
@@ -100,6 +104,8 @@ namespace SharpbinV3.Server.Controllers
             if (user == null) return Forbid();
             if (!jwtUser.Roles.Any(r => r == 255) && user.UUID != jwtUser.UUID)
                 return Forbid();
+            if (jwtUser.Roles.Contains(255) && !jwtUser.TotpEnabled && _authSettings.Admins_Require_2FA)
+                return Forbid();
 
             if (jwtUser.TotpEnabled)
             {
@@ -123,7 +129,7 @@ namespace SharpbinV3.Server.Controllers
                     return Unauthorized(new { message = "Invalid verification token." });
                 }
             }
-            
+
             _db.Users.Remove(user);
             await _db.SaveChangesAsync();
             return Ok(new { message = "User deleted successfully." });

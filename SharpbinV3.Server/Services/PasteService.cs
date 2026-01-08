@@ -13,9 +13,12 @@ namespace SharpbinV3.Server.Services
         private readonly ICompressionService _cs = cs;
         private readonly PasteSettings _pasteSettings = options.Value;
 
-        public async Task<Paste> Create(User? author, string content, string title, string syntax, int visibility, long expiresAt)
+        public async Task<Paste> Create(User? author, string content, string title, string syntax, int visibility, long expiresAt, bool shouldCompress)
         {
-            var compressedData = _cs.Compress(content);
+            var data = Encoding.UTF8.GetBytes(content);
+            if (shouldCompress)
+                data = _cs.Compress(content);
+
             var paste = new Paste
             {
                 UUID = Guid.CreateVersion7(),
@@ -23,10 +26,10 @@ namespace SharpbinV3.Server.Services
                 Title = title,
                 AuthorUUID = author?.UUID,
                 User = author,
-                Content = compressedData,
-                Size = compressedData.Length,
+                Content = data,
+                Size = data.Length,
                 TrueSize = Encoding.UTF8.GetByteCount(content),
-                IsCompressed = compressedData.Length < Encoding.UTF8.GetByteCount(content),
+                IsCompressed = data.Length < Encoding.UTF8.GetByteCount(content),
                 Syntax = syntax,
                 Visibility = visibility,
                 ExpiresAt = expiresAt,

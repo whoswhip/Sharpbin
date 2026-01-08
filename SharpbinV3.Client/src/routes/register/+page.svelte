@@ -113,7 +113,7 @@
 </script>
 
 <main
-	class="flex min-h-[calc(100vh-60px)] w-full flex-col items-center justify-center bg-neutral-950 text-white"
+	class="flex min-h-[calc(100vh-60px)] w-full flex-col items-center justify-center pt-5 pb-5 text-white"
 >
 	<div class="w-full max-w-md rounded border-2 border-neutral-800 bg-neutral-900 p-6">
 		<h1 class="mb-6 text-center text-3xl font-bold">Register</h1>
