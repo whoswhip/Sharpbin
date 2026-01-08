@@ -23,6 +23,7 @@ The application requires an environment variable to point to the backend API. Cr
 
 ```env
 VITE_API_URL=http://localhost:8080
+VITE_ALLOWED_HOSTS=localhost
 ```
 
 ### Running in Development

@@ -43,11 +43,18 @@ You can configure the application using environment variables. When using Docker
 - `JwtSettings__Secret`: A secure string used for signing JWT tokens.
 - `AuthSettings__CF_Turnstile_SecretKey`: Your Cloudflare Turnstile secret key.
 - `AuthSettings__CF_Turnstile_SiteKey`: Your Cloudflare Turnstile site key.
+- `AuthSettings__Registration_Enabled`: Set to `true` by default, enables/disables registration. 
 - `AuthSettings__First_User_Admin`: Gives the first user the admin role, it is recommended to disable this after use.
+- `AuthSettings__Admins_Require_2FA`: Enforces Admins to have 2FA when trying to do certain actions.
+- `PasteSettings__MaxTitleLength`: Max title length in characters.
+- `PasteSettings__MaxPasteSizeInBytes`: Max Paste Size set in bytes, the default is `1_048_576` (1MB)
+- `PasteSettings__EnablePasteCompression`: Enables/Disables server-side paste compression, `true` by default.
+- `PasteSettings__RequiresVerification`: Enables/Disables CAPTCHA verification when creating pastes, `true` by default.
 - `ASPNETCORE_ENVIRONMENT`: Set to `Production` or `Development`.
 
 #### Frontend (SharpbinV3.Client)
 
 - `VITE_API_URL`: The URL of the backend API (e.g., `http://localhost:8080`).
+- `VITE_ALLOWED_HOSTS`: A comma separated list of allowed hosts (e.g., `localhost,sharpbin.whoswhip.dev`)
 
 The frontend will be accessible at http://localhost:5173.
