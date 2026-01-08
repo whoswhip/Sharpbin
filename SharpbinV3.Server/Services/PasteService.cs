@@ -66,12 +66,15 @@ namespace SharpbinV3.Server.Services
         }
         public async Task<bool> EditText(Paste paste, string text)
         {
-            var compressedData = _cs.Compress(text);
-            paste.Content = compressedData;
-            paste.Size = compressedData.Length;
+            var data = Encoding.UTF8.GetBytes(text);
+            if (_pasteSettings.EnablePasteCompression)
+                data = _cs.Compress(text);
+
+            paste.Content = data;
+            paste.Size = data.Length;
             paste.TrueSize = Encoding.UTF8.GetByteCount(text);
             paste.EditedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            paste.IsCompressed = compressedData.Length < Encoding.UTF8.GetByteCount(text);
+            paste.IsCompressed = data.Length < Encoding.UTF8.GetByteCount(text);
             _db.Pastes.Update(paste);
             var result = await _db.SaveChangesAsync();
             return result > 0;

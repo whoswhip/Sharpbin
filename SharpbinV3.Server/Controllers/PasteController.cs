@@ -206,7 +206,28 @@ namespace SharpbinV3.Server.Controllers
         }
 
         [HttpGet]
-        [Route("create/options")]
+        [Route("recent")]
+        public async Task<IActionResult> GetRecentPastes()
+        {
+            var results = await _pasteService.GetList(0, 50, true);
+            return Ok(results.Select(p => new
+            {
+                p.ID,
+                p.UUID,
+                p.Title,
+                p.Size,
+                p.TrueSize,
+                p.IsCompressed,
+                p.Views,
+                p.Syntax,
+                p.Visibility,
+                p.ExpiresAt,
+                p.EditedAt
+            }));
+        }
+
+        [HttpGet]
+        [Route("info")]
         public IActionResult GetCreatePasteOptions()
         {
             var options = new

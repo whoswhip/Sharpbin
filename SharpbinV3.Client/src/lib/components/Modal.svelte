@@ -115,6 +115,7 @@
 		const token = getToken();
 		const refreshToken = getRefreshToken();
 		if (!token || !refreshToken) return null;
+		console.log('Refreshing tokens after TOTP change...');
 		const res = await fetch('/api/auth/refresh', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -124,6 +125,7 @@
 		const data = await res.json();
 		if (data.token?.token && data.token?.refreshToken && data.token?.success !== false) {
 			setTokens(data.token.token, data.token.refreshToken);
+			console.log('Tokens refreshed after TOTP change.');
 			return data.token.token as string;
 		}
 		return null;
