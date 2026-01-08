@@ -13,7 +13,8 @@ body,
 h1,
 h2,
 h3,
-p {
+p,
+.sans-serif {
 	font-family: 'IBM Plex Sans', sans-serif;
 }
 
@@ -21,7 +22,8 @@ pre,
 code,
 textarea,
 option,
-select {
+select,
+.monospace {
 	font-family: 'Fira Code', monospace;
 }
 

@@ -5,6 +5,7 @@
 	import { getToken } from '$lib/utils/auth';
 	import { fly } from 'svelte/transition';
 	import { encryptAES } from '$lib/utils/encryption';
+	import { formatBytes } from '$lib/utils/misc';
 	import Dropdown from '$lib/components/Dropdown.svelte';
 
 	export let data: PageData;
@@ -118,16 +119,36 @@
 				bind:value={title}
 				maxlength={data.options?.maxTitleLength ?? 500}
 			/>
-			<textarea
-				placeholder="Your paste content here..."
-				class="mb-4 h-64 max-h-[50vh] min-h-10 w-full resize-y rounded border border-neutral-700 bg-neutral-800 p-2"
-				spellcheck="false"
-				autocomplete="off"
-				bind:value={content}
-				maxlength={data.options?.maxContentSize
-					? Math.floor(data.options.maxContentSize / 4)
-					: undefined}
-			></textarea>
+			<div class="relative">
+				<textarea
+					placeholder="Your paste content here..."
+					class="mb-4 h-64 max-h-[50vh] min-h-10 w-full resize-y rounded border border-neutral-700 bg-neutral-800 p-2"
+					spellcheck="false"
+					autocomplete="off"
+					bind:value={content}
+					on:beforeinput={(e) => {
+						if (
+							data.options?.maxPasteSize &&
+							(new TextEncoder().encode(content).length >= data.options.maxPasteSize ||
+								(e.data &&
+									new TextEncoder().encode(content + e.data).length > data.options.maxPasteSize))
+						) {
+							e.preventDefault();
+						}
+					}}
+				></textarea>
+				<div
+					class="monospace absolute right-4 bottom-6 rounded bg-neutral-900/50 p-1 text-sm text-neutral-400 backdrop-blur-sm"
+				>
+					{#if data.options?.maxPasteSize}
+						{formatBytes(new TextEncoder().encode(content).length)} / {formatBytes(
+							data.options.maxPasteSize
+						)}
+					{:else}
+						{formatBytes(new TextEncoder().encode(content).length)}
+					{/if}
+				</div>
+			</div>
 			<Dropdown
 				options={syntaxOptions}
 				bind:value={selectedSyntax}
