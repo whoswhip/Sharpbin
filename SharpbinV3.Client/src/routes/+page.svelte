@@ -122,7 +122,7 @@
 			<div class="relative">
 				<textarea
 					placeholder="Your paste content here..."
-					class="mb-4 h-64 max-h-[50vh] min-h-10 w-full resize-y rounded border border-neutral-700 bg-neutral-800 p-2"
+					class=" h-64 max-h-[50vh] min-h-10 w-full resize-y rounded rounded-b-none border border-neutral-700 bg-neutral-800 p-2"
 					spellcheck="false"
 					autocomplete="off"
 					bind:value={content}
@@ -138,8 +138,12 @@
 					}}
 				></textarea>
 				<div
-					class="monospace absolute right-4 bottom-6 rounded bg-neutral-900/50 p-1 text-sm text-neutral-400 backdrop-blur-sm"
+					class="mb-4 flex items-center h-8 justify-between rounded-b border border-neutral-700 bg-neutral-800 p-1 pl-2 pr-2 text-sm text-neutral-400 monospace"
 				>
+					<div>
+						{content.split('\n').length} line{content.split('\n').length !== 1 ? 's' : ''}, {content.length}
+						character{content.length !== 1 ? 's' : ''}
+					</div>
 					{#if data.options?.maxPasteSize}
 						{formatBytes(new TextEncoder().encode(content).length)} / {formatBytes(
 							data.options.maxPasteSize
