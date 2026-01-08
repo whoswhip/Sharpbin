@@ -252,7 +252,7 @@
 			{/if}
 			{#if data.options?.requiresVerification && data.auth?.cf_turnstile_site_key}
 				<div
-					class="mt-2 flex w-auto items-center justify-center rounded border border-neutral-700 bg-neutral-800 p-2 pb-1"
+					class="mt-2 min-h-16.25 flex w-auto items-center justify-center rounded border border-neutral-700 bg-neutral-800 p-2 pb-1"
 				>
 					<div class="cf-turnstile" data-sitekey={data.auth.cf_turnstile_site_key}></div>
 				</div>
