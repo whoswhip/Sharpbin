@@ -111,21 +111,21 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> EditPaste(string id)
         {
             string content = await new StreamReader(Request.Body).ReadToEndAsync();
-            if (content == null || id == null) return NotFound();
+            if (content == null || id == null) return StatusCode(400, new { success = false, message = "Invalid request." });
             var paste = await _pasteService.Get(id);
-            if (paste == null) return NotFound();
+            if (paste == null) return StatusCode(404, new { success = false, message = "Paste not found." });
 
             var user = HttpContext.GetJwtUser();
-            if (user == null) return Forbid();
+            if (user == null) return StatusCode(403, new { success = false, message = "You do not have permission to edit this paste." });
 
             var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
             if (paste.AuthorUUID != user.UUID && !hasPrivilegedRole)
-                return Forbid();
+                return StatusCode(403, new { success = false, message = "You do not have permission to edit this paste." });
             if (user.Roles.Contains(255) && !user.TotpEnabled && _authSettings.Admins_Require_2FA)
-                return Forbid();
+                return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
 
             bool result = await _pasteService.EditText(paste, content);
-            if (!result) return NotFound();
+            if (!result) return StatusCode(500, new { success = false, message = "An error occurred while editing the paste." });
             return Ok(new { message = "Paste edited successfully." });
         }
 
