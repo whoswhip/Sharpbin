@@ -14,7 +14,10 @@ namespace SharpbinV3.Server.Services.Verification
                 .FirstOrDefault();
         }
 
-        public async Task<bool> VerifyAsync(VerificationContext context, IVerificationProvider? provider = null)
+        public async Task<bool> VerifyAsync(
+            VerificationContext context,
+            IVerificationProvider? provider = null
+        )
         {
             var activeProvider = provider ?? GetActiveProvider();
 

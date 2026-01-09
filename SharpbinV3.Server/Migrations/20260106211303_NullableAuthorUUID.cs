@@ -16,7 +16,8 @@ namespace SharpbinV3.Server.Migrations
                 type: "TEXT",
                 nullable: true,
                 oldClrType: typeof(Guid),
-                oldType: "TEXT");
+                oldType: "TEXT"
+            );
         }
 
         /// <inheritdoc />
@@ -30,7 +31,8 @@ namespace SharpbinV3.Server.Migrations
                 defaultValue: new Guid("00000000-0000-0000-0000-000000000000"),
                 oldClrType: typeof(Guid),
                 oldType: "TEXT",
-                oldNullable: true);
+                oldNullable: true
+            );
         }
     }
 }

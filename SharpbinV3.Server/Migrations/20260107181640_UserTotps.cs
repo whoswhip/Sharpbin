@@ -16,7 +16,7 @@ namespace SharpbinV3.Server.Migrations
                 {
                     UserUUID = table.Column<Guid>(type: "TEXT", nullable: false),
                     EncryptedSecret = table.Column<byte[]>(type: "BLOB", nullable: false),
-                    CreatedAt = table.Column<long>(type: "INTEGER", nullable: false)
+                    CreatedAt = table.Column<long>(type: "INTEGER", nullable: false),
                 },
                 constraints: table =>
                 {
@@ -26,15 +26,16 @@ namespace SharpbinV3.Server.Migrations
                         column: x => x.UserUUID,
                         principalTable: "Users",
                         principalColumn: "UUID",
-                        onDelete: ReferentialAction.Cascade);
-                });
+                        onDelete: ReferentialAction.Cascade
+                    );
+                }
+            );
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "UserTotps");
+            migrationBuilder.DropTable(name: "UserTotps");
         }
     }
 }

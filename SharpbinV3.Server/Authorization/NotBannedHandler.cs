@@ -1,15 +1,17 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace SharpbinV3.Server.Authorization
 {
-    public sealed class NotBannedHandler(bool requireAuth = false) : AuthorizationHandler<NotBannedRequirement>
+    public sealed class NotBannedHandler(bool requireAuth = false)
+        : AuthorizationHandler<NotBannedRequirement>
     {
         private readonly bool _requireAuth = requireAuth;
 
         protected override Task HandleRequirementAsync(
             AuthorizationHandlerContext context,
-            NotBannedRequirement requirement)
+            NotBannedRequirement requirement
+        )
         {
             var isAuthenticated = context.User.Identity?.IsAuthenticated ?? false;
 
@@ -17,8 +19,8 @@ namespace SharpbinV3.Server.Authorization
                 return Task.CompletedTask;
 
             var isBanned = context.User.Claims.Any(c =>
-                (c.Type == ClaimTypes.Role || c.Type == "role") &&
-                c.Value == "403");
+                (c.Type == ClaimTypes.Role || c.Type == "role") && c.Value == "403"
+            );
 
             if (!isBanned)
                 context.Succeed(requirement);

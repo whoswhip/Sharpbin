@@ -3,14 +3,21 @@ using SharpbinV3.Server.Data;
 
 namespace SharpbinV3.Server.Services
 {
-    public class PasteCleanUpService(IServiceProvider serviceProvider, ILogger<PasteCleanUpService> logger) : BackgroundService
+    public class PasteCleanUpService(
+        IServiceProvider serviceProvider,
+        ILogger<PasteCleanUpService> logger
+    ) : BackgroundService
     {
         private readonly TimeSpan _period = TimeSpan.FromMinutes(5);
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             using var timer = new PeriodicTimer(_period);
             await Cleanup(stoppingToken);
-            while (!stoppingToken.IsCancellationRequested && await timer.WaitForNextTickAsync(stoppingToken))
+            while (
+                !stoppingToken.IsCancellationRequested
+                && await timer.WaitForNextTickAsync(stoppingToken)
+            )
             {
                 try
                 {
@@ -36,7 +43,6 @@ namespace SharpbinV3.Server.Services
                 await db.SaveChangesAsync(stoppingToken);
                 logger.LogInformation("Deleted {Count} expired pastes", deletedCount);
             }
-
         }
     }
 }

@@ -19,8 +19,14 @@ namespace SharpbinV3.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class AuthController(UserService userService, AuthService authService, IOptions<AuthSettings> options,
-        VerificationService verification, TotpVerificationProvider totp, AppDbContext db) : ControllerBase
+    public class AuthController(
+        UserService userService,
+        AuthService authService,
+        IOptions<AuthSettings> options,
+        VerificationService verification,
+        TotpVerificationProvider totp,
+        AppDbContext db
+    ) : ControllerBase
     {
         private readonly AuthService _authService = authService;
         private readonly UserService _userService = userService;
@@ -37,11 +43,15 @@ namespace SharpbinV3.Server.Controllers
                 return BadRequest(new { message = "Registration is disabled." });
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
-            if (!await _verification.VerifyAsync(new VerificationContext
-            {
-                Token = request.Token,
-                Ip = HttpContext.GetRequestIP()
-            }))
+            if (
+                !await _verification.VerifyAsync(
+                    new VerificationContext
+                    {
+                        Token = request.Token,
+                        Ip = HttpContext.GetRequestIP(),
+                    }
+                )
+            )
                 return BadRequest(new { message = "Verification failed." });
 
             var existingUser = await _userService.GetByUsername(request.Username);
@@ -54,22 +64,30 @@ namespace SharpbinV3.Server.Controllers
                     return Conflict(new { message = "Email already in use." });
             }
             if (!string.IsNullOrEmpty(request.DisplayName) && request.DisplayName.Length > 26)
-                return BadRequest(new { message = "Display name should not exceed 26 characters." });
+                return BadRequest(
+                    new { message = "Display name should not exceed 26 characters." }
+                );
 
-            var user = await _authService.CreateUser(request.Username, request.Password, request.Email, request.DisplayName);
-            return Ok(new
-            {
-                message = "User registered successfully.",
-                user = new
+            var user = await _authService.CreateUser(
+                request.Username,
+                request.Password,
+                request.Email,
+                request.DisplayName
+            );
+            return Ok(
+                new
                 {
-                    user.UID,
-                    user.UUID,
-                    user.Username,
-                    user.Email,
-                    user.DisplayName,
-                    user.Roles
+                    message = "User registered successfully.",
+                    user = new
+                    {
+                        user.UID,
+                        user.UUID,
+                        user.Username,
+                        user.Email,
+                        user.DisplayName,
+                        user.Roles,
+                    },
                 }
-            }
             );
         }
 
@@ -81,11 +99,15 @@ namespace SharpbinV3.Server.Controllers
             if (string.IsNullOrEmpty(request.Username) && string.IsNullOrEmpty(request.Email))
                 return BadRequest(new { message = "Username or email is required." });
 
-            if (!await _verification.VerifyAsync(new VerificationContext
-            {
-                Token = request.Token,
-                Ip = HttpContext.GetRequestIP()
-            }))
+            if (
+                !await _verification.VerifyAsync(
+                    new VerificationContext
+                    {
+                        Token = request.Token,
+                        Ip = HttpContext.GetRequestIP(),
+                    }
+                )
+            )
                 return BadRequest(new { message = "Verification failed." });
 
             User? user = null;
@@ -94,7 +116,8 @@ namespace SharpbinV3.Server.Controllers
             if (user == null && !string.IsNullOrEmpty(request.Email))
                 user = await _userService.GetByEmail(request.Email);
 
-            if (user == null) return BadRequest(new { message = "Invalid username/email or password." });
+            if (user == null)
+                return BadRequest(new { message = "Invalid username/email or password." });
             if (!Bcrypt.Verify(request.Password, user.PasswordHash))
                 return BadRequest(new { message = "Invalid username/email or password." });
 
@@ -103,11 +126,9 @@ namespace SharpbinV3.Server.Controllers
             {
                 if (string.IsNullOrWhiteSpace(request.TotpCode))
                     return BadRequest(new { message = "TOTP code is required." });
-                var totpValid = await _totp.VerifyAsync(new VerificationContext
-                {
-                    UserUUID = user.UUID,
-                    Code = request.TotpCode
-                });
+                var totpValid = await _totp.VerifyAsync(
+                    new VerificationContext { UserUUID = user.UUID, Code = request.TotpCode }
+                );
                 if (!totpValid)
                     return BadRequest(new { message = "Invalid TOTP code." });
             }
@@ -115,6 +136,7 @@ namespace SharpbinV3.Server.Controllers
             await _authService.UpdateLoginTime(user);
             return Ok(new { token.Result });
         }
+
         [HttpPost]
         [Route("refresh")]
         [EnableRateLimiting("Sliding")]
@@ -122,7 +144,10 @@ namespace SharpbinV3.Server.Controllers
         {
             try
             {
-                var jwtResult = await _authService.RefreshJWTToken(request.Token, request.RefreshToken);
+                var jwtResult = await _authService.RefreshJWTToken(
+                    request.Token,
+                    request.RefreshToken
+                );
                 return Ok(new { token = jwtResult });
             }
             catch (Exception ex)
@@ -136,11 +161,15 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> GetSiteInfo()
         {
             var authSettings = options.Value;
-            return Ok(new
-            {
-                cf_turnstile_site_key = string.IsNullOrEmpty(authSettings.CF_Turnstile_SiteKey) ? null : authSettings.CF_Turnstile_SiteKey,
-                registration_enabled = authSettings.Registration_Enabled
-            });
+            return Ok(
+                new
+                {
+                    cf_turnstile_site_key = string.IsNullOrEmpty(authSettings.CF_Turnstile_SiteKey)
+                        ? null
+                        : authSettings.CF_Turnstile_SiteKey,
+                    registration_enabled = authSettings.Registration_Enabled,
+                }
+            );
         }
 
         [HttpGet]
@@ -149,7 +178,8 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> StartTotpEnrollment()
         {
             var user = await _authService.GetUserFromHttpContext(HttpContext);
-            if (user is null) return BadRequest(new { message = "User not found." });
+            if (user is null)
+                return BadRequest(new { message = "User not found." });
 
             var secret = _totp.GenerateSecret();
             var secretBase32 = _totp.ToBase32(secret);
@@ -164,9 +194,12 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> EnableTotp([FromBody] EnableTotpDto request)
         {
             var uuidClaim = User.Claims.FirstOrDefault(c => c.Type == "UUID")?.Value;
-            if (string.IsNullOrEmpty(uuidClaim)) return Unauthorized();
+            if (string.IsNullOrEmpty(uuidClaim))
+                return Unauthorized();
             var uuid = Guid.Parse(uuidClaim);
-            if (string.IsNullOrWhiteSpace(request.Secret) || string.IsNullOrWhiteSpace(request.Code))
+            if (
+                string.IsNullOrWhiteSpace(request.Secret) || string.IsNullOrWhiteSpace(request.Code)
+            )
                 return BadRequest(new { message = "Secret and code are required." });
 
             if (!_totp.VerifyWithSecretBase32(request.Secret, request.Code))
@@ -195,17 +228,18 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> DisableTotp([FromBody] DisableTotpDto dto)
         {
             var user = await _authService.GetUserFromHttpContext(HttpContext);
-            if (user == null) return BadRequest(new { message = "User not found." });
+            if (user == null)
+                return BadRequest(new { message = "User not found." });
             if (string.IsNullOrWhiteSpace(dto.Code))
                 return BadRequest(new { message = "TOTP code is required." });
             var existing = await _db.UserTotps.FirstOrDefaultAsync(t => t.UserUUID == user.UUID);
             if (existing is null)
                 return BadRequest(new { message = "TOTP is not enabled." });
-            if (!_totp.VerifyAsync(new VerificationContext
-            {
-                UserUUID = user.UUID,
-                Code = dto.Code
-            }).Result)
+            if (
+                !_totp
+                    .VerifyAsync(new VerificationContext { UserUUID = user.UUID, Code = dto.Code })
+                    .Result
+            )
                 return BadRequest(new { message = "Invalid TOTP code." });
 
             _db.UserTotps.Remove(existing);

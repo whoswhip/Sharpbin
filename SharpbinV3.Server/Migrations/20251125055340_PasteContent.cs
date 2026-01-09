@@ -10,19 +10,13 @@ namespace SharpbinV3.Server.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.RenameColumn(
-                name: "Data",
-                table: "Pastes",
-                newName: "Content");
+            migrationBuilder.RenameColumn(name: "Data", table: "Pastes", newName: "Content");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.RenameColumn(
-                name: "Content",
-                table: "Pastes",
-                newName: "Data");
+            migrationBuilder.RenameColumn(name: "Content", table: "Pastes", newName: "Data");
         }
     }
 }
