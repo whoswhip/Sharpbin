@@ -28,14 +28,14 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> GetByUsername(string username, [FromQuery] int page = 1)
         {
             var user = await _userService.GetByUsername(username, withPastes: true);
-            return user == null ? NotFound() : Ok(await BuildUserResponse(user, page));
+            return user == null ? NotFound(new { success = false, message = "User not found." }) : Ok(await BuildUserResponse(user, page));
         }
 
         [HttpGet("uuid/{uuid}")]
         public async Task<IActionResult> GetByUUID(Guid uuid, [FromQuery] int page = 1)
         {
             var user = await _userService.GetByUUID(uuid, withPastes: true);
-            return user == null ? NotFound() : Ok(await BuildUserResponse(user, page));
+            return user == null ? NotFound(new { success = false, message = "User not found."}) : Ok(await BuildUserResponse(user, page));
         }
 
         [HttpGet("me")]
@@ -44,10 +44,10 @@ namespace SharpbinV3.Server.Controllers
         {
             var userUUID = HttpContext.User?.FindFirst("UUID")?.Value;
             if (userUUID is null)
-                return Unauthorized(new { message = "Invalid token." });
+                return Unauthorized(new { success = false, message = "Invalid token." });
 
             var user = await _userService.GetByUUID(Guid.Parse(userUUID), withPastes: true);
-            return user == null ? NotFound() : Ok(await BuildUserResponse(user, page));
+            return user == null ? NotFound(new { success = false, message = "User not found."}) : Ok(await BuildUserResponse(user, page));
         }
 
         [HttpPatch("uuid/{uuid}")]
@@ -56,17 +56,20 @@ namespace SharpbinV3.Server.Controllers
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
             var jwtUser = HttpContext.GetJwtUser();
-            if (jwtUser == null) return Forbid();
+            if (jwtUser == null) 
+                return Unauthorized(new { success = false, message = "Invalid token." });
+
             var user = await _userService.GetByUUID(uuid);
             if (user == null)
-                return NotFound();
-            if (!jwtUser.Roles.Any(r => r == 1 || r == 255) && user.UUID != jwtUser.UUID)
-                return Forbid();
-            if (user.Roles.Contains(255) && !jwtUser.Roles.Contains(255))
-                return Forbid();
+                return NotFound(new { success = false, message = "User not found." });
+
+            if ((user.Roles.Contains(255) && !jwtUser.Roles.Contains(255)) || (!jwtUser.Roles.Any(r => r == 1 || r == 255) && user.UUID != jwtUser.UUID))
+                return StatusCode(403, new { success = false, message = "You do not have permission to modify this user." });
+
             if (jwtUser.Roles.Contains(255) && !jwtUser.TotpEnabled && _authSettings.Admins_Require_2FA)
-                return Forbid();
+                return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
 
             user.DisplayName = updatedUser.DisplayName ?? user.DisplayName;
             if (jwtUser.Roles.Any(r => r == 255) || user.UUID == jwtUser.UUID) // only admins or self
@@ -99,13 +102,17 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> DeleteByUUID(Guid uuid, [FromBody] DeleteUserDto dto)
         {
             var jwtUser = HttpContext.GetJwtUser();
-            if (jwtUser == null) return Forbid();
+            if (jwtUser == null) 
+                return Unauthorized(new { success = false, message = "Invalid token." });
+
             var user = await _userService.GetByUUID(uuid);
-            if (user == null) return Forbid();
+            if (user == null) 
+                return NotFound(new { success = false, message = "User not found." });
+
             if (!jwtUser.Roles.Any(r => r == 255) && user.UUID != jwtUser.UUID)
-                return Forbid();
+                return StatusCode(403, new { success = false, message = "You do not have permission to delete this user." });
             if (jwtUser.Roles.Contains(255) && !jwtUser.TotpEnabled && _authSettings.Admins_Require_2FA)
-                return Forbid();
+                return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
 
             if (jwtUser.TotpEnabled)
             {

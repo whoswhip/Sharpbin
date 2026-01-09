@@ -26,26 +26,26 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> CreatePaste(string title = "", string syntax = "plaintext", int visibility = 0, long expiresAt = 0, string? token = null)
         {
             if (!await _pasteService.ValidateExpiresAt(expiresAt))
-                return BadRequest(new { message = "Invalid expiration time." });
+                return BadRequest(new { success = false, message = "Invalid expiration time." });
             if (!await _pasteService.ValidateVisibility(visibility))
-                return BadRequest(new { message = "Invalid visibility level. Must be between 0 and 2." });
+                return BadRequest(new { success = false, message = "Invalid visibility level. Must be between 0 and 2." });
             if (!await _pasteService.ValidateSyntax(syntax))
-                return BadRequest(new { message = "Invalid syntax." });
+                return BadRequest(new { success = false, message = "Invalid syntax." });
             if (!await _pasteService.ValidateTitle(title))
-                return BadRequest(new { message = $"Invalid title. Must be less than {_pasteSettings.MaxTitleLength} characters." });
+                return BadRequest(new { success = false, message = $"Invalid title. Must be less than {_pasteSettings.MaxTitleLength} characters." });
 
             string content = await new StreamReader(Request.Body).ReadToEndAsync();
             if (content.Length == 0)
-                return BadRequest(new { message = "Paste content cannot be empty." });
+                return BadRequest(new { success = false, message = "Paste content cannot be empty." });
             if (System.Text.Encoding.UTF8.GetByteCount(content) > _pasteSettings.MaxPasteSizeInBytes)
-                return BadRequest(new { message = $"Paste size exceeds the maximum allowed size of {_pasteSettings.MaxPasteSizeInBytes} bytes." });
+                return BadRequest(new { success = false, message = $"Paste size exceeds the maximum allowed size of {_pasteSettings.MaxPasteSizeInBytes} bytes." });
 
             if (_pasteSettings.RequiresVerfication && !await _verificationService.VerifyAsync(new VerificationContext
             {
                 Token = token,
                 Ip = HttpContext.GetRequestIP()
             }))
-                return BadRequest(new { message = "Verification failed." });
+                return BadRequest(new { success = false, message = "Verification failed." });
 
             var user = await _authService.GetUserFromHttpContext(HttpContext);
             Paste paste = await _pasteService.Create(user, content, title, syntax, visibility, expiresAt, _pasteSettings.EnablePasteCompression);
@@ -111,12 +111,16 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> EditPaste(string id)
         {
             string content = await new StreamReader(Request.Body).ReadToEndAsync();
-            if (content == null || id == null) return StatusCode(400, new { success = false, message = "Invalid request." });
+            if (content == null || id == null) 
+                return StatusCode(400, new { success = false, message = "Invalid request." });
+
             var paste = await _pasteService.Get(id);
-            if (paste == null) return StatusCode(404, new { success = false, message = "Paste not found." });
+            if (paste == null) 
+                return StatusCode(404, new { success = false, message = "Paste not found." });
 
             var user = HttpContext.GetJwtUser();
-            if (user == null) return StatusCode(403, new { success = false, message = "You do not have permission to edit this paste." });
+            if (user == null) 
+                return Unauthorized(new { success = false, message = "Invalid token." });
 
             var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
             if (paste.AuthorUUID != user.UUID && !hasPrivilegedRole)
@@ -135,17 +139,19 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> ModifyPasteMetadata(string id, [FromBody] UpdatePasteDto request)
         {
             var paste = await _pasteService.Get(id);
-            if (paste == null) return NotFound();
+            if (paste == null) 
+                return NotFound(new { success = false, message = "Paste not found." });
 
             var user = HttpContext.GetJwtUser();
-            if (user == null) return Forbid();
+            if (user == null) 
+                return Unauthorized(new { success = false, message = "Invalid token." });
 
             var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
 
             if (paste.AuthorUUID != user.UUID && !hasPrivilegedRole)
-                return Forbid();
+                return StatusCode(403, new { success = false, message = "You do not have permission to modify this paste." });
             if (user.Roles.Contains(255) && !user.TotpEnabled && _authSettings.Admins_Require_2FA)
-                return Forbid();
+                return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
             if (request.Title != null)
                 paste.Title = request.Title;
             if (request.Syntax != null)
@@ -156,17 +162,18 @@ namespace SharpbinV3.Server.Controllers
                 paste.ExpiresAt = request.ExpiresAt.Value;
 
             if (!await _pasteService.ValidateExpiresAt(paste.ExpiresAt))
-                return BadRequest(new { message = "Invalid expiration time." });
+                return BadRequest(new { success = false, message = "Invalid expiration time." });
             if (!await _pasteService.ValidateVisibility(paste.Visibility))
-                return BadRequest(new { message = "Invalid visibility level. Must be between 0 and 2." });
+                return BadRequest(new { success = false, message = "Invalid visibility level. Must be between 0 and 2." });
             if (!await _pasteService.ValidateSyntax(paste.Syntax ?? "plaintext"))
-                return BadRequest(new { message = "Invalid syntax." });
+                return BadRequest(new { success = false, message = "Invalid syntax." });
             if (!await _pasteService.ValidateTitle(paste.Title ?? ""))
-                return BadRequest(new { message = $"Invalid title. Must be less than {_pasteSettings.MaxTitleLength} characters." });
+                return BadRequest(new { success = false, message = $"Invalid title. Must be less than {_pasteSettings.MaxTitleLength} characters." });
 
             var newPaste = await _pasteService.Edit(paste);
             return Ok(new
             {
+                success = true,
                 message = "Paste metadata updated successfully.",
                 paste = new
                 {
@@ -189,20 +196,21 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> DeletePaste(string id)
         {
             var paste = await _pasteService.Get(id);
-            if (paste == null) return NotFound();
+            if (paste == null) return NotFound(new { success = false, message = "Paste not found." });
 
             var user = HttpContext.GetJwtUser();
-            if (user == null) return Forbid();
+            if (user == null) 
+                return Unauthorized(new { success = false, message = "Invalid token." });
 
             var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
             if (paste.AuthorUUID != user.UUID && !hasPrivilegedRole)
-                return Forbid();
+                return StatusCode(403, new { success = false, message = "You do not have permission to delete this paste." });
             if (user.Roles.Contains(255) && !user.TotpEnabled && _authSettings.Admins_Require_2FA)
-                return Forbid();
+                return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
 
             bool result = await _pasteService.Delete(paste);
-            if (!result) return NotFound();
-            return Ok(new { message = "Paste deleted successfully." });
+            if (!result) return StatusCode(500, new { success = false, message = "An error occurred while deleting the paste." });
+            return Ok(new { success = true, message = "Paste deleted successfully." });
         }
 
         [HttpGet]
