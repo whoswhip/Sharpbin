@@ -10,39 +10,42 @@ namespace SharpbinV3.Server.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(name: "FilePath", table: "Pastes");
+            migrationBuilder.DropColumn(
+                name: "FilePath",
+                table: "Pastes");
 
             migrationBuilder.AddColumn<byte[]>(
                 name: "Data",
                 table: "Pastes",
                 type: "BLOB",
                 nullable: false,
-                defaultValue: new byte[0]
-            );
+                defaultValue: new byte[0]);
 
             migrationBuilder.AddColumn<bool>(
                 name: "IsCompressed",
                 table: "Pastes",
                 type: "INTEGER",
                 nullable: false,
-                defaultValue: false
-            );
+                defaultValue: false);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(name: "Data", table: "Pastes");
+            migrationBuilder.DropColumn(
+                name: "Data",
+                table: "Pastes");
 
-            migrationBuilder.DropColumn(name: "IsCompressed", table: "Pastes");
+            migrationBuilder.DropColumn(
+                name: "IsCompressed",
+                table: "Pastes");
 
             migrationBuilder.AddColumn<string>(
                 name: "FilePath",
                 table: "Pastes",
                 type: "TEXT",
                 nullable: false,
-                defaultValue: ""
-            );
+                defaultValue: "");
         }
     }
 }

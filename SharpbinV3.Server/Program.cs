@@ -1,5 +1,3 @@
-using System.Text;
-using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
@@ -12,6 +10,8 @@ using SharpbinV3.Server.Services;
 using SharpbinV3.Server.Services.Verification;
 using SharpbinV3.Server.Services.Verification.Providers;
 using SharpbinV3.Server.Settings;
+using System.Text;
+using System.Threading.RateLimiting;
 
 namespace SharpbinV3.Server
 {
@@ -40,10 +40,11 @@ namespace SharpbinV3.Server
             builder.Services.AddHttpClient<IVerificationProvider, TurnstileVerificationProvider>();
             builder.Services.AddMemoryCache();
 
-            builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>("Database");
+            builder.Services.AddHealthChecks()
+                .AddDbContextCheck<AppDbContext>("Database");
 
-            builder
-                .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            builder.Services
+                .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(jwt =>
                 {
                     var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -66,58 +67,44 @@ namespace SharpbinV3.Server
                         ClockSkew = TimeSpan.Zero,
 
                         RequireSignedTokens = true,
-                        ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
+                        ValidAlgorithms = [SecurityAlgorithms.HmacSha256]
                     };
                 });
-            builder
-                .Services.AddAuthorizationBuilder()
-                .AddPolicy(
-                    "NotBanned",
-                    policy => policy.Requirements.Add(new NotBannedRequirement())
-                );
-            builder
-                .Services.AddAuthorizationBuilder()
-                .AddPolicy(
-                    "AuthAndNotBanned",
-                    policy => policy.Requirements.Add(new NotBannedRequirement())
-                );
+            builder.Services.AddAuthorizationBuilder()
+                .AddPolicy("NotBanned", policy =>
+                    policy.Requirements.Add(new NotBannedRequirement()));
+            builder.Services.AddAuthorizationBuilder()
+                .AddPolicy("AuthAndNotBanned", policy =>
+                    policy.Requirements.Add(new NotBannedRequirement()));
             builder.Services.AddSingleton<IAuthorizationHandler>(new NotBannedHandler(false));
             builder.Services.AddSingleton<IAuthorizationHandler>(new NotBannedHandler(true));
 
+
             builder.Services.AddRateLimiter(options =>
             {
-                options.AddSlidingWindowLimiter(
-                    "Sliding",
-                    opt =>
-                    {
-                        opt.Window = TimeSpan.FromSeconds(10);
-                        opt.PermitLimit = 10;
-                        opt.QueueLimit = 2;
-                        opt.SegmentsPerWindow = 5;
-                        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                    }
-                );
+                options.AddSlidingWindowLimiter("Sliding", opt =>
+                {
+                    opt.Window = TimeSpan.FromSeconds(10);
+                    opt.PermitLimit = 10;
+                    opt.QueueLimit = 2;
+                    opt.SegmentsPerWindow = 5;
+                    opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                });
 
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             });
             builder.Services.AddCors(o =>
             {
                 o.AddDefaultPolicy(p =>
-                    p.WithOrigins("http://localhost:5173").AllowAnyHeader().AllowAnyMethod()
-                );
+                    p.WithOrigins("http://localhost:5173")
+                     .AllowAnyHeader()
+                     .AllowAnyMethod());
             });
-            builder.Services.Configure<PasteSettings>(
-                builder.Configuration.GetSection("PasteSettings")
-            );
-            builder.Services.Configure<JWTSettings>(
-                builder.Configuration.GetSection("JWTSettings")
-            );
-            builder.Services.Configure<AuthSettings>(
-                builder.Configuration.GetSection("AuthSettings")
-            );
+            builder.Services.Configure<PasteSettings>(builder.Configuration.GetSection("PasteSettings"));
+            builder.Services.Configure<JWTSettings>(builder.Configuration.GetSection("JWTSettings"));
+            builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection("AuthSettings"));
 
-            builder
-                .Services.AddDataProtection()
+            builder.Services.AddDataProtection()
                 .PersistKeysToFileSystem(GetDataProtectionKeyDirectory(builder.Environment))
                 .SetApplicationName("SharpbinV3");
 
@@ -143,8 +130,7 @@ namespace SharpbinV3.Server
                 db.Database.Migrate();
 
                 // this is temporary since the migration doesnt seem to work properly
-                db.Database.ExecuteSql(
-                    $"""
+                db.Database.ExecuteSql($"""
                     CREATE TRIGGER IF NOT EXISTS Users_UID_AutoIncrement
                     AFTER INSERT ON Users
                     BEGIN
@@ -154,15 +140,13 @@ namespace SharpbinV3.Server
                         )
                         WHERE rowid = NEW.rowid AND NEW.UID IS NULL;
                     END;
-                    """
-                );
+                    """);
             }
 
             app.MapHealthChecks("/health");
 
             app.Run();
         }
-
         static DirectoryInfo GetDataProtectionKeyDirectory(IHostEnvironment env)
         {
             var overridepath = Environment.GetEnvironmentVariable("DATA_PROTECTION_KEY_PATH");

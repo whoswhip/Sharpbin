@@ -1,13 +1,13 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Data.Entities;
 using SharpbinV3.Server.DTOs.Auth;
 using SharpbinV3.Server.Settings;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Bcrypt = BCrypt.Net.BCrypt;
 
 namespace SharpbinV3.Server.Services
@@ -21,23 +21,13 @@ namespace SharpbinV3.Server.Services
         public int[] Roles { get; set; } = [];
         public DateTime Expires { get; set; }
     }
-
-    public sealed class AuthService(
-        AppDbContext db,
-        IOptions<JWTSettings> jwtOptions,
-        IOptions<AuthSettings> authOptions
-    )
+    public sealed class AuthService(AppDbContext db, IOptions<JWTSettings> jwtOptions, IOptions<AuthSettings> authOptions)
     {
         private readonly AppDbContext _db = db;
         private readonly JWTSettings _jwtSettings = jwtOptions.Value;
         private readonly AuthSettings _authSettings = authOptions.Value;
 
-        public async Task<User> CreateUser(
-            string username,
-            string password,
-            string? email,
-            string? displayName
-        )
+        public async Task<User> CreateUser(string username, string password, string? email, string? displayName)
         {
             var user = new User
             {
@@ -45,7 +35,7 @@ namespace SharpbinV3.Server.Services
                 PasswordHash = Bcrypt.HashPassword(password),
                 Email = email,
                 DisplayName = displayName,
-                UUID = Guid.CreateVersion7(),
+                UUID = Guid.CreateVersion7()
             };
 
             if (_authSettings.First_User_Admin && !await _db.Users.AnyAsync())
@@ -55,7 +45,6 @@ namespace SharpbinV3.Server.Services
             await _db.SaveChangesAsync();
             return user;
         }
-
         public async Task<CreateJWT> GenerateJWTToken(User user)
         {
             var jwtHandler = new JwtSecurityTokenHandler();
@@ -68,7 +57,7 @@ namespace SharpbinV3.Server.Services
                 new("Username", user.Username),
                 new("DisplayName", user.DisplayName ?? ""),
                 new("TOTP_Enabled", totpEnabled.ToString()),
-                new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
             if (user.Roles != null)
@@ -90,24 +79,20 @@ namespace SharpbinV3.Server.Services
                 SigningCredentials = new SigningCredentials(
                     new SymmetricSecurityKey(key),
                     SecurityAlgorithms.HmacSha256Signature
-                ),
+                )
             };
 
             var token = jwtHandler.CreateToken(descriptor);
             var jwtToken = jwtHandler.WriteToken(token);
 
-            var existingToken = await _db.RefreshTokens.FirstOrDefaultAsync(rt =>
-                rt.UserUUID == user.UUID
-            );
+            var existingToken = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.UserUUID == user.UUID);
 
             if (existingToken != null)
             {
                 existingToken.JwtId = token.Id;
                 existingToken.Used = false;
                 existingToken.CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                existingToken.ExpiresAt = DateTimeOffset
-                    .UtcNow.AddMonths(6)
-                    .ToUnixTimeMilliseconds();
+                existingToken.ExpiresAt = DateTimeOffset.UtcNow.AddMonths(6).ToUnixTimeMilliseconds();
                 existingToken.Token = Utilities.GenerateRandomString(36) + Guid.NewGuid();
                 _db.RefreshTokens.Update(existingToken);
             }
@@ -121,7 +106,7 @@ namespace SharpbinV3.Server.Services
                     UserUUID = user.UUID,
                     CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                     ExpiresAt = DateTimeOffset.UtcNow.AddMonths(6).ToUnixTimeMilliseconds(),
-                    Token = Utilities.GenerateRandomString(36) + Guid.NewGuid(),
+                    Token = Utilities.GenerateRandomString(36) + Guid.NewGuid()
                 };
                 await _db.RefreshTokens.AddAsync(refreshToken);
             }
@@ -132,9 +117,7 @@ namespace SharpbinV3.Server.Services
             {
                 Token = jwtToken,
                 Success = true,
-                RefreshToken =
-                    existingToken?.Token
-                    ?? (await _db.RefreshTokens.FirstAsync(rt => rt.UserUUID == user.UUID)).Token,
+                RefreshToken = existingToken?.Token ?? (await _db.RefreshTokens.FirstAsync(rt => rt.UserUUID == user.UUID)).Token
             };
         }
 
@@ -144,39 +127,28 @@ namespace SharpbinV3.Server.Services
             var key = Encoding.UTF8.GetBytes(_jwtSettings.Secret);
             try
             {
-                var principal = jwtHandler.ValidateToken(
-                    token,
-                    new TokenValidationParameters
-                    {
-                        ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = new SymmetricSecurityKey(key),
-                        ValidateIssuer = true,
-                        ValidIssuer = _jwtSettings.Issuer,
-                        ValidateAudience = true,
-                        ValidAudience = _jwtSettings.Audience,
-                        ClockSkew = TimeSpan.Zero,
-                        ValidateLifetime = false,
-                        RequireSignedTokens = true,
-                        ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
-                    },
-                    out SecurityToken validatedToken
-                );
+                var principal = jwtHandler.ValidateToken(token, new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = true,
+                    ValidIssuer = _jwtSettings.Issuer,
+                    ValidateAudience = true,
+                    ValidAudience = _jwtSettings.Audience,
+                    ClockSkew = TimeSpan.Zero,
+                    ValidateLifetime = false,
+                    RequireSignedTokens = true,
+                    ValidAlgorithms = [SecurityAlgorithms.HmacSha256]
+                }, out SecurityToken validatedToken);
                 var jwtId = validatedToken.Id;
-                var storedRefreshToken = await _db.RefreshTokens.FirstOrDefaultAsync(rt =>
-                    rt.Token == refreshToken
-                );
-                if (
-                    storedRefreshToken == null
+                var storedRefreshToken = await _db.RefreshTokens
+                    .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+                if (storedRefreshToken == null
                     || storedRefreshToken.Used
                     || storedRefreshToken.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                    || storedRefreshToken.JwtId != jwtId
-                )
+                    || storedRefreshToken.JwtId != jwtId)
                 {
-                    return new CreateJWT()
-                    {
-                        Success = false,
-                        Errors = ["Invalid refresh token, possibly already used or expired."],
-                    };
+                    return new CreateJWT() { Success = false, Errors = ["Invalid refresh token, possibly already used or expired."] };
                 }
                 storedRefreshToken.Used = true;
                 await _db.SaveChangesAsync();
@@ -195,9 +167,7 @@ namespace SharpbinV3.Server.Services
 
         public async Task<User> UpdateUser(User user)
         {
-            var existingUser =
-                await _db.Users.FirstOrDefaultAsync(u => u.UUID == user.UUID)
-                ?? throw new Exception("User not found");
+            var existingUser = await _db.Users.FirstOrDefaultAsync(u => u.UUID == user.UUID) ?? throw new Exception("User not found");
             existingUser.Username = user.Username;
             existingUser.Email = user.Email;
             existingUser.DisplayName = user.DisplayName;
@@ -208,12 +178,9 @@ namespace SharpbinV3.Server.Services
             await _db.SaveChangesAsync();
             return user;
         }
-
         public async Task UpdateLoginTime(User user)
         {
-            var existingUser =
-                await _db.Users.FirstOrDefaultAsync(u => u.UUID == user.UUID)
-                ?? throw new Exception("User not found");
+            var existingUser = await _db.Users.FirstOrDefaultAsync(u => u.UUID == user.UUID) ?? throw new Exception("User not found");
             existingUser.LastLogin = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             _db.Users.Update(existingUser);
             await _db.SaveChangesAsync();

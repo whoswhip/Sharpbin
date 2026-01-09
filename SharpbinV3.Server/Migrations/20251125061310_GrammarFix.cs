@@ -13,14 +13,12 @@ namespace SharpbinV3.Server.Migrations
             migrationBuilder.RenameColumn(
                 name: "Visiblity",
                 table: "Pastes",
-                newName: "Visibility"
-            );
+                newName: "Visibility");
 
             migrationBuilder.RenameIndex(
                 name: "IX_Pastes_Visiblity",
                 table: "Pastes",
-                newName: "IX_Pastes_Visibility"
-            );
+                newName: "IX_Pastes_Visibility");
         }
 
         /// <inheritdoc />
@@ -29,14 +27,12 @@ namespace SharpbinV3.Server.Migrations
             migrationBuilder.RenameColumn(
                 name: "Visibility",
                 table: "Pastes",
-                newName: "Visiblity"
-            );
+                newName: "Visiblity");
 
             migrationBuilder.RenameIndex(
                 name: "IX_Pastes_Visibility",
                 table: "Pastes",
-                newName: "IX_Pastes_Visiblity"
-            );
+                newName: "IX_Pastes_Visiblity");
         }
     }
 }

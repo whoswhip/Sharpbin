@@ -2,5 +2,7 @@
 
 namespace SharpbinV3.Server.Authorization
 {
-    public class NotBannedRequirement : IAuthorizationRequirement { }
+    public class NotBannedRequirement : IAuthorizationRequirement
+    {
+    }
 }

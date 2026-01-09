@@ -14,14 +14,15 @@ namespace SharpbinV3.Server.Migrations
                 name: "IX_Users_UID",
                 table: "Users",
                 column: "UID",
-                unique: true
-            );
+                unique: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(name: "IX_Users_UID", table: "Users");
+            migrationBuilder.DropIndex(
+                name: "IX_Users_UID",
+                table: "Users");
         }
     }
 }

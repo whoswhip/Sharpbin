@@ -1,31 +1,19 @@
-﻿using System.Text;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Data.Entities;
 using SharpbinV3.Server.Settings;
+using System.Text;
 
 namespace SharpbinV3.Server.Services
 {
-    public sealed class PasteService(
-        AppDbContext db,
-        ICompressionService cs,
-        IOptions<PasteSettings> options
-    )
+    public sealed class PasteService(AppDbContext db, ICompressionService cs, IOptions<PasteSettings> options)
     {
         private readonly AppDbContext _db = db;
         private readonly ICompressionService _cs = cs;
         private readonly PasteSettings _pasteSettings = options.Value;
 
-        public async Task<Paste> Create(
-            User? author,
-            string content,
-            string title,
-            string syntax,
-            int visibility,
-            long expiresAt,
-            bool shouldCompress
-        )
+        public async Task<Paste> Create(User? author, string content, string title, string syntax, int visibility, long expiresAt, bool shouldCompress)
         {
             var data = Encoding.UTF8.GetBytes(content);
             if (shouldCompress)
@@ -62,24 +50,20 @@ namespace SharpbinV3.Server.Services
             var result = await _db.SaveChangesAsync();
             return result > 0;
         }
-
         public async Task<Paste> Edit(Paste paste)
         {
             _db.Pastes.Update(paste);
             await _db.SaveChangesAsync();
             return paste;
         }
-
         public async Task<bool> Exists(string id)
         {
             return await _db.Pastes.AnyAsync(p => p.ID == id);
         }
-
         public async Task<bool> Exists(Guid uuid)
         {
             return await _db.Pastes.AnyAsync(p => p.UUID == uuid);
         }
-
         public async Task<bool> EditText(Paste paste, string text)
         {
             var data = Encoding.UTF8.GetBytes(text);
@@ -95,41 +79,39 @@ namespace SharpbinV3.Server.Services
             var result = await _db.SaveChangesAsync();
             return result > 0;
         }
-
         public async Task<Paste?> Get(string id)
         {
             var paste = await _db.Pastes.Include(p => p.User).FirstOrDefaultAsync(p => p.ID == id);
             return paste ?? null;
         }
-
         public async Task<List<Paste>> GetList(int offset, int count, bool publicOnly = false)
         {
             var query = _db.Pastes.AsQueryable();
             if (publicOnly)
                 query = query.Where(p => p.Visibility == 0);
 
-            return await query.OrderByDescending(p => p.PID).Skip(offset).Take(count).ToListAsync();
+            return await query
+                .OrderByDescending(p => p.PID)
+                .Skip(offset)
+                .Take(count)
+                .ToListAsync();
         }
 
         public async Task<bool> ValidateSyntax(string syntax)
         {
             return await Task.FromResult(_pasteSettings.ValidSyntaxLanguages.Contains(syntax));
         }
-
         public async Task<bool> ValidateTitle(string title)
         {
             return await Task.FromResult(title.Length <= _pasteSettings.MaxTitleLength);
         }
-
         public async Task<bool> ValidateVisibility(int visibility)
         {
             return await Task.FromResult(visibility >= 0 && visibility <= 2);
         }
-
         public async Task<bool> ValidateExpiresAt(long expiresAt)
         {
-            if (expiresAt == 0)
-                return true;
+            if (expiresAt == 0) return true;
             var currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             return await Task.FromResult(expiresAt > currentTime - 1000);
         }

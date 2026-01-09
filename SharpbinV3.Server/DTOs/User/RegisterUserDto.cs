@@ -22,36 +22,16 @@ namespace SharpbinV3.Server.DTOs
         {
             var results = new List<ValidationResult>();
             if (!ValidateUsername().IsMatch(Username))
-                results.Add(
-                    new ValidationResult(
-                        "Username can only contain letters, numbers, underscores, and dots.",
-                        [nameof(Username)]
-                    )
-                );
+                results.Add(new ValidationResult("Username can only contain letters, numbers, underscores, and dots.", [nameof(Username)]));
             if (!ValidatePassword().IsMatch(Password))
-                results.Add(
-                    new ValidationResult(
-                        "Password should have at least 8 characters, including uppercase, lowercase, and digits.",
-                        [nameof(Password)]
-                    )
-                );
+                results.Add(new ValidationResult("Password should have at least 8 characters, including uppercase, lowercase, and digits.", [nameof(Password)]));
 
             if (DisplayName != null)
             {
                 if (DisplayName.Length < 3 || DisplayName.Length > 26)
-                    results.Add(
-                        new ValidationResult(
-                            "DisplayName must be between 3 and 26 characters.",
-                            [nameof(DisplayName)]
-                        )
-                    );
+                    results.Add(new ValidationResult("DisplayName must be between 3 and 26 characters.", [nameof(DisplayName)]));
                 if (!ValidateUsername().IsMatch(DisplayName))
-                    results.Add(
-                        new ValidationResult(
-                            "DisplayName can only contain letters, numbers, underscores, and dots.",
-                            [nameof(DisplayName)]
-                        )
-                    );
+                    results.Add(new ValidationResult("DisplayName can only contain letters, numbers, underscores, and dots.", [nameof(DisplayName)]));
             }
             if (Email != null)
             {
@@ -64,7 +44,6 @@ namespace SharpbinV3.Server.DTOs
 
         [GeneratedRegex("^[A-Za-z0-9_.]+$")]
         private static partial Regex ValidateUsername();
-
         [GeneratedRegex("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$")]
         public static partial Regex ValidatePassword();
     }

@@ -10,7 +10,9 @@ namespace SharpbinV3.Server.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(name: "IX_Users_UID", table: "Users");
+            migrationBuilder.DropIndex(
+                name: "IX_Users_UID",
+                table: "Users");
 
             migrationBuilder.AlterColumn<int>(
                 name: "UID",
@@ -18,16 +20,20 @@ namespace SharpbinV3.Server.Migrations
                 type: "INTEGER",
                 nullable: true,
                 oldClrType: typeof(int),
-                oldType: "INTEGER"
-            );
+                oldType: "INTEGER");
 
-            migrationBuilder.CreateIndex(name: "IX_Users_UID", table: "Users", column: "UID");
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_UID",
+                table: "Users",
+                column: "UID");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(name: "IX_Users_UID", table: "Users");
+            migrationBuilder.DropIndex(
+                name: "IX_Users_UID",
+                table: "Users");
 
             migrationBuilder.AlterColumn<int>(
                 name: "UID",
@@ -37,15 +43,13 @@ namespace SharpbinV3.Server.Migrations
                 defaultValue: 0,
                 oldClrType: typeof(int),
                 oldType: "INTEGER",
-                oldNullable: true
-            );
+                oldNullable: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Users_UID",
                 table: "Users",
                 column: "UID",
-                unique: true
-            );
+                unique: true);
         }
     }
 }

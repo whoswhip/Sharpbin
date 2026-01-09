@@ -1,21 +1,20 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+﻿using SharpbinV3.Server.Services;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using SharpbinV3.Server.Services;
 
 namespace SharpbinV3.Server.Extensions
 {
     public static class HttpContextExtensions
     {
-        public static readonly string[] ipHeaders =
+        public readonly static string[] ipHeaders =
         [
             "X-Forwarded-For",
             "X-Real-IP",
             "CF-Connecting-IP",
             "True-Client-IP",
             "X-Cluster-Client-IP",
-            "X-ProxyUser-IP",
+            "X-ProxyUser-IP"
         ];
-
         public static JwtUser? GetJwtUser(this HttpContext context)
         {
             if (context.User == null || !context.User.Identity?.IsAuthenticated == true)
@@ -37,10 +36,9 @@ namespace SharpbinV3.Server.Extensions
                 .ToArray();
 
             var expClaim = claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Exp)?.Value;
-            var expires =
-                expClaim != null && long.TryParse(expClaim, out var expUnix)
-                    ? DateTimeOffset.FromUnixTimeSeconds(expUnix).UtcDateTime
-                    : DateTime.UtcNow.AddMinutes(15);
+            var expires = expClaim != null && long.TryParse(expClaim, out var expUnix)
+                ? DateTimeOffset.FromUnixTimeSeconds(expUnix).UtcDateTime
+                : DateTime.UtcNow.AddMinutes(15);
 
             return new JwtUser
             {
@@ -49,7 +47,7 @@ namespace SharpbinV3.Server.Extensions
                 DisplayName = displayName,
                 TotpEnabled = totpEnabled,
                 Roles = roles.Length > 0 ? roles : [0],
-                Expires = expires,
+                Expires = expires
             };
         }
 
@@ -57,12 +55,7 @@ namespace SharpbinV3.Server.Extensions
         {
             foreach (var header in ipHeaders)
             {
-                if (
-                    context.Request.Headers.TryGetValue(
-                        header,
-                        out Microsoft.Extensions.Primitives.StringValues value
-                    )
-                )
+                if (context.Request.Headers.TryGetValue(header, out Microsoft.Extensions.Primitives.StringValues value))
                 {
                     var ip = value.FirstOrDefault();
                     if (!string.IsNullOrEmpty(ip))

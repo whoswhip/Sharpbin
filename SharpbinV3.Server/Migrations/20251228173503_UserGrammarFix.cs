@@ -10,22 +10,29 @@ namespace SharpbinV3.Server.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(name: "IX_Users_UID", table: "Users");
+            migrationBuilder.DropIndex(
+                name: "IX_Users_UID",
+                table: "Users");
 
-            migrationBuilder.RenameColumn(name: "Visiblity", table: "Users", newName: "Visibility");
+            migrationBuilder.RenameColumn(
+                name: "Visiblity",
+                table: "Users",
+                newName: "Visibility");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.RenameColumn(name: "Visibility", table: "Users", newName: "Visiblity");
+            migrationBuilder.RenameColumn(
+                name: "Visibility",
+                table: "Users",
+                newName: "Visiblity");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Users_UID",
                 table: "Users",
                 column: "UID",
-                unique: true
-            );
+                unique: true);
         }
     }
 }

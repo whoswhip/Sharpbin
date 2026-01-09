@@ -1,5 +1,6 @@
 ﻿using System.IO.Compression;
 
+
 namespace SharpbinV3.Server.Services
 {
     public class CompressionService : ICompressionService
@@ -20,21 +21,16 @@ namespace SharpbinV3.Server.Services
 
             return data;
         }
-
         public byte[] Compress(string data)
         {
             ArgumentNullException.ThrowIfNull(data);
             return Compress(System.Text.Encoding.UTF8.GetBytes(data));
         }
-
         public byte[] Decompress(byte[] compressedData)
         {
             ArgumentNullException.ThrowIfNull(compressedData);
             if (!IsCompressed(compressedData))
-                throw new ArgumentException(
-                    "Data is not in a valid compressed format.",
-                    nameof(compressedData)
-                );
+                throw new ArgumentException("Data is not in a valid compressed format.", nameof(compressedData));
 
             using (MemoryStream ms = new())
             {

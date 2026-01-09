@@ -8,4 +8,5 @@
         public Guid? UserUUID { get; init; }
         public string? Code { get; init; }
     }
+
 }

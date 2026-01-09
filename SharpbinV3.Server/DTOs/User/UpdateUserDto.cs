@@ -17,19 +17,9 @@ namespace SharpbinV3.Server.DTOs
             if (DisplayName != null)
             {
                 if (DisplayName.Length < 3 || DisplayName.Length > 26)
-                    results.Add(
-                        new ValidationResult(
-                            "DisplayName must be between 3 and 26 characters.",
-                            [nameof(DisplayName)]
-                        )
-                    );
+                    results.Add(new ValidationResult("DisplayName must be between 3 and 26 characters.", [nameof(DisplayName)]));
                 if (!ValidateDisplayname().IsMatch(DisplayName))
-                    results.Add(
-                        new ValidationResult(
-                            "DisplayName can only contain letters, numbers, underscores, and dots.",
-                            [nameof(DisplayName)]
-                        )
-                    );
+                    results.Add(new ValidationResult("DisplayName can only contain letters, numbers, underscores, and dots.", [nameof(DisplayName)]));
             }
             if (Email != null)
             {
@@ -40,27 +30,19 @@ namespace SharpbinV3.Server.DTOs
             if (Visibility != null)
             {
                 if (Visibility < 0 || Visibility > 2)
-                    results.Add(
-                        new ValidationResult(
-                            "Visibility must be between 0 and 2.",
-                            [nameof(Visibility)]
-                        )
-                    );
+                    results.Add(new ValidationResult("Visibility must be between 0 and 2.", [nameof(Visibility)]));
             }
             if (Roles != null)
             {
                 if (Roles.Length == 0)
-                    results.Add(
-                        new ValidationResult("Roles cannot be an empty array.", [nameof(Roles)])
-                    );
+                    results.Add(new ValidationResult("Roles cannot be an empty array.", [nameof(Roles)]));
                 int[] validRoles = [0, 1, 255, 403];
                 foreach (var role in Roles)
                 {
                     if (!validRoles.Contains(role))
-                        results.Add(
-                            new ValidationResult($"Invalid role: {role}.", [nameof(Roles)])
-                        );
+                        results.Add(new ValidationResult($"Invalid role: {role}.", [nameof(Roles)]));
                 }
+
             }
             return results;
         }
