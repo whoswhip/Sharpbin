@@ -34,5 +34,6 @@ namespace SharpbinV3.Server.Data.Entities
         public long ExpiresAt { get; set; } // timestamp of when the paste expires, or 0 for never
 
         public List<PasteView> PasteViews { get; set; } = [];
+        public List<Report> Reports { get; set; } = [];
     }
 }

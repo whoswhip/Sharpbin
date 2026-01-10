@@ -29,7 +29,7 @@ namespace SharpbinV3.Server.Controllers
         private readonly AppDbContext _db = db;
 
         [HttpPost]
-        [EnableRateLimiting("Sliding")]
+        [EnableRateLimiting("Strict")]
         [Route("register")]
         public async Task<IActionResult> Register([FromBody] RegisterUserDto request)
         {
@@ -75,7 +75,7 @@ namespace SharpbinV3.Server.Controllers
 
         [HttpPost]
         [Route("login")]
-        [EnableRateLimiting("Sliding")]
+        [EnableRateLimiting("Strict")]
         public async Task<IActionResult> Login([FromBody] LoginUserDto request)
         {
             if (string.IsNullOrEmpty(request.Username) && string.IsNullOrEmpty(request.Email))
@@ -169,6 +169,7 @@ namespace SharpbinV3.Server.Controllers
         [HttpPost]
         [Authorize]
         [Route("totp/enable")]
+        [EnableRateLimiting("Sensitive")]
         public async Task<IActionResult> EnableTotp([FromBody] EnableTotpDto request)
         {
             var uuidClaim = User.Claims.FirstOrDefault(c => c.Type == "UUID")?.Value;

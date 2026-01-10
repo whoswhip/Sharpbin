@@ -8,8 +8,8 @@ const apiUrl = process.env.VITE_API_URL || 'http://localhost:5050';
 export const load: PageServerLoad = async ({ params, fetch, url, cookies }) => {
 	const { id } = params;
 
-	const paste = await fetch(`${apiUrl}/api/paste/${id}`);
-	if (paste.status === 404) {
+	const pasteRes = await fetch(`${apiUrl}/api/paste/${id}`);
+	if (pasteRes.status === 404) {
 		return {
 			status: 404,
 			error: { message: 'Paste not found' }
@@ -27,7 +27,9 @@ export const load: PageServerLoad = async ({ params, fetch, url, cookies }) => {
 		}
 	});
 
-	const pasteData = (await paste.json()) as Paste;
+	const pasteData = await pasteRes.json();
+	const paste = pasteData.paste as Paste;
+	
 	if (viewed.status === 200) {
 		const viewJson = await viewed.json();
 		if (viewJson.success === true && viewJson.message !== 'View already recorded.') {
@@ -49,5 +51,5 @@ export const load: PageServerLoad = async ({ params, fetch, url, cookies }) => {
 	const options = await pasteOptions.json();
 	const content = await pasteContent.text();
 
-	return { paste: pasteData, content, options, url: url.href };
+	return { paste, content, options, url: url.href };
 };

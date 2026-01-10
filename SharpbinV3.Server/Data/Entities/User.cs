@@ -21,6 +21,7 @@ namespace SharpbinV3.Server.Data.Entities
         public int Visibility { get; set; } = 0; // 0 = public, 1 = unlisted, 2 = private
         public List<Paste> Pastes { get; set; } = [];
         public List<RefreshToken> RefreshTokens { get; set; } = [];
+        public List<Report> Reports { get; set; } = [];
         public UserTotp? Totp { get; set; }
     }
 }

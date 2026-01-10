@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SharpbinV3.Server.Data;
@@ -16,12 +17,14 @@ namespace SharpbinV3.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class UserController(UserService userService, AppDbContext db, TotpVerificationProvider totp, VerificationService verificationService, IOptions<AuthSettings> authSettings) : ControllerBase
+    public class UserController(UserService userService, AppDbContext db, TotpVerificationProvider totp,
+        VerificationService verificationService, ReportService reportServer, IOptions<AuthSettings> authSettings) : ControllerBase
     {
         private readonly UserService _userService = userService;
         private readonly AppDbContext _db = db;
         private readonly TotpVerificationProvider _totp = totp;
         private readonly VerificationService _verificationService = verificationService;
+        private readonly ReportService _reportService = reportServer;
         private readonly AuthSettings _authSettings = authSettings.Value;
 
         [HttpGet("{username}")]
@@ -52,6 +55,7 @@ namespace SharpbinV3.Server.Controllers
 
         [HttpPatch("uuid/{uuid}")]
         [Authorize]
+        [EnableRateLimiting("Strict")]
         public async Task<IActionResult> UpdateByUUID(Guid uuid, [FromBody] UpdateUserDto updatedUser)
         {
             if (!ModelState.IsValid)
@@ -99,6 +103,7 @@ namespace SharpbinV3.Server.Controllers
 
         [HttpDelete("uuid/{uuid}")]
         [Authorize(Policy = "AuthAndNotBanned")]
+        [EnableRateLimiting("Sensitive")]
         public async Task<IActionResult> DeleteByUUID(Guid uuid, [FromBody] DeleteUserDto dto)
         {
             var jwtUser = HttpContext.GetJwtUser();
@@ -140,6 +145,103 @@ namespace SharpbinV3.Server.Controllers
             _db.Users.Remove(user);
             await _db.SaveChangesAsync();
             return Ok(new { message = "User deleted successfully." });
+        }
+
+        [HttpPost]
+        [Route("{uuid}/report")]
+        [EnableRateLimiting("Sensitive")]
+        [Authorize(Policy = "AuthAndNotBanned")]
+        public async Task<IActionResult> ReportUser(Guid uuid, [FromBody] ReportDto request)
+        {
+            var reporter = HttpContext.GetJwtUser();
+            if (reporter == null) 
+                return Unauthorized(new { success = false, message = "Invalid token." });
+
+            var reportedUser = await _userService.GetByUUID(uuid);
+            if (reportedUser == null) 
+                return NotFound(new { success = false, message = "User not found." });
+            if (reportedUser.UUID == reporter.UUID)
+                return BadRequest(new { success = false, message = "You cannot report yourself." });
+            Enum.TryParse<ReportType>(request.ReportType, true, out var reportType);
+            if (!Enum.IsDefined(reportType))
+                return BadRequest(new { success = false, message = "Invalid report type." });
+
+            if (!await _verificationService.VerifyAsync(new VerificationContext
+            {
+                Token = request.VerificationToken,
+                Ip = HttpContext.GetRequestIP()
+            }))
+                return Unauthorized(new { success = false, message = "Invalid verification token." });
+
+            Report report = await _reportService.CreateReport(reporter.UUID, ReportTargetType.User, uuid, reportType, request.Description);
+            if (report == null)
+                return StatusCode(500, new { success = false, message = "An error occurred while creating the report." });
+
+            return Ok(new
+            {
+                success = true,
+                message = "Paste reported successfully.",
+                report = new
+                {
+                    id = report.ReportID,
+                    reportType,
+                    description = report.Description
+                }
+            });
+        }
+
+        [HttpPatch]
+        [Route("{uuid}/report/{reportId}")]
+        [EnableRateLimiting("Sensitive")]
+        [Authorize(Policy = "AuthAndNotBanned")]
+        public async Task<IActionResult> UpdateUserReport(Guid uuid, int reportId, [FromBody] ReportDto request)
+        {
+            var jwtUser = HttpContext.GetJwtUser();
+            if (jwtUser == null) 
+                return Unauthorized(new { success = false, message = "Invalid token." });
+
+            var user = await _userService.GetByUUID(uuid);
+            if (user == null) 
+                return NotFound(new { success = false, message = "User not found." });
+
+            var report = await _reportService.GetReportByID(reportId);
+            if (report == null || report.UserUUID != user.UUID || report.ReporterUUID != jwtUser.UUID)
+                return NotFound(new { success = false, message = "Report not found." });
+
+            Enum.TryParse<ReportType>(request.ReportType, true, out var reportType);
+            if (!Enum.IsDefined(reportType))
+                return BadRequest(new { success = false, message = "Invalid report type." });
+
+            report.Type = reportType;
+            report.Description = request.Description ?? report.Description;
+
+            await _db.SaveChangesAsync();
+            return Ok(new { success = true, message = "Report updated successfully." });
+        }
+
+        [HttpDelete]
+        [Route("{uuid}/report/{reportId}")]
+        [EnableRateLimiting("Sensitive")]
+        [Authorize(Policy = "AuthAndNotBanned")]
+        public async Task<IActionResult> DeleteUserReport(Guid uuid, int reportId)
+        {
+            var jwtUser = HttpContext.GetJwtUser();
+            if (jwtUser == null) 
+                return Unauthorized(new { success = false, message = "Invalid token." });
+
+            var user = await _userService.GetByUUID(uuid);
+            if (user == null) 
+                return NotFound(new { success = false, message = "User not found." });
+
+            var report = await _reportService.GetReportByID(reportId);
+            if (report == null || report.UserUUID != user.UUID || report.ReporterUUID != jwtUser.UUID)
+                return NotFound(new { success = false, message = "Report not found." });
+
+            var result = await _reportService.DeleteReport(report);
+            if (!result)
+                return StatusCode(500, new { success = false, message = "An error occurred while deleting the report." });
+
+            return Ok(new { success = true, message = "Report deleted successfully." });
         }
 
         private async Task<object> BuildUserResponse(User user, int page = 1)

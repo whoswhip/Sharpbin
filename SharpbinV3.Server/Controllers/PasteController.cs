@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using SharpbinV3.Server.Data.Entities;
+using SharpbinV3.Server.DTOs;
 using SharpbinV3.Server.DTOs.Paste;
 using SharpbinV3.Server.Extensions;
 using SharpbinV3.Server.Services;
@@ -12,17 +14,20 @@ namespace SharpbinV3.Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class PasteController(PasteService pasteService, VerificationService verificationService, AuthService authService, IOptions<PasteSettings> options, IOptions<AuthSettings> authSettings) : ControllerBase
+    public class PasteController(PasteService pasteService, VerificationService verificationService, AuthService authService,
+        ReportService reportService, IOptions<PasteSettings> options, IOptions<AuthSettings> authSettings) : ControllerBase
     {
         private readonly PasteService _pasteService = pasteService;
         private readonly VerificationService _verificationService = verificationService;
         private readonly AuthService _authService = authService;
+        private readonly ReportService _reportService = reportService;
         private readonly PasteSettings _pasteSettings = options.Value;
         private readonly AuthSettings _authSettings = authSettings.Value;
 
         [HttpPost]
         [Route("create")]
         [Authorize(Policy = "NotBanned")]
+        [EnableRateLimiting("Strict")]
         public async Task<IActionResult> CreatePaste(string title = "", string syntax = "plaintext", int visibility = 0, long expiresAt = 0, string? token = null)
         {
             if (!await _pasteService.ValidateExpiresAt(expiresAt))
@@ -59,33 +64,38 @@ namespace SharpbinV3.Server.Controllers
                 paste.ExpiresAt
             });
         }
+
         [HttpGet]
         [Route("{id}")]
         public async Task<IActionResult> GetPasteByID(string id)
         {
             var paste = await _pasteService.Get(id);
-            if (paste == null) return NotFound();
+            if (paste == null) 
+                return NotFound(new { success = false, message = "Paste not found"});
             return Ok(new
             {
-                paste.ID,
-                paste.UUID,
-                paste.Title,
-                paste.Size,
-                paste.TrueSize,
-                paste.IsCompressed,
-                paste.Views,
-                paste.Syntax,
-                paste.Visibility,
-                paste.ExpiresAt,
-                paste.EditedAt,
-                Author = paste.User != null && paste.User.Visibility == 0 ? new
-                {
-                    paste.User.UID,
-                    paste.User.UUID,
-                    paste.User.Username,
-                    paste.User.DisplayName,
-                    paste.User.Visibility
-                } : null
+                success = true,
+                paste = new {
+                    paste.ID,
+                    paste.UUID,
+                    paste.Title,
+                    paste.Size,
+                    paste.TrueSize,
+                    paste.IsCompressed,
+                    paste.Views,
+                    paste.Syntax,
+                    paste.Visibility,
+                    paste.ExpiresAt,
+                    paste.EditedAt,
+                    Author = paste.User != null && paste.User.Visibility == 0 ? new
+                    {
+                        paste.User.UID,
+                        paste.User.UUID,
+                        paste.User.Username,
+                        paste.User.DisplayName,
+                        paste.User.Visibility
+                    } : null
+                }
             });
         }
         [HttpGet]
@@ -95,18 +105,13 @@ namespace SharpbinV3.Server.Controllers
             var paste = await _pasteService.Get(id);
             if (paste == null) return NotFound();
             if (paste.IsCompressed)
-            {
                 Response.Headers.Append("Content-Encoding", "gzip");
-                return File(paste.Content, "application/octet-stream");
-            }
-            else
-            {
-                return File(paste.Content, "text/plain; charset=utf-8");
-            }
+
+            return File(paste.Content, "text/plain; charset=utf-8");
         }
 
         [HttpPut]
-        [Route("{id}/edit")]
+        [Route("{id}")]
         [Authorize(Policy = "AuthAndNotBanned")]
         public async Task<IActionResult> EditPaste(string id)
         {
@@ -134,7 +139,7 @@ namespace SharpbinV3.Server.Controllers
         }
 
         [HttpPatch]
-        [Route("{id}/modify")]
+        [Route("{id}")]
         [Authorize(Policy = "AuthAndNotBanned")]
         public async Task<IActionResult> ModifyPasteMetadata(string id, [FromBody] UpdatePasteDto request)
         {
@@ -190,8 +195,9 @@ namespace SharpbinV3.Server.Controllers
                 }
             });
         }
+
         [HttpDelete]
-        [Route("{id}/delete")]
+        [Route("{id}")]
         [Authorize(Policy = "AuthAndNotBanned")]
         public async Task<IActionResult> DeletePaste(string id)
         {
@@ -221,6 +227,7 @@ namespace SharpbinV3.Server.Controllers
             var paste = await _pasteService.Get(id);
             if (paste == null) 
                 return NotFound(new { success = false, message = "Paste not found." });
+
             if (_pasteSettings.View_HMAC_Secret == null) 
                 return StatusCode(500, new { success = false, message = "View recording is not configured properly." });
             if (!string.IsNullOrWhiteSpace(_pasteSettings.View_Internal_API_Key)
@@ -235,6 +242,112 @@ namespace SharpbinV3.Server.Controllers
                 return Ok(new { success = true, message = "View already recorded." });
 
             return Ok(new { success = true, message = "Paste view recorded." });
+        }
+
+        [HttpPost]
+        [Route("{id}/report")]
+        [Authorize(Policy = "AuthAndNotBanned")]
+        [EnableRateLimiting("Sensitive")]
+        public async Task<IActionResult> ReportPaste(string id, [FromBody] ReportDto request)
+        {
+            var paste = await _pasteService.Get(id);
+            if (paste == null) 
+                return NotFound(new { success = false, message = "Paste not found." });
+            var user = HttpContext.GetJwtUser();
+            if (user == null) 
+                return Unauthorized(new { success = false, message = "Invalid token." });
+
+            Enum.TryParse<ReportType>(request.ReportType, true, out var reportType);
+            if (!Enum.IsDefined(reportType)) 
+                return BadRequest(new { success = false, message = "Invalid report type." });
+
+            if (!await _verificationService.VerifyAsync(new VerificationContext
+            {
+                Token = request.VerificationToken,
+                Ip = HttpContext.GetRequestIP()
+            }))
+                return BadRequest(new { success = false, message = "Verification failed." });
+
+
+            Report report = await _reportService.CreateReport(user.UUID, ReportTargetType.Paste, paste.PID, reportType, request.Description);
+            if (report == null) 
+                return StatusCode(500, new { success = false, message = "An error occurred while reporting the paste." });
+
+            return Ok(new { success = true, message = "Paste reported successfully.", report = new
+                {
+                    id = report.ReportID,
+                    reportType,
+                    description = report.Description
+                }
+            });
+        }
+
+        [HttpPatch]
+        [Route("{id}/report/{reportId}")]
+        [Authorize(Policy = "AuthAndNotBanned")]
+        [EnableRateLimiting("Sensitive")]
+        public async Task<IActionResult> ModifyPasteReport(string id, int reportId, [FromBody] ReportDto request)
+        {
+            var paste = await _pasteService.Get(id);
+            if (paste == null) 
+                return NotFound(new { success = false, message = "Paste not found." });
+
+            var report = await _reportService.GetReportByID(reportId);
+            if (report == null || report.TargetType != ReportTargetType.Paste || report.PastePID != paste.PID) 
+                return NotFound(new { success = false, message = "Report not found." });
+
+            var user = HttpContext.GetJwtUser();
+            if (user == null) 
+                return Unauthorized(new { success = false, message = "Invalid token." });
+
+            var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
+            if (report.ReporterUUID != user.UUID && !hasPrivilegedRole)
+                return StatusCode(403, new { success = false, message = "You do not have permission to modify this report." });
+
+            Enum.TryParse<ReportType>(request.ReportType, true, out var reportType);
+            if (!Enum.IsDefined(reportType)) 
+                return BadRequest(new { success = false, message = "Invalid report type." });
+
+            report.Type = reportType;
+            report.Description = request.Description;
+
+            var updatedReport = await _reportService.UpdateReport(report);
+            if (updatedReport == null) 
+                return StatusCode(500, new { success = false, message = "An error occurred while updating the report." });
+
+            return Ok(new { success = true, message = "Report updated successfully." });
+        }
+
+        [HttpDelete]
+        [Route("{id}/report/{reportId}")]
+        [Authorize(Policy = "AuthAndNotBanned")]
+        [EnableRateLimiting("Sensitive")]
+        public async Task<IActionResult> DeletePasteReport(string id, int reportId)
+        {
+            var paste = await _pasteService.Get(id);
+            if (paste == null) 
+                return NotFound(new { success = false, message = "Paste not found." });
+
+            var report = await _reportService.GetReportByID(reportId);
+            if (report == null || report.TargetType != ReportTargetType.Paste || report.PastePID != paste.PID) 
+                return NotFound(new { success = false, message = "Report not found." });
+
+            var user = HttpContext.GetJwtUser();
+            if (user == null) 
+                return Unauthorized(new { success = false, message = "Invalid token." });
+
+            var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
+            if (report.ReporterUUID != user.UUID && !hasPrivilegedRole)
+                return StatusCode(403, new { success = false, message = "You do not have permission to delete this report." });
+
+            if (user.Roles.Contains(255) && !user.TotpEnabled && _authSettings.Admins_Require_2FA)
+                return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
+
+            bool result = await _reportService.DeleteReport(report);
+            if (!result) 
+                return StatusCode(500, new { success = false, message = "An error occurred while deleting the report." });
+
+            return Ok(new { success = true, message = "Report deleted successfully." });
         }
 
         [HttpGet]

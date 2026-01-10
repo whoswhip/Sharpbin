@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SharpbinV3.Server.Authorization;
 using SharpbinV3.Server.Data;
+using SharpbinV3.Server.Extensions;
 using SharpbinV3.Server.Services;
 using SharpbinV3.Server.Services.Verification;
 using SharpbinV3.Server.Services.Verification.Providers;
@@ -40,6 +41,7 @@ namespace SharpbinV3.Server
             builder.Services.AddScoped<VerificationService>();
             builder.Services.AddScoped<TotpVerificationProvider>();
             builder.Services.AddHttpClient<IVerificationProvider, TurnstileVerificationProvider>();
+            builder.Services.AddScoped<ReportService>();
             builder.Services.AddMemoryCache();
 
             builder.Services.AddHealthChecks()
@@ -97,16 +99,63 @@ namespace SharpbinV3.Server
 
             builder.Services.AddRateLimiter(options =>
             {
-                options.AddSlidingWindowLimiter("Sliding", opt =>
+                options.AddPolicy("Sliding", httpContext =>
+                    RateLimitPartition.GetSlidingWindowLimiter(httpContext.GetRequestIP(), _ => new SlidingWindowRateLimiterOptions
+                    {
+                        Window = TimeSpan.FromSeconds(10),
+                        PermitLimit = 10,
+                        QueueLimit = 2,
+                        SegmentsPerWindow = 5,
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    }
+                ));
+
+                options.AddPolicy("Strict", httpContext =>
+                    RateLimitPartition.GetTokenBucketLimiter(httpContext.GetRequestIP(), _ => new TokenBucketRateLimiterOptions
+                    {
+                        TokenLimit = 5,
+                        QueueLimit = 0,
+                        TokensPerPeriod = 1,
+                        ReplenishmentPeriod = TimeSpan.FromSeconds(30),
+                        AutoReplenishment = true,
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    }
+                ));
+
+                options.AddPolicy("Sensitive", httpContext =>
+                    RateLimitPartition.GetTokenBucketLimiter(httpContext.GetRequestIP(), _ => new TokenBucketRateLimiterOptions
+                    {
+                        TokenLimit = 3,
+                        QueueLimit = 0,
+                        TokensPerPeriod = 1,
+                        ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+                        AutoReplenishment = true,
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    }
+                ));
+
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
                 {
-                    opt.Window = TimeSpan.FromSeconds(10);
-                    opt.PermitLimit = 10;
-                    opt.QueueLimit = 2;
-                    opt.SegmentsPerWindow = 5;
-                    opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                    var remoteIp = httpContext.GetRequestIP();
+
+                    return RateLimitPartition.GetFixedWindowLimiter(remoteIp, _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 100,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    });
                 });
 
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.OnRejected = async (context, cancellationToken) =>
+                {
+                    await context.HttpContext.Response.WriteAsJsonAsync(new
+                    {
+                        success = false,
+                        Message = "Too many requests. Please try again later."
+                    }, cancellationToken: cancellationToken);
+                };
             });
             builder.Services.AddCors(o =>
             {

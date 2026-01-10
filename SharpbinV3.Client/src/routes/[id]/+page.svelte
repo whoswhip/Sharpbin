@@ -171,7 +171,7 @@
 					const encrypted = await encryptAES(content, password);
 					content = encrypted;
 				}
-				const res = await fetch(`/api/paste/${data.paste.id}/edit`, {
+				const res = await fetch(`/api/paste/${data.paste.id}`, {
 					method: 'PUT',
 					headers: {
 						'Content-Type': 'application/json',
@@ -196,7 +196,7 @@
 					metadata?.title !== data.paste.title) &&
 				metadata !== null
 			) {
-				const res = await fetch(`/api/paste/${data.paste.id}/modify`, {
+				const res = await fetch(`/api/paste/${data.paste.id}`, {
 					method: 'PATCH',
 					headers: {
 						'Content-Type': 'application/json',
@@ -582,7 +582,7 @@
 												if (!token) {
 													return;
 												}
-												const res = await fetch(`/api/paste/${data.paste?.id}/delete`, {
+												const res = await fetch(`/api/paste/${data.paste?.id}`, {
 													method: 'DELETE',
 													headers: {
 														Authorization: `Bearer ${token}`
