@@ -29,14 +29,9 @@ namespace SharpbinV3.Server.Services
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var expiredPastes = db.Pastes.Where(p => p.ExpiresAt != 0 && p.ExpiresAt <= now);
-            if (await expiredPastes.AnyAsync(stoppingToken))
-            {
-                var deletedCount = await expiredPastes.CountAsync(stoppingToken);
-                db.Pastes.RemoveRange(expiredPastes);
-                await db.SaveChangesAsync(stoppingToken);
+            var deletedCount = await expiredPastes.ExecuteDeleteAsync(stoppingToken);
+            if (deletedCount > 0)
                 logger.LogInformation("Deleted {Count} expired pastes", deletedCount);
-            }
-
         }
     }
 }

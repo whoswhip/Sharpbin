@@ -21,10 +21,9 @@ npm install
 
 The application requires an environment variable to point to the backend API. Create a `.env` file in this directory or set the variable in your environment:
 
-```env
-VITE_API_URL=http://localhost:8080
-VITE_ALLOWED_HOSTS=localhost
-```
+- `VITE_API_URL`: The URL of the backend API (e.g., `http://localhost:8080`).
+- `VITE_ALLOWED_HOSTS`: A comma separated list of allowed hosts (e.g., `localhost,sharpbin.whoswhip.dev`)
+- `VIEW_INTERNAL_API_KEY`: Enforces views to be counted/recorded only by the frontend, if set it needs to be the same for both backend and frontend.
 
 ### Running in Development
 

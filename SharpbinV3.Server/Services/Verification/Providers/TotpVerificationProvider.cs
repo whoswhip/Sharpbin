@@ -6,18 +6,11 @@ using SharpbinV3.Server.Data;
 
 namespace SharpbinV3.Server.Services.Verification.Providers
 {
-    public sealed class TotpVerificationProvider : IVerificationProvider
+    public sealed class TotpVerificationProvider(AppDbContext db, IDataProtectionProvider dataProtectionProvider, IMemoryCache cache) : IVerificationProvider
     {
-        private readonly AppDbContext _db;
-        private readonly IDataProtector _protector;
-        private readonly IMemoryCache _cache;
-
-        public TotpVerificationProvider(AppDbContext db, IDataProtectionProvider dataProtectionProvider, IMemoryCache cache)
-        {
-            _db = db;
-            _protector = dataProtectionProvider.CreateProtector("TotpSecret-v1");
-            _cache = cache;
-        }
+        private readonly AppDbContext _db = db;
+        private readonly IDataProtector _protector = dataProtectionProvider.CreateProtector("TotpSecret-v1");
+        private readonly IMemoryCache _cache = cache;
 
         public int Priority => 0;
         public bool IsConfigured => false;
@@ -62,12 +55,10 @@ namespace SharpbinV3.Server.Services.Verification.Providers
             return VerifyCode(secret, code, out _, digits, period, window);
         }
 
-        private bool VerifyCode(byte[] secret, string code, out long matchedStep, int digits = 6, int period = 30, int window = 1)
+        private static bool VerifyCode(byte[] secret, string code, out long matchedStep, int digits = 6, int period = 30, int window = 1)
         {
             var totp = new Totp(secret, step: period, mode: OtpHashMode.Sha1, totpSize: digits);
             return totp.VerifyTotp(code, out matchedStep, new VerificationWindow(previous: window, future: window));
         }
-
-        private string ComputeCode(byte[] key, long timestep, int digits) => new Totp(key, totpSize: digits).ComputeTotp(DateTime.UtcNow);
     }
 }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SharpbinV3.Server.Authorization;
 using SharpbinV3.Server.Data;
@@ -32,6 +33,7 @@ namespace SharpbinV3.Server
             });
             builder.Services.AddSingleton<ICompressionService, CompressionService>();
             builder.Services.AddSingleton<IHostedService, PasteCleanUpService>();
+            builder.Services.AddSingleton<IHostedService, PasteViewCleanUpService>();
             builder.Services.AddScoped<UserService>();
             builder.Services.AddScoped<AuthService>();
             builder.Services.AddScoped<PasteService>();
@@ -43,24 +45,36 @@ namespace SharpbinV3.Server
             builder.Services.AddHealthChecks()
                 .AddDbContextCheck<AppDbContext>("Database");
 
-            builder.Services
-                .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(jwt =>
-                {
-                    var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-                    var key = Encoding.UTF8.GetBytes(jwtSettings["Secret"]!);
+            builder.Services.AddOptions<PasteSettings>()
+                .Bind(builder.Configuration.GetSection("PasteSettings"))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+            builder.Services.AddOptions<JWTSettings>()
+                .Bind(builder.Configuration.GetSection("JwtSettings"))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+            builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection("AuthSettings"));
 
-                    jwt.SaveToken = true;
-                    jwt.TokenValidationParameters = new TokenValidationParameters
+            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer();
+
+            builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+                .Configure<IOptions<JWTSettings>>((options, jwtSettings) =>
+                {
+                    var settings = jwtSettings.Value;
+                    var key = Encoding.UTF8.GetBytes(settings.Secret);
+
+                    options.SaveToken = true;
+                    options.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuerSigningKey = true,
                         IssuerSigningKey = new SymmetricSecurityKey(key),
 
                         ValidateIssuer = true,
-                        ValidIssuer = jwtSettings["Issuer"],
+                        ValidIssuer = settings.Issuer,
 
                         ValidateAudience = true,
-                        ValidAudience = jwtSettings["Audience"],
+                        ValidAudience = settings.Audience,
 
                         RequireExpirationTime = true,
                         ValidateLifetime = true,
@@ -70,6 +84,7 @@ namespace SharpbinV3.Server
                         ValidAlgorithms = [SecurityAlgorithms.HmacSha256]
                     };
                 });
+
             builder.Services.AddAuthorizationBuilder()
                 .AddPolicy("NotBanned", policy =>
                     policy.Requirements.Add(new NotBannedRequirement()));
@@ -100,9 +115,6 @@ namespace SharpbinV3.Server
                      .AllowAnyHeader()
                      .AllowAnyMethod());
             });
-            builder.Services.Configure<PasteSettings>(builder.Configuration.GetSection("PasteSettings"));
-            builder.Services.Configure<JWTSettings>(builder.Configuration.GetSection("JWTSettings"));
-            builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection("AuthSettings"));
 
             builder.Services.AddDataProtection()
                 .PersistKeysToFileSystem(GetDataProtectionKeyDirectory(builder.Environment))

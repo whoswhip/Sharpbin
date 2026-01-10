@@ -50,11 +50,14 @@ You can configure the application using environment variables. When using Docker
 - `PasteSettings__MaxPasteSizeInBytes`: Max Paste Size set in bytes, the default is `1_048_576` (1MB)
 - `PasteSettings__EnablePasteCompression`: Enables/Disables server-side paste compression, `true` by default.
 - `PasteSettings__RequiresVerification`: Enables/Disables CAPTCHA verification when creating pastes, `true` by default.
+- `PasteSettings__View_HMAC_Secret`: Required to securely hash viewer identifiers
+- `PasteSettings__View_Internal_API_Key`: Enforces views to be counted/recorded only by the frontend, if set it needs to be the same for both backend and frontend.
 - `ASPNETCORE_ENVIRONMENT`: Set to `Production` or `Development`.
 
 #### Frontend (SharpbinV3.Client)
 
 - `VITE_API_URL`: The URL of the backend API (e.g., `http://localhost:8080`).
 - `VITE_ALLOWED_HOSTS`: A comma separated list of allowed hosts (e.g., `localhost,sharpbin.whoswhip.dev`)
+- `VIEW_INTERNAL_API_KEY`: Enforces views to be counted/recorded only by the frontend, if set it needs to be the same for both backend and frontend.
 
 The frontend will be accessible at http://localhost:5173.

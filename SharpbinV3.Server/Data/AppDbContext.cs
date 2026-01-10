@@ -7,6 +7,7 @@ namespace SharpbinV3.Server.Data
     {
         public DbSet<User> Users => Set<User>();
         public DbSet<Paste> Pastes => Set<Paste>();
+        public DbSet<PasteView> PasteViews => Set<PasteView>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<UserTotp> UserTotps => Set<UserTotp>();
 
@@ -18,6 +19,12 @@ namespace SharpbinV3.Server.Data
                 .HasOne(p => p.User)
                 .WithMany(u => u.Pastes)
                 .HasForeignKey(p => p.AuthorUUID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PasteView>()
+                .HasOne(pv => pv.Paste)
+                .WithMany(p => p.PasteViews)
+                .HasForeignKey(pv => pv.PastePID)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<RefreshToken>()

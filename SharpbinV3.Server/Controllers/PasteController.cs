@@ -213,6 +213,30 @@ namespace SharpbinV3.Server.Controllers
             return Ok(new { success = true, message = "Paste deleted successfully." });
         }
 
+        [HttpPost]
+        [Route("{id}/view")]
+        [Authorize(Policy = "NotBanned")]
+        public async Task<IActionResult> RecordPasteView(string id)
+        {
+            var paste = await _pasteService.Get(id);
+            if (paste == null) 
+                return NotFound(new { success = false, message = "Paste not found." });
+            if (_pasteSettings.View_HMAC_Secret == null) 
+                return StatusCode(500, new { success = false, message = "View recording is not configured properly." });
+            if (!string.IsNullOrWhiteSpace(_pasteSettings.View_Internal_API_Key)
+                && _pasteSettings.View_Internal_API_Key != Request.Headers["X-Internal-API-Key"])
+                return Unauthorized(new { success = false, message = "Invalid API key." });
+
+            var result = await _pasteService.RecordView(paste, HttpContext);
+
+            if (result.paste is null && !result.alreadyExists) 
+                return StatusCode(500, new { success = false, message = "An error occurred while recording the paste view." });
+            else if (result.alreadyExists) 
+                return Ok(new { success = true, message = "View already recorded." });
+
+            return Ok(new { success = true, message = "Paste view recorded." });
+        }
+
         [HttpGet]
         [Route("recent")]
         public async Task<IActionResult> GetRecentPastes()

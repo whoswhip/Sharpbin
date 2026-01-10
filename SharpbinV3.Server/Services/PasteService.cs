@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Options;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Data.Entities;
+using SharpbinV3.Server.Extensions;
 using SharpbinV3.Server.Settings;
 using System.Text;
 
@@ -78,6 +79,37 @@ namespace SharpbinV3.Server.Services
             _db.Pastes.Update(paste);
             var result = await _db.SaveChangesAsync();
             return result > 0;
+        }
+        public async Task<(Paste? paste, bool alreadyExists)> RecordView(Paste paste, HttpContext context)
+        {
+            if (paste == null) return (null, false);
+            if (context == null) return (null, false);
+            if (_pasteSettings.View_HMAC_Secret == null) return (null, false);
+
+            var viewerIp = context.GetRequestIP();
+            var viewerUserAgent = context.Request.Headers.UserAgent.ToString();
+            JwtUser? viewerUser = context.GetJwtUser();
+
+            string viewerHash;
+            if (viewerUser != null)
+                viewerHash = Utilities.ComputeHmacSha256(_pasteSettings.View_HMAC_Secret, viewerUser.UUID.ToString());
+            else
+                viewerHash = Utilities.ComputeHmacSha256(_pasteSettings.View_HMAC_Secret, viewerIp + viewerUserAgent);
+
+            if (await _db.PasteViews.AnyAsync(pv => pv.PastePID == paste.PID && pv.ViewerHash == viewerHash))
+                return (null, true);
+
+            _db.PasteViews.Add(new PasteView
+            {
+                PastePID = paste.PID,
+                ViewerHash = viewerHash,
+                ViewedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            });
+
+            paste.Views += 1;
+            _db.Pastes.Update(paste);
+            var result = await _db.SaveChangesAsync();
+            return (result > 0 ? paste : null, result > 0);
         }
         public async Task<Paste?> Get(string id)
         {

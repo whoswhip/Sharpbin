@@ -8,7 +8,6 @@ namespace SharpbinV3.Server.Data.Entities
     [Index(nameof(ID), IsUnique = true)]
     [Index(nameof(AuthorUUID))]
     [Index(nameof(ExpiresAt))]
-    [Index(nameof(Views))]
     [Index(nameof(Visibility))]
     public sealed class Paste
     {
@@ -33,5 +32,7 @@ namespace SharpbinV3.Server.Data.Entities
         public int Visibility { get; set; } = 0; // 0 = public, 1 = unlisted, 2 = private (encrypted pastes handled on frontend)
 
         public long ExpiresAt { get; set; } // timestamp of when the paste expires, or 0 for never
+
+        public List<PasteView> PasteViews { get; set; } = [];
     }
 }
