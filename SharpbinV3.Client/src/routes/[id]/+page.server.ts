@@ -33,16 +33,19 @@ export const load: PageServerLoad = async ({ params, fetch, url, cookies }) => {
 		if (viewJson.success === true && viewJson.message !== 'View already recorded.') {
 			pasteData.views += 1;
 		}
-	}
-	else {
-		console.error(`Failed to increment view count for paste ${id}, status code ${viewed.status}: ${await viewed.text()}`);
+	} else {
+		console.error(
+			`Failed to increment view count for paste ${id}, status code ${viewed.status}: ${await viewed.text()}`
+		);
 		if (apiKey === '') {
-			console.error('The API key for internal requests is not set. Please configure it in the environment variables.');
+			console.error(
+				'The API key for internal requests is not set. Please configure it in the environment variables.'
+			);
 		}
 	}
 
 	const pasteContent = await fetch(`/api/paste/${id}/raw`);
-	const pasteOptions = await fetch('/api/paste/info');	
+	const pasteOptions = await fetch('/api/paste/info');
 	const options = await pasteOptions.json();
 	const content = await pasteContent.text();
 
