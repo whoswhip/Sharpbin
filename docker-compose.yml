@@ -13,6 +13,8 @@ services:
       AuthSettings__First_User_Admin: ${AuthSettings__First_User_Admin}
       AuthSettings__CF_Turnstile_SecretKey: ${AuthSettings__CF_Turnstile_SecretKey}
       AuthSettings__CF_Turnstile_SiteKey: ${AuthSettings__CF_Turnstile_SiteKey}
+      PasteSettings__View_Internal_API_Key: ${PasteSettings__View_Internal_API_Key}
+      PasteSettings__View_HMAC_Secret: ${PasteSettings__View_HMAC_Secret}
 
     volumes:
       - sharpbin-data:/app/data
@@ -36,6 +38,9 @@ services:
     environment:
       VITE_API_URL: http://backend:8080
       VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-"localhost"}
+      PasteSettings__View_Internal_API_Key: ${PasteSettings__View_Internal_API_Key}
+      VIEW_INTERNAL_API_KEY: ${VIEW_INTERNAL_API_KEY}
+
     ports:
       - "5173:5173"
     networks:
