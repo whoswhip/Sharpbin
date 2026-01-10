@@ -15,11 +15,12 @@ export const load: PageServerLoad = async ({ params, fetch, url, cookies }) => {
 	}
 
 	const token = getServerToken(cookies);
+	const apiKey = env.VIEW_INTERNAL_API_KEY ?? env.View_HMAC_Internal_API_Key ?? '';
 
 	const viewed = await fetch(`/api/paste/${id}/view`, {
 		method: 'POST',
 		headers: {
-			'X-Internal-API-Key': env.VIEW_INTERNAL_API_KEY ?? env.View_HMAC_Internal_API_Key ?? '',
+			'X-Internal-API-Key': apiKey,
 			Authorization: token ? `Bearer ${token}` : ''
 		}
 	});
@@ -33,6 +34,9 @@ export const load: PageServerLoad = async ({ params, fetch, url, cookies }) => {
 	}
 	else {
 		console.error(`Failed to increment view count for paste ${id}: ${await viewed.text()}`);
+		if (apiKey === '') {
+			console.error('The API key for internal requests is not set. Please configure it in the environment variables.');
+		}
 	}
 
 	const pasteContent = await fetch(`/api/paste/${id}/raw`);
