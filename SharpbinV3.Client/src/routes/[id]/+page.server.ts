@@ -3,10 +3,12 @@ import type { Paste } from '$lib/types/paste';
 import { getServerToken } from '$lib/utils/auth';
 import { env } from '$env/dynamic/private';
 
+const apiUrl = process.env.VITE_API_URL || 'http://localhost:5050';
+
 export const load: PageServerLoad = async ({ params, fetch, url, cookies }) => {
 	const { id } = params;
 
-	const paste = await fetch(`/api/paste/${id}`);
+	const paste = await fetch(`${apiUrl}/api/paste/${id}`);
 	if (paste.status === 404) {
 		return {
 			status: 404,
@@ -17,7 +19,7 @@ export const load: PageServerLoad = async ({ params, fetch, url, cookies }) => {
 	const token = getServerToken(cookies);
 	const apiKey = env.VIEW_INTERNAL_API_KEY ?? env.View_HMAC_Internal_API_Key ?? '';
 
-	const viewed = await fetch(`/api/paste/${id}/view`, {
+	const viewed = await fetch(`${apiUrl}/api/paste/${id}/view`, {
 		method: 'POST',
 		headers: {
 			'X-Internal-API-Key': apiKey,
