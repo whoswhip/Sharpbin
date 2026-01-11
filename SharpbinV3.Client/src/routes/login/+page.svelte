@@ -69,13 +69,13 @@
 			window.location.href = '/';
 		} else {
 			const resData = await res.json();
+			if (window.turnstile) {
+				window.turnstile.reset();
+			}
 			if (resData.errors) {
 				const messages = Object.values(resData.errors).flat();
 				error = messages.join('\n');
 			} else {
-				if (window.turnstile) {
-					window.turnstile.reset();
-				}
 				if (resData.message === 'TOTP code is required.') {
 					totpEnabled = true;
 				}
