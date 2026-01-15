@@ -10,6 +10,7 @@ namespace SharpbinV3.Server.Data.Entities
     [Index(nameof(UserUUID))]
     public class Report
     {
+        [Key]
         public int? ReportID { get; set; }
 
         public ReportType Type { get; set; }

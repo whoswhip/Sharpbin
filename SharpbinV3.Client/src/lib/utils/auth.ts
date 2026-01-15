@@ -1,5 +1,6 @@
 import { browser } from '$app/environment';
 import type { Cookies } from '@sveltejs/kit';
+import { user } from '$lib/stores/user';
 
 const TOKEN_KEY = 'token';
 const REFRESH_TOKEN_KEY = 'refreshToken';
@@ -36,6 +37,7 @@ export function clearTokens() {
 	console.log('Clearing tokens');
 	document.cookie = `${TOKEN_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 	document.cookie = `${REFRESH_TOKEN_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+	user.set(null);
 }
 
 export async function refreshTokenIfNeeded() {

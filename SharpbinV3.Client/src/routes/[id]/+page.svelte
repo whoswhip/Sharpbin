@@ -18,7 +18,8 @@
 		Download,
 		Copy,
 		Check,
-		CalendarCog
+		CalendarCog,
+		Flag
 	} from '@lucide/svelte/icons/index';
 	import {
 		formatBytes,
@@ -34,13 +35,11 @@
 	import { getToken } from '$lib/utils/auth';
 	import { user } from '$lib/stores/user';
 	import Dropdown from '$lib/components/Dropdown.svelte';
-	import Modal from '$lib/components/Modal.svelte';
+	import { openModal } from '$lib/stores/modal';
 	import type { Paste } from '$lib/types/paste';
 	export let data: PageData;
 
-	let showModal = false;
-	let modalResolve: ((value: string) => void) | null = null;
-	let modalMode: 'decrypt' | 'encrypt' | 'confirm' = 'decrypt';
+	let reportSiteKey: string | null = null;
 	let editing = false;
 	let editContent: string | null = null;
 	let editMetadata: Paste | null = data.paste ? { ...data.paste } : null;
@@ -60,6 +59,7 @@
 			: false;
 
 	let interval: ReturnType<typeof setInterval> | null = null;
+
 	const syntaxOptions =
 		data.options?.syntaxes?.map((lang: string) => ({
 			value: lang,
@@ -85,6 +85,13 @@
 			value: visibility.value,
 			label: visibility.displayName
 		})) ?? [];
+
+	const modalTitleMap = {
+		decrypt: 'Decrypt Paste',
+		encrypt: 'Encrypt Paste',
+		confirm: 'Are you sure you want to delete this paste?',
+		report: 'Report Paste'
+	};
 
 	onMount(() => {
 		interval = setInterval(() => {
@@ -230,12 +237,26 @@
 		}
 	}
 
-	async function promptUser(mode: 'decrypt' | 'encrypt' | 'confirm' = 'decrypt'): Promise<string> {
-		return new Promise((resolve) => {
-			showModal = true;
-			modalResolve = resolve;
-			modalMode = mode;
-		});
+	async function promptUser(mode: 'decrypt' | 'encrypt' | 'confirm' | 'report' = 'decrypt') {
+		const title = modalTitleMap[mode];
+		if (mode === 'confirm') {
+			const ok = await openModal<boolean>({ mode, title, cancelValue: false });
+			return ok ? 'true' : '';
+		}
+		if (mode === 'report') {
+			await openModal({
+				mode,
+				title,
+				reportTarget: 'paste',
+				reportTargetId: data.paste?.id ?? null,
+				reportSiteKey,
+				cancelValue: ''
+			});
+			return '';
+		}
+		const value = await openModal<string>({ mode, title, error: decryptError, cancelValue: '' });
+		decryptError = '';
+		return value;
 	}
 
 	onMount(async () => {
@@ -280,6 +301,9 @@
 	});
 
 	$: if (data?.paste && (data.paste.visibility !== 2 || decryptedContent !== null)) renderCode();
+	$: reportSiteKey =
+		(data as unknown as { authOptions?: { cf_turnstile_site_key?: string | null } }).authOptions
+			?.cf_turnstile_site_key ?? null;
 </script>
 
 <svelte:head>
@@ -369,6 +393,17 @@
 							>{data.paste.views} view{data.paste.views !== 1 ? 's' : ''}</span
 						>
 					</div>
+
+					{#if data.paste.reportCount !== null && data.paste.reportCount > 0}
+						<div class="flex shrink-0 items-center">
+							<Flag class="mr-2 h-6 w-6 text-neutral-400" />
+							<a
+								class="text-neutral-400 hover:text-neutral-200 hover:underline"
+								href={resolve(`/reports?target=pastes&pasteId=${data.paste.id}`)}
+								>{data.paste.reportCount} report{data.paste.reportCount !== 1 ? 's' : ''}</a
+							>
+						</div>
+					{/if}
 
 					<div class="flex shrink-0 items-center">
 						<CalendarDays class="mr-2 h-6 w-6 text-neutral-400" />
@@ -558,6 +593,18 @@
 
 							<span class="text-neutral-300">Download</span>
 						</button>
+						{#if $user !== null && $user.uuid !== data.paste?.author?.uuid}
+							<button
+								type="button"
+								class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-amber-600/50"
+								on:click={() => {
+									promptUser('report');
+								}}
+							>
+								<Flag class="mr-1 h-5 w-5 text-amber-400" />
+								<span class="text-amber-300">Report</span>
+							</button>
+						{/if}
 						{#if $user && ($user.uuid === data.paste?.author?.uuid || $user.roles.some((r) => r === 1 || r === 255))}
 							{#if !editing}
 								<button
@@ -660,33 +707,6 @@
 			<h2 class="mt-2 text-center text-xl">The paste you are looking for does not exist.</h2>
 		{/if}
 	</div>
-
-	<Modal
-		bind:show={showModal}
-		mode={modalMode}
-		error={decryptError}
-		onConfirm={(value) => {
-			if (modalResolve) {
-				modalResolve(String(value));
-				modalResolve = null;
-			}
-			showModal = false;
-			decryptError = '';
-		}}
-		onCancel={() => {
-			showModal = false;
-			decryptError = '';
-			if (modalResolve) {
-				modalResolve('');
-				modalResolve = null;
-			}
-		}}
-		title={modalMode === 'decrypt'
-			? 'Decrypt Paste'
-			: modalMode === 'encrypt'
-				? 'Encrypt Paste'
-				: 'Are you sure you want to delete this paste?'}
-	/>
 
 	<style>
 		.hljs {

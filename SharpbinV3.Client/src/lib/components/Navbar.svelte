@@ -25,6 +25,12 @@
 		<a href={resolve('/')} class="text-xl font-bold text-white hover:text-neutral-300">Sharpbin</a>
 		{#if $user}
 			<div class="ml-auto flex items-center space-x-4">
+				{#if $user.roles.includes(1) || $user.roles.includes(255)}
+					<a
+						href={resolve('/reports')}
+						class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800">Reports</a
+					>
+				{/if}
 				<a
 					href={resolve(`/user/${$user.username}`)}
 					class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800">Profile</a

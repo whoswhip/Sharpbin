@@ -22,13 +22,13 @@ namespace SharpbinV3.Server.Extensions
 
             var claims = context.User.Claims;
 
-            var uuidClaim = claims.FirstOrDefault(c => c.Type == "UUID")?.Value;
+            var uuidClaim = claims.FirstOrDefault(c => c.Type == "uuid")?.Value;
             if (string.IsNullOrEmpty(uuidClaim) || !Guid.TryParse(uuidClaim, out var uuid))
                 return null;
 
-            var username = claims.FirstOrDefault(c => c.Type == "Username")?.Value ?? "";
-            var displayName = claims.FirstOrDefault(c => c.Type == "DisplayName")?.Value ?? "";
-            var totpEnabled = claims.FirstOrDefault(c => c.Type == "TOTP_Enabled")?.Value == "True";
+            var username = claims.FirstOrDefault(c => c.Type == "username")?.Value ?? "";
+            var displayName = claims.FirstOrDefault(c => c.Type == "displayname")?.Value ?? "";
+            var totpEnabled = claims.FirstOrDefault(c => c.Type == "totp_enabled")?.Value == "True";
 
             var roles = claims
                 .Where(c => c.Type == ClaimTypes.Role)

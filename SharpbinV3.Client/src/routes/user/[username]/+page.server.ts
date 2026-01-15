@@ -1,34 +1,97 @@
 import type { PageServerLoad } from './$types';
+import { error } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
 import { getServerToken } from '$lib/utils/auth';
 import type { User } from '$lib/types/user';
+import type { Paste } from '$lib/types/paste';
+import type { Pagination } from '$lib/types/pagination';
+import type { Report, ReportListResponse } from '$lib/types/report';
 
-const apiUrl = process.env.VITE_API_URL || 'http://localhost:5050';
+const API_URL = env.VITE_API_URL ?? 'http://localhost:5050';
 
-export const load: PageServerLoad = async ({ params, fetch, cookies, url }) => {
-	const { username } = params;
-	const token = getServerToken(cookies);
-
-	const res = await fetch(`${apiUrl}/api/user/${username}`, {
-		headers: {
-			Authorization: token ? `Bearer ${token}` : ''
+function decodeJwtRoles(token?: string | null): number[] {
+	try {
+		if (!token) return [];
+		const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+		const roles = payload?.role;
+		if (Array.isArray(roles)) {
+			return roles.map((r: string) => parseInt(r, 10)).filter((r: number) => !isNaN(r));
 		}
+		return [];
+	} catch {
+		return [];
+	}
+}
+
+function decodeJwtUuid(token?: string | null): string | null {
+	try {
+		if (!token) return null;
+		const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+		const uuid = payload?.uuid;
+		return typeof uuid === 'string' ? uuid : null;
+	} catch {
+		return null;
+	}
+}
+
+export const load: PageServerLoad = async ({ params, fetch, cookies, url, parent }) => {
+	const token = getServerToken(cookies);
+	const { username } = params;
+	const { options } = await parent();
+	const jwtUuid = decodeJwtUuid(token);
+
+	const res = await fetch(`${API_URL}/api/user/${username}`, {
+		headers: token ? { Authorization: `Bearer ${token}` } : undefined
 	});
 
-	if (res.status === 500) {
-		return {
-			status: 500,
-			error: { message: 'Internal server error' }
+	if (!res.ok) {
+		const { message } = await res.json().catch(() => ({}));
+		throw error(res.status, message ?? 'Request failed');
+	}
+
+	const { user, pastes, pagination, reports, reportsPagination } = (await res.json()) as {
+		user: User;
+		pastes: Paste[];
+		pagination: Pagination;
+		reports?: Report[];
+		reportsPagination?: Pagination;
+	};
+
+	const isOwner = jwtUuid ? user.uuid === jwtUuid : false;
+	let reportsTarget: ReportListResponse | null = null;
+	let reportsSubmitted: ReportListResponse | null = null;
+	const roles = token ? decodeJwtRoles(token) : [];
+	const canModerate = roles.includes(255) || roles.includes(1);
+
+	if (isOwner && reports && reportsPagination) {
+		reportsSubmitted = {
+			reports,
+			pagination: reportsPagination
 		};
 	}
 
-	const json = await res.json();
-
-	if (res.status !== 200) {
-		return {
-			status: res.status,
-			error: { message: json.message || 'An error occurred' }
-		};
+	if (token && canModerate && (!reportsSubmitted || !isOwner)) {
+		const submittedRes = await fetch(`${API_URL}/api/user/${user.uuid}/reports/submitted`, {
+			headers: { Authorization: `Bearer ${token}` }
+		});
+		if (submittedRes.ok) reportsSubmitted = await submittedRes.json();
 	}
-	const user = json as User;
-	return { user, url: url.href };
+
+	if (token && !isOwner) {
+		if (canModerate) {
+			const r = await fetch(`${API_URL}/api/user/${user.uuid}/reports`, {
+				headers: { Authorization: `Bearer ${token}` }
+			});
+			if (r.ok) reportsTarget = await r.json();
+		}
+	}
+
+	return {
+		user,
+		pastes: { pastes, pagination },
+		reportsTarget,
+		reportsSubmitted,
+		url: url.href,
+		authOptions: options
+	};
 };

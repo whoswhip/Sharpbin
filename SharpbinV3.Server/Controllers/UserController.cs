@@ -6,6 +6,8 @@ using Microsoft.Extensions.Options;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Data.Entities;
 using SharpbinV3.Server.DTOs;
+using SharpbinV3.Server.DTOs.Paste;
+using SharpbinV3.Server.DTOs.Report;
 using SharpbinV3.Server.DTOs.User;
 using SharpbinV3.Server.Extensions;
 using SharpbinV3.Server.Services;
@@ -31,26 +33,26 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> GetByUsername(string username, [FromQuery] int page = 1)
         {
             var user = await _userService.GetByUsername(username, withPastes: true);
-            return user == null ? NotFound(new { success = false, message = "User not found." }) : Ok(await BuildUserResponse(user, page));
+            return user == null ? NotFound(new { success = false, message = "User not found." }) : await BuildUserResponse(user, page);
         }
 
         [HttpGet("uuid/{uuid}")]
         public async Task<IActionResult> GetByUUID(Guid uuid, [FromQuery] int page = 1)
         {
             var user = await _userService.GetByUUID(uuid, withPastes: true);
-            return user == null ? NotFound(new { success = false, message = "User not found."}) : Ok(await BuildUserResponse(user, page));
+            return user == null ? NotFound(new { success = false, message = "User not found." }) : await BuildUserResponse(user, page);
         }
 
         [HttpGet("me")]
         [Authorize]
         public async Task<IActionResult> GetMe([FromQuery] int page = 1)
         {
-            var userUUID = HttpContext.User?.FindFirst("UUID")?.Value;
+            var userUUID = HttpContext.User?.FindFirst("uuid")?.Value;
             if (userUUID is null)
                 return Unauthorized(new { success = false, message = "Invalid token." });
 
             var user = await _userService.GetByUUID(Guid.Parse(userUUID), withPastes: true);
-            return user == null ? NotFound(new { success = false, message = "User not found."}) : Ok(await BuildUserResponse(user, page));
+            return user == null ? NotFound(new { success = false, message = "User not found." }) : await BuildUserResponse(user, page);
         }
 
         [HttpPatch("uuid/{uuid}")]
@@ -62,7 +64,7 @@ namespace SharpbinV3.Server.Controllers
                 return BadRequest(ModelState);
 
             var jwtUser = HttpContext.GetJwtUser();
-            if (jwtUser == null) 
+            if (jwtUser == null)
                 return Unauthorized(new { success = false, message = "Invalid token." });
 
             var user = await _userService.GetByUUID(uuid);
@@ -107,11 +109,11 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> DeleteByUUID(Guid uuid, [FromBody] DeleteUserDto dto)
         {
             var jwtUser = HttpContext.GetJwtUser();
-            if (jwtUser == null) 
+            if (jwtUser == null)
                 return Unauthorized(new { success = false, message = "Invalid token." });
 
             var user = await _userService.GetByUUID(uuid);
-            if (user == null) 
+            if (user == null)
                 return NotFound(new { success = false, message = "User not found." });
 
             if (!jwtUser.Roles.Any(r => r == 255) && user.UUID != jwtUser.UUID)
@@ -154,11 +156,11 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> ReportUser(Guid uuid, [FromBody] ReportDto request)
         {
             var reporter = HttpContext.GetJwtUser();
-            if (reporter == null) 
+            if (reporter == null)
                 return Unauthorized(new { success = false, message = "Invalid token." });
 
             var reportedUser = await _userService.GetByUUID(uuid);
-            if (reportedUser == null) 
+            if (reportedUser == null)
                 return NotFound(new { success = false, message = "User not found." });
             if (reportedUser.UUID == reporter.UUID)
                 return BadRequest(new { success = false, message = "You cannot report yourself." });
@@ -180,12 +182,18 @@ namespace SharpbinV3.Server.Controllers
             return Ok(new
             {
                 success = true,
-                message = "Paste reported successfully.",
-                report = new
+                message = "User reported successfully.",
+                report = new ReportResponseDto
                 {
-                    id = report.ReportID,
-                    reportType,
-                    description = report.Description
+                    ReportID = report.ReportID,
+                    Type = report.Type,
+                    Status = report.Status,
+                    Description = report.Description,
+                    CreatedAt = report.CreatedAt,
+                    UpdatedAt = report.UpdatedAt,
+                    ReporterUUID = report.ReporterUUID,
+                    TargetType = report.TargetType,
+                    UserUUID = report.UserUUID
                 }
             });
         }
@@ -197,11 +205,11 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> UpdateUserReport(Guid uuid, int reportId, [FromBody] ReportDto request)
         {
             var jwtUser = HttpContext.GetJwtUser();
-            if (jwtUser == null) 
+            if (jwtUser == null)
                 return Unauthorized(new { success = false, message = "Invalid token." });
 
             var user = await _userService.GetByUUID(uuid);
-            if (user == null) 
+            if (user == null)
                 return NotFound(new { success = false, message = "User not found." });
 
             var report = await _reportService.GetReportByID(reportId);
@@ -226,11 +234,11 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> DeleteUserReport(Guid uuid, int reportId)
         {
             var jwtUser = HttpContext.GetJwtUser();
-            if (jwtUser == null) 
+            if (jwtUser == null)
                 return Unauthorized(new { success = false, message = "Invalid token." });
 
             var user = await _userService.GetByUUID(uuid);
-            if (user == null) 
+            if (user == null)
                 return NotFound(new { success = false, message = "User not found." });
 
             var report = await _reportService.GetReportByID(reportId);
@@ -244,9 +252,89 @@ namespace SharpbinV3.Server.Controllers
             return Ok(new { success = true, message = "Report deleted successfully." });
         }
 
-        private async Task<object> BuildUserResponse(User user, int page = 1)
+        [HttpGet]
+        [Authorize]
+        [Route("{uuid}/reports")]
+        public async Task<IActionResult> GetUserReports(Guid uuid, [FromQuery] ReportQuery request)
         {
-            var isAuthenticatedUser = HttpContext.User?.FindFirst("UUID")?.Value == user.UUID.ToString();
+            var jwtUser = HttpContext.GetJwtUser();
+            if (jwtUser == null)
+                return Unauthorized(new { success = false, message = "Invalid token." });
+
+            var user = await _userService.GetByUUID(uuid);
+            if (user == null)
+                return NotFound(new { success = false, message = "User not found." });
+
+            if (!jwtUser.Roles.Any(r => r == 1 || r == 255))
+                return StatusCode(403, new { success = false, message = "You do not have permission to view this user's reports." });
+
+            var query = request with
+            {
+                UserUUID = user.UUID,
+                Page = Math.Max(request.Page, 1),
+                PageSize = Math.Clamp(request.PageSize, 1, 100)
+            };
+            var reports = await _reportService.GetUserReports(query);
+            var totalCount = await _reportService.GetReportCount(query);
+            var totalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize);
+            return Ok(new
+            {
+                Reports = reports,
+                Pagination = new
+                {
+                    query.Page,
+                    query.PageSize,
+                    TotalCount = totalCount,
+                    TotalPages = totalPages
+                }
+            });
+        }
+
+        [HttpGet]
+        [Authorize]
+        [Route("{uuid}/reports/submitted")]
+        public async Task<IActionResult> GetUserSubmittedReports(Guid uuid, [FromQuery] ReportQuery request)
+        {
+            var jwtUser = HttpContext.GetJwtUser();
+            if (jwtUser == null)
+                return Unauthorized(new { success = false, message = "Invalid token." });
+
+            var user = await _userService.GetByUUID(uuid);
+            if (user == null)
+                return NotFound(new { success = false, message = "User not found." });
+
+            var isOwner = user.UUID == jwtUser.UUID;
+            var hasPrivilegedRole = jwtUser.Roles.Any(r => r == 1 || r == 255);
+            if (!isOwner && !hasPrivilegedRole)
+                return StatusCode(403, new { success = false, message = "You do not have permission to view this user's submitted reports." });
+
+            var query = request with
+            {
+                ReporterUUID = user.UUID,
+                Page = Math.Max(request.Page, 1),
+                PageSize = Math.Clamp(request.PageSize, 1, 100)
+            };
+
+            var reports = await _reportService.GetReports(query);
+            var totalCount = await _reportService.GetReportCount(query);
+            var totalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize);
+
+            return Ok(new
+            {
+                Reports = reports,
+                Pagination = new
+                {
+                    query.Page,
+                    query.PageSize,
+                    TotalCount = totalCount,
+                    TotalPages = totalPages
+                }
+            });
+        }
+
+        private async Task<IActionResult> BuildUserResponse(User user, int page = 1)
+        {
+            var isAuthenticatedUser = HttpContext.User?.FindFirst("uuid")?.Value == user.UUID.ToString();
             var pasteQuery = _db.Pastes.AsNoTracking().Where(p => p.AuthorUUID == user.UUID);
             if (!isAuthenticatedUser)
             {
@@ -268,18 +356,18 @@ namespace SharpbinV3.Server.Controllers
                 .ThenByDescending(p => p.ID)
                 .Skip(skip)
                 .Take(pageSize)
-                .Select(p => new
+                .Select(p => new PasteResponseDto
                 {
-                    p.ID,
-                    p.UUID,
-                    p.Title,
-                    p.Syntax,
-                    p.Size,
-                    p.TrueSize,
-                    p.Views,
-                    p.Visibility,
-                    p.EditedAt,
-                    p.ExpiresAt
+                    ID = p.ID,
+                    UUID = p.UUID,
+                    Title = p.Title,
+                    Syntax = p.Syntax,
+                    Size = p.Size,
+                    TrueSize = p.TrueSize,
+                    Views = p.Views,
+                    Visibility = p.Visibility,
+                    EditedAt = p.EditedAt,
+                    ExpiresAt = p.ExpiresAt
                 })
                 .ToListAsync();
 
@@ -293,31 +381,54 @@ namespace SharpbinV3.Server.Controllers
 
             if (isAuthenticatedUser)
             {
-                return new
+                var reports = await _reportService.GetReports(new ReportQuery
                 {
-                    user.UID,
-                    user.Username,
-                    user.UUID,
-                    user.DisplayName,
-                    user.Email,
-                    user.LastLogin,
-                    user.Roles,
-                    user.Visibility,
+                    ReporterUUID = user.UUID,
+                    Page = page,
+                    PageSize = pageSize
+                });
+                var reportsCount = await _reportService.GetReportCountByReporter(user.UUID);
+
+                return Ok(new
+                {
+                    User = new UserResponseDto
+                    {
+                        UID = user.UID,
+                        Username = user.Username,
+                        UUID = user.UUID,
+                        DisplayName = user.DisplayName,
+                        Email = user.Email,
+                        LastLogin = user.LastLogin,
+                        Roles = user.Roles,
+                        Visibility = user.Visibility
+                    },
                     Pastes = pastes,
-                    Pagination = pagination
-                };
+                    Reports = reports,
+                    Pagination = pagination,
+                    ReportsPagination = new
+                    {
+                        Page = page,
+                        PageSize = pageSize,
+                        TotalCount = reportsCount,
+                        TotalPages = (int)Math.Ceiling(reportsCount / (double)pageSize)
+                    }
+                });
             }
 
-            return new
+            return Ok(new
             {
-                user.UID,
-                user.Username,
-                user.UUID,
-                user.DisplayName,
-                user.Roles,
+                User = new UserSimpleDto
+                {
+                    UID = user.UID,
+                    Username = user.Username,
+                    UUID = user.UUID,
+                    DisplayName = user.DisplayName,
+                    Roles = user.Roles,
+                    Visibility = user.Visibility
+                },
                 Pastes = pastes,
                 Pagination = pagination
-            };
+            });
         }
     }
 }

@@ -60,14 +60,16 @@ namespace SharpbinV3.Server.Controllers
             return Ok(new
             {
                 message = "User registered successfully.",
-                user = new
+                user = new UserResponseDto
                 {
-                    user.UID,
-                    user.UUID,
-                    user.Username,
-                    user.Email,
-                    user.DisplayName,
-                    user.Roles
+                    UID = user.UID,
+                    UUID = user.UUID,
+                    Username = user.Username,
+                    DisplayName = user.DisplayName,
+                    Email = user.Email,
+                    Roles = user.Roles,
+                    Visibility = user.Visibility,
+                    LastLogin = user.LastLogin
                 }
             }
             );
@@ -93,7 +95,7 @@ namespace SharpbinV3.Server.Controllers
                 user = await _userService.GetByUsername(request.Username);
             if (user == null && !string.IsNullOrEmpty(request.Email))
                 user = await _userService.GetByEmail(request.Email);
-            
+
             if (user == null || !Bcrypt.Verify(request.Password, user.PasswordHash))
                 return BadRequest(new { success = false, message = "Invalid username/email or password." });
 
@@ -112,7 +114,13 @@ namespace SharpbinV3.Server.Controllers
             }
             var token = _authService.GenerateJWTToken(user);
             await _authService.UpdateLoginTime(user);
-            return Ok(new { success = true, token.Result });
+            var result = await token;
+            return Ok(new LoginResponseDto
+            {
+                Success = true,
+                Token = result.Token ?? string.Empty,
+                RefreshToken = result.RefreshToken ?? string.Empty
+            });
         }
         [HttpPost]
         [Route("refresh")]
@@ -122,15 +130,15 @@ namespace SharpbinV3.Server.Controllers
             try
             {
                 var jwtResult = await _authService.RefreshJWTToken(request.Token, request.RefreshToken);
-                return Ok(new
+                return Ok(new TokenRefreshResponseDto
                 {
-                    success = jwtResult?.Success,
-                    message = jwtResult?.Errors != null && jwtResult.Errors.Count > 0 ? string.Join("; ", jwtResult.Errors) : "Token refreshed successfully.",
-                    token = new
+                    Success = jwtResult?.Success ?? false,
+                    Message = jwtResult?.Errors != null && jwtResult.Errors.Count > 0 ? string.Join("; ", jwtResult.Errors) : "Token refreshed successfully.",
+                    Token = jwtResult != null ? new TokenData
                     {
-                        jwtResult?.Token,
-                        jwtResult?.RefreshToken
-                    }
+                        Token = jwtResult.Token,
+                        RefreshToken = jwtResult.RefreshToken
+                    } : null
                 });
             }
             catch (Exception ex)
@@ -173,7 +181,7 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> EnableTotp([FromBody] EnableTotpDto request)
         {
             var uuidClaim = User.Claims.FirstOrDefault(c => c.Type == "UUID")?.Value;
-            if (string.IsNullOrEmpty(uuidClaim)) 
+            if (string.IsNullOrEmpty(uuidClaim))
                 return Unauthorized(new { success = false, message = "Invalid token." });
 
             var uuid = Guid.Parse(uuidClaim);

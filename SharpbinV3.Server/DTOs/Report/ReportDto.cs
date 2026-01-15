@@ -1,11 +1,11 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SharpbinV3.Server.DTOs
+namespace SharpbinV3.Server.DTOs.Report
 {
     public class ReportDto
     {
         [Required]
-        [MaxLength(1000)]
+        [MinLength(12), MaxLength(1000)]
         public string Description { get; set; } = string.Empty;
         [Required]
         public string ReportType { get; set; } = string.Empty; // e.g., "Spam", "Abuse", etc.

@@ -12,5 +12,6 @@ export interface Paste {
 	visibility: 0 | 1 | 2;
 	expiresAt: number;
 	editedAt: number | null;
+	reportCount: number | null;
 	author: Author | null;
 }

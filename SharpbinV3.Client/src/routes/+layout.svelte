@@ -3,6 +3,7 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import Navbar from '$lib/components/Navbar.svelte';
+	import ModalHost from '$lib/components/ModalHost.svelte';
 	import { user } from '$lib/stores/user';
 	import { startTokenRefreshInterval, getToken, refreshTokenIfNeeded } from '$lib/utils/auth';
 	import { parseTotpEnabled } from '$lib/utils/totp';
@@ -21,7 +22,10 @@
 	onMount(async () => {
 		await refreshTokenIfNeeded();
 		const token = getToken();
-		if (!token) return;
+		if (!token) {
+			user.set(null);
+			return;
+		}
 
 		const res = await fetch('/api/user/me', {
 			headers: { Authorization: `Bearer ${token}` }
@@ -29,7 +33,12 @@
 
 		if (res.ok) {
 			const me = await res.json();
-			user.set({ ...me, totpEnabled: parseTotpEnabled(getToken()) });
+			let userData = me;
+			if (me && 'user' in me && typeof me.user === 'object') {
+				const { user: nestedUser, ...rest } = me;
+				userData = { ...rest, ...nestedUser };
+			}
+			user.set({ ...userData, totpEnabled: parseTotpEnabled(getToken()) });
 		} else {
 			user.set(null);
 		}
@@ -50,3 +59,5 @@
 <Navbar {data} />
 <div class="h-15 w-full"></div>
 <slot />
+
+<ModalHost />

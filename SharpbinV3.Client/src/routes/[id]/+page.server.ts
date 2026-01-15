@@ -4,20 +4,29 @@ import { getServerToken } from '$lib/utils/auth';
 import { env } from '$env/dynamic/private';
 
 const apiUrl = process.env.VITE_API_URL || 'http://localhost:5050';
+const apiKey =
+	env.NODE_ENV === 'development'
+		? 'cccdd42d9f2f648493e402f1da7c855ea798ad510e6bb9ea712dd7bed838e58'
+		: (env.VIEW_INTERNAL_API_KEY ?? env.View_HMAC_Internal_API_Key ?? '');
 
-export const load: PageServerLoad = async ({ params, fetch, url, cookies }) => {
+export const load: PageServerLoad = async ({ params, fetch, url, cookies, parent }) => {
 	const { id } = params;
+	const parentData = await parent().catch(() => null);
 
-	const pasteRes = await fetch(`${apiUrl}/api/paste/${id}`);
+	const token = getServerToken(cookies);
+
+	const pasteRes = await fetch(`${apiUrl}/api/paste/${id}`, {
+		headers: {
+			Authorization: token ? `Bearer ${token}` : ''
+		}
+	});
+
 	if (pasteRes.status === 404) {
 		return {
 			status: 404,
 			error: { message: 'Paste not found' }
 		};
 	}
-
-	const token = getServerToken(cookies);
-	const apiKey = env.VIEW_INTERNAL_API_KEY ?? env.View_HMAC_Internal_API_Key ?? '';
 
 	const viewed = await fetch(`${apiUrl}/api/paste/${id}/view`, {
 		method: 'POST',
@@ -29,7 +38,7 @@ export const load: PageServerLoad = async ({ params, fetch, url, cookies }) => {
 
 	const pasteData = await pasteRes.json();
 	const paste = pasteData.paste as Paste;
-	
+
 	if (viewed.status === 200) {
 		const viewJson = await viewed.json();
 		if (viewJson.success === true && viewJson.message !== 'View already recorded.') {
@@ -51,5 +60,14 @@ export const load: PageServerLoad = async ({ params, fetch, url, cookies }) => {
 	const options = await pasteOptions.json();
 	const content = await pasteContent.text();
 
-	return { paste, content, options, url: url.href };
+	return {
+		paste,
+		content,
+		options,
+		authOptions:
+			parentData && typeof parentData === 'object' && parentData !== null && 'options' in parentData
+				? (parentData as { options?: unknown }).options
+				: null,
+		url: url.href
+	};
 };

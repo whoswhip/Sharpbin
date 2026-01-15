@@ -2,7 +2,7 @@ export function parseTotpEnabled(tokenValue: string | null) {
 	if (!tokenValue) return false;
 	try {
 		const payload = JSON.parse(atob(tokenValue.split('.')[1]));
-		const flag = payload?.TOTP_Enabled ?? payload?.totp_enabled ?? payload?.totpEnabled;
+		const flag = payload?.totp;
 		if (typeof flag === 'string') return flag.toLowerCase() === 'true';
 		return Boolean(flag);
 	} catch {

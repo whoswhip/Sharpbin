@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { setTokens, startTokenRefreshInterval } from '$lib/utils/auth';
+	import { extractError } from '$lib/utils/misc';
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -56,8 +57,8 @@
 		});
 		if (res.ok) {
 			const data = await res.json();
-			if (data.result.token && data.result.refreshToken) {
-				setTokens(data.result.token, data.result.refreshToken);
+			if (data.token && data.refreshToken) {
+				setTokens(data.token, data.refreshToken);
 				startTokenRefreshInterval();
 			}
 			const urlParams = new URLSearchParams(window.location.search);
@@ -72,19 +73,9 @@
 			if (window.turnstile) {
 				window.turnstile.reset();
 			}
-			if (resData.errors) {
-				const messages = Object.values(resData.errors).flat();
-				error = messages.join('\n');
-			} else {
-				if (resData.message === 'TOTP code is required.') {
-					totpEnabled = true;
-				}
-				if (resData.message === 'Verification failed.') {
-					if (window.turnstile) {
-						window.turnstile.reset();
-					}
-				}
-				error = resData.message || 'Login failed. Please try again.';
+			error = extractError(resData) || 'Login failed. Please try again.';
+			if (error === 'TOTP code is required.') {
+				totpEnabled = true;
 			}
 		}
 	}

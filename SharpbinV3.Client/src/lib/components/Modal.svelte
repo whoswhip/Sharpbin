@@ -2,6 +2,8 @@
 	import QRCode from 'qrcode';
 	import { getRefreshToken, getToken, setTokens } from '$lib/utils/auth';
 	import { parseTotpEnabled } from '$lib/utils/totp';
+	import { tick } from 'svelte';
+	import { extractError } from '$lib/utils/misc';
 
 	export let show = false;
 	export let mode:
@@ -11,7 +13,8 @@
 		| 'prompt'
 		| 'multiselect'
 		| 'totp'
-		| 'totpSetup' = 'decrypt';
+		| 'totpSetup'
+		| 'report' = 'decrypt';
 	export let title = '';
 	export let message = '';
 	export let error = '';
@@ -20,6 +23,9 @@
 	export let items: { label: string; value: unknown }[] = [];
 	export let initialValue: unknown = null;
 	export let totpActive: boolean | null = null;
+	export let reportTarget: 'user' | 'paste' | null = null;
+	export let reportTargetId: string | number | null = null;
+	export let reportSiteKey: string | null = null;
 	export let onConfirm: (value: unknown) => void;
 	export let onCancel: () => void;
 	export let confirmButtonText = '';
@@ -32,6 +38,34 @@
 	let totpLoading = false;
 	let totpError = '';
 	let displayError = '';
+	let reportTypes: string[] = [];
+	let reportType = '';
+	let reportInitialized = false;
+	let reportLoading = false;
+	let turnstileEl: HTMLDivElement | null = null;
+	let turnstileWidgetId: string | null = null;
+
+	const titleMap = {
+		decrypt: 'Enter password to decrypt',
+		encrypt: 'Enter password to encrypt',
+		confirm: 'Confirm action',
+		multiselect: 'Select items',
+		totpSetup: 'Set up two-factor authentication',
+		totp: 'Enter TOTP code',
+		report: 'Create Report',
+		prompt: 'Input Required'
+	};
+
+	const confirmLabelMap = {
+		decrypt: 'Decrypt',
+		encrypt: 'Encrypt',
+		confirm: 'Confirm',
+		multiselect: 'Confirm',
+		totpSetup: totpEnabled ? 'Disable' : 'Enable',
+		totp: 'Verify',
+		report: 'Submit Report',
+		prompt: 'Submit'
+	};
 
 	$: displayError = error || totpError;
 
@@ -43,6 +77,11 @@
 			totpEnabled = totpActive;
 		}
 		initializeTotp();
+	}
+
+	$: if (show && mode === 'report' && !reportInitialized) {
+		reportInitialized = true;
+		initializeReport();
 	}
 
 	function resetModal() {
@@ -58,6 +97,15 @@
 		totpInitialized = false;
 		totpLoading = false;
 		totpError = '';
+		reportTypes = [];
+		reportType = '';
+		reportInitialized = false;
+		reportLoading = false;
+		if (turnstileWidgetId && typeof window !== 'undefined' && window.turnstile?.remove) {
+			window.turnstile.remove(turnstileWidgetId);
+		}
+		turnstileEl = null;
+		turnstileWidgetId = null;
 	}
 
 	function getCodeOrError(message: string) {
@@ -99,7 +147,7 @@
 		});
 		if (!res.ok) {
 			const data = await res.json().catch(() => null);
-			totpError = data?.message || 'Failed to start TOTP enrollment.';
+			totpError = extractError(data) || 'Failed to start TOTP enrollment.';
 			totpLoading = false;
 			return;
 		}
@@ -109,6 +157,31 @@
 			totpQr = await QRCode.toDataURL(data.otpauth, { margin: 1, width: 300 });
 		}
 		totpLoading = false;
+	}
+
+	async function initializeReport() {
+		reportLoading = true;
+		error = '';
+		try {
+			const res = await fetch('/api/report/options');
+			if (!res.ok) {
+				reportLoading = false;
+				error = 'Failed to load report options.';
+				return;
+			}
+			const data = (await res.json().catch(() => null)) || {};
+			const types = data.types || data.Types || [];
+			reportTypes = Array.isArray(types) ? types : [];
+			reportType = reportTypes.includes(reportType) ? reportType : reportTypes[0] || '';
+			reportLoading = false;
+			if (reportSiteKey) {
+				await tick();
+				renderTurnstile();
+			}
+		} catch {
+			reportLoading = false;
+			error = 'Failed to load report options.';
+		}
 	}
 
 	async function refreshTokens() {
@@ -132,6 +205,10 @@
 	}
 
 	async function handleSubmit() {
+		if (mode === 'report') {
+			await submitReport();
+			return;
+		}
 		if (mode === 'totp') {
 			if (!inputValue || typeof inputValue !== 'string') return;
 			onConfirm(inputValue.trim());
@@ -142,6 +219,106 @@
 			return;
 		}
 		onConfirm(mode === 'confirm' ? true : inputValue);
+	}
+
+	function renderTurnstile() {
+		if (!reportSiteKey || typeof window === 'undefined') return;
+		const mount = () => {
+			if (!turnstileEl || !window.turnstile) return;
+			if (turnstileWidgetId && window.turnstile.remove) {
+				window.turnstile.remove(turnstileWidgetId);
+			}
+			turnstileWidgetId = window.turnstile.render(turnstileEl, {
+				sitekey: reportSiteKey,
+				theme: 'dark'
+			});
+		};
+		if (window.turnstile) {
+			mount();
+			return;
+		}
+		const existing = document.querySelector('script[data-turnstile="true"]');
+		if (!existing) {
+			const script = document.createElement('script');
+			script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+			script.async = true;
+			script.defer = true;
+			script.dataset.turnstile = 'true';
+			script.onload = () => window.dispatchEvent(new Event('turnstile:loaded'));
+			document.body.appendChild(script);
+		}
+		const handler = () => {
+			mount();
+			window.removeEventListener('turnstile:loaded', handler);
+		};
+		window.addEventListener('turnstile:loaded', handler, { once: true });
+	}
+
+	async function submitReport() {
+		error = '';
+		if (!reportTarget || reportTargetId === null) {
+			error = 'Missing report target.';
+			return;
+		}
+		if (typeof inputValue !== 'string') inputValue = '';
+		const description = inputValue.trim();
+		if (!description) {
+			error = 'Description is required.';
+			return;
+		}
+		if (description.length < 12) {
+			error = 'Description must be at least 12 characters.';
+			return;
+		}
+		if (description.length > 1000) {
+			error = 'Description must be 1000 characters or less.';
+			return;
+		}
+		const type = reportType || reportTypes[0] || '';
+		if (!type) {
+			error = 'Select a report type.';
+			return;
+		}
+		const token = getToken();
+		if (!token) {
+			error = 'You need to be logged in to report.';
+			return;
+		}
+		const body: Record<string, unknown> = { description, reportType: type };
+		if (reportSiteKey) {
+			if (typeof window === 'undefined' || !window.turnstile) {
+				error = 'Verification unavailable.';
+				return;
+			}
+			const verification = window.turnstile.getResponse();
+			if (!verification) {
+				error = 'Complete verification.';
+				return;
+			}
+			body.VerificationToken = verification;
+		}
+		const targetId = encodeURIComponent(String(reportTargetId));
+		const res = await fetch(`/api/${reportTarget}/${targetId}/report`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${token}`
+			},
+			body: JSON.stringify(body)
+		});
+		if (!res.ok) {
+			const data = await res.json().catch(() => null);
+			error = extractError(data) || 'Failed to submit report.';
+			if (reportSiteKey && typeof window !== 'undefined' && window.turnstile) {
+				window.turnstile.reset();
+			}
+			return;
+		}
+		const data = await res.json().catch(() => null);
+		if (reportSiteKey && typeof window !== 'undefined' && window.turnstile) {
+			window.turnstile.reset();
+		}
+		onConfirm(data || { description, reportType: type });
 	}
 
 	async function submitTotp() {
@@ -207,36 +384,11 @@
 		}
 	}
 
-	$: displayTitle =
-		title ||
-		(mode === 'decrypt'
-			? 'Enter password to decrypt'
-			: mode === 'encrypt'
-				? 'Enter password to encrypt'
-				: mode === 'confirm'
-					? 'Confirm action'
-					: mode === 'multiselect'
-						? 'Select items'
-						: mode === 'totpSetup'
-							? 'Set up two-factor authentication'
-							: mode === 'totp'
-								? 'Enter TOTP code'
-								: 'Enter value');
+	$: displayTitle = title || titleMap[mode];
 
-	$: confirmLabel =
-		confirmButtonText ||
-		(mode === 'decrypt'
-			? 'Decrypt'
-			: mode === 'encrypt'
-				? 'Encrypt'
-				: mode === 'confirm'
-					? 'Delete'
-					: mode === 'totpSetup'
-						? totpEnabled
-							? 'Disable'
-							: 'Enable'
-						: 'Confirm');
-	$: shouldShowInput = mode !== 'confirm' && mode !== 'multiselect' && mode !== 'totpSetup';
+	$: confirmLabel = confirmButtonText || confirmLabelMap[mode];
+	$: shouldShowInput =
+		mode !== 'confirm' && mode !== 'multiselect' && mode !== 'totpSetup' && mode !== 'report';
 </script>
 
 {#if show}
@@ -304,6 +456,34 @@
 							on:input={onCodeInput}
 							class="w-full rounded border border-neutral-700 bg-neutral-800 p-2 text-white outline-none"
 						/>
+					{/if}
+				</div>
+			{:else if mode === 'report'}
+				<div class="mb-4 space-y-3">
+					{#if reportLoading}
+						<p class="text-neutral-300">Loading report options...</p>
+					{:else}
+						{#if reportTypes.length}
+							<select
+								bind:value={reportType}
+								class="w-full rounded border border-neutral-700 bg-neutral-800 p-2 text-white outline-none"
+							>
+								{#each reportTypes as type, i (i)}
+									<option value={type}>{type.replace(/([A-Z])/g, ' $1').trim()}</option>
+								{/each}
+							</select>
+						{/if}
+						<textarea
+							bind:value={inputValue}
+							maxlength="1000"
+							placeholder={placeholder || 'Describe the issue'}
+							class="h-28 w-full resize-none rounded border border-neutral-700 bg-neutral-800 p-2 text-white outline-none"
+						></textarea>
+						{#if reportSiteKey}
+							<div class="flex justify-center">
+								<div class="cf-turnstile" bind:this={turnstileEl}></div>
+							</div>
+						{/if}
 					{/if}
 				</div>
 			{:else if shouldShowInput}

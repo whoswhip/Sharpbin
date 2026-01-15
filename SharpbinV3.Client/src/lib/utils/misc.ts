@@ -24,6 +24,25 @@ export function extractDateFromUUIDv7(uuid?: string): Date | null {
 	return new Date(parseInt(timestampHex, 16));
 }
 
+export function extractError(resData: unknown): string | null {
+	if (!resData || typeof resData !== 'object') return null;
+
+	const data = resData as { errors?: unknown; message?: unknown };
+
+	if (data.errors && typeof data.errors === 'object') {
+		return Object.values(data.errors as Record<string, unknown>)
+			.flat()
+			.filter((v) => typeof v === 'string')
+			.join('\n');
+	}
+
+	if (typeof data.message === 'string') {
+		return data.message;
+	}
+
+	return null;
+}
+
 export function dateToRelativeString(
 	date: Date,
 	useSuffix = true,

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { setTokens, startTokenRefreshInterval } from '$lib/utils/auth';
+	import { extractError } from '$lib/utils/misc';
 	import { Check, X } from '@lucide/svelte';
 	import { slide, fade } from 'svelte/transition';
 	import { resolve } from '$app/paths';
@@ -103,12 +104,12 @@
 				const messages = Object.values(resData.errors).flat();
 				error = messages.join('\n');
 			} else {
-				if (resData.message === 'Verification failed.') {
+				error = extractError(resData) || 'Registration failed. Please try again.';
+				if (error === 'Verification failed.') {
 					if (window.turnstile) {
 						window.turnstile.reset();
 					}
 				}
-				error = resData.message || 'Registration failed. Please try again.';
 			}
 		}
 		loading = false;
