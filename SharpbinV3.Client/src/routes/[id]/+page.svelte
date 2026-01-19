@@ -587,16 +587,22 @@
 							});
 
 							const syntax = syntaxes[data.paste?.syntax ?? 'plaintext'];
+							let extension = '.txt';
 
-							console.log(syntax);
-							console.log(data.paste?.syntax);
+							if (syntax && syntax.extension) {
+								if (data.paste?.title?.endsWith(syntax.extension)) {
+									extension = '';
+								} else {
+									extension = syntax.extension;
+								}
+							}
 
 							const url = URL.createObjectURL(blob);
 							const a = document.createElement('a');
 							a.href = url;
 							a.download = data.paste?.title
-								? data.paste.title.replace(/[^a-z0-9_\-.]/gi, '_').slice(0, 100) + (syntax?.extension ? `.${syntax.extension}` : '.txt')
-								: `paste_${data.paste?.id}.${syntax?.extension ?? 'txt'}`;
+								? data.paste.title.slice(0, 100) + extension
+								: `paste_${data.paste?.id}${extension}`;
 							document.body.appendChild(a);
 							a.click();
 							document.body.removeChild(a);
