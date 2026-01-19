@@ -57,7 +57,7 @@
 </svelte:head>
 
 <Navbar {data} />
-<div class="h-15 w-full"></div>
+<!-- <div class="h-15 w-full"></div> -->
 <slot />
 
 <ModalHost />
