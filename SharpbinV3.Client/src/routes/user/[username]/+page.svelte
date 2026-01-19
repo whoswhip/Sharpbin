@@ -27,7 +27,6 @@
 
 	export let data: PageData;
 
-
 	let currentPage = data.pastes?.pagination?.page ?? 1;
 	let pagination: Pagination = data.pastes?.pagination ?? {
 		page: 1,

@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 	import {
+		File,
 		FileBox,
 		Eye,
 		EyeClosed,
@@ -19,7 +20,8 @@
 		Copy,
 		Check,
 		CalendarCog,
-		Flag
+		Flag,
+		ArrowUp
 	} from '@lucide/svelte/icons/index';
 	import {
 		formatBytes,
@@ -51,6 +53,8 @@
 	let contentRendered = false;
 	let downloadedPaste = false;
 	let copiedPaste = false;
+
+	let scrollY = 0;
 
 	let now = new Date();
 	$: isExpired =
@@ -306,6 +310,8 @@
 			?.cf_turnstile_site_key ?? null;
 </script>
 
+<svelte:window bind:scrollY />
+
 <svelte:head>
 	<title
 		>{data.paste
@@ -344,9 +350,7 @@
 <main
 	class="flex min-h-[calc(100vh-60px)] w-full flex-col items-center justify-center pt-5 pb-5 text-white"
 >
-	<div
-		class="max-h-[90vh] w-[95%] max-w-7xl rounded border-2 border-neutral-800 bg-neutral-900 p-4"
-	>
+	<div class=" w-[95%] max-w-7xl rounded border-2 border-neutral-800 bg-neutral-900 p-4">
 		{#if data.paste}
 			<div class="mb-4 w-full text-center">
 				<h1
@@ -412,7 +416,7 @@
 							use:tooltip={`Created on ${
 								extractDateFromUUIDv7(data.paste.uuid)?.toLocaleString() ?? 'Unknown Date'
 							}
-							${dateToRelativeString(extractDateFromUUIDv7(data.paste.uuid) ?? new Date(), true, true, now, 3)}`}
+								${dateToRelativeString(extractDateFromUUIDv7(data.paste.uuid) ?? new Date(), true, true, now, 3)}`}
 						>
 							{extractDateFromUUIDv7(data.paste.uuid)?.toLocaleDateString() ?? 'Unknown Date'}
 						</span>
@@ -423,7 +427,7 @@
 							<span
 								class="text-neutral-400"
 								use:tooltip={`Edited on ${new Date(data.paste.editedAt).toLocaleString()}
-								${dateToRelativeString(new Date(data.paste.editedAt), true, true, now, 3)}`}
+									${dateToRelativeString(new Date(data.paste.editedAt), true, true, now, 3)}`}
 							>
 								{#if new Date(data.paste.editedAt).getTime() > new Date().getTime() - 86400000}
 									Edited {dateToRelativeString(new Date(data.paste.editedAt), false, false, now)} ago
@@ -440,7 +444,7 @@
 								<span
 									class="text-neutral-400"
 									use:tooltip={`Expires on ${new Date(data.paste.expiresAt).toLocaleString()}
-								${dateToRelativeString(new Date(data.paste.expiresAt), true, true, now, 3)}`}
+									${dateToRelativeString(new Date(data.paste.expiresAt), true, true, now, 3)}`}
 								>
 									{isExpired ? 'Expired' : 'Expires in'}
 									{dateToRelativeString(new Date(data.paste.expiresAt), false, false, now)}
@@ -502,206 +506,223 @@
 					</div>
 				</div>
 			</div>
+			<div
+				class="sticky top-0 z-10 flex flex-col items-center justify-between gap-2 rounded-t-md border-b border-neutral-700 bg-neutral-800 px-3 py-2 md:flex-row"
+			>
+				<div class="flex items-center gap-2 text-sm text-neutral-300">
+					<span class="font-medium text-neutral-100"
+						>{formatNumber((editContent ?? decryptedContent ?? data.content).length)}</span
+					>
+					<span class="text-neutral-400">chars</span>
+					<span class="text-neutral-600">•</span>
+					<span class="font-medium text-neutral-100"
+						>{formatNumber(
+							(editing ? (editContent ?? '') : (decryptedContent ?? data.content)).split('\n')
+								.length
+						)}</span
+					>
+					<span class="text-neutral-400"
+						>line{(editing ? (editContent ?? '') : (decryptedContent ?? data.content)).split('\n')
+							.length !== 1
+							? 's'
+							: ''}</span
+					>
+				</div>
+				<div class="flex shrink-0 flex-wrap items-center gap-2 sm:flex-nowrap">
+					<button
+						type="button"
+						class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
+						on:click={() => {
+							navigator.clipboard.writeText(decryptedContent ?? data.content);
+							copiedPaste = true;
+							setTimeout(() => (copiedPaste = false), 1000);
+						}}
+					>
+						<div class="relative mr-1 h-5 w-5">
+							{#if copiedPaste}
+								<span
+									transition:fade={{ duration: 200 }}
+									class="absolute inset-0 flex items-center justify-center"
+									><Check class="h-5 w-5 text-green-400" /></span
+								>
+							{:else}
+								<span
+									transition:fade={{ duration: 200 }}
+									class="absolute inset-0 flex items-center justify-center"
+									><Copy class="h-5 w-5 text-neutral-400" /></span
+								>
+							{/if}
+						</div>
 
-			<div class="overflow-hidden">
-				<div
-					class="flex flex-col items-center justify-between gap-2 rounded-t-md border-b border-neutral-700 bg-neutral-800 px-3 py-2 md:flex-row"
-				>
-					<div class="flex items-center gap-2 text-sm text-neutral-300">
-						<span class="font-medium text-neutral-100"
-							>{formatNumber((editContent ?? decryptedContent ?? data.content).length)}</span
-						>
-						<span class="text-neutral-400">chars</span>
-						<span class="text-neutral-600">•</span>
-						<span class="font-medium text-neutral-100"
-							>{formatNumber(
-								(editing ? (editContent ?? '') : (decryptedContent ?? data.content)).split('\n')
-									.length
-							)}</span
-						>
-						<span class="text-neutral-400"
-							>line{(editing ? (editContent ?? '') : (decryptedContent ?? data.content)).split('\n')
-								.length !== 1
-								? 's'
-								: ''}</span
-						>
-					</div>
-					<div class="flex shrink-0 flex-wrap items-center gap-2 sm:flex-nowrap">
+						<span class="text-neutral-300">Copy</span>
+					</button>
+					<button
+						type="button"
+						class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
+						on:click={() => {
+							const blob = new Blob([decryptedContent ?? data.content], {
+								type: 'text/plain'
+							});
+							const url = URL.createObjectURL(blob);
+							const a = document.createElement('a');
+							a.href = url;
+							a.download = data.paste?.title
+								? data.paste.title.replace(/[^a-z0-9_\-.]/gi, '_').slice(0, 100) + '.txt'
+								: `paste_${data.paste?.id}.txt`;
+							document.body.appendChild(a);
+							a.click();
+							document.body.removeChild(a);
+							URL.revokeObjectURL(url);
+							downloadedPaste = true;
+							setTimeout(() => (downloadedPaste = false), 1000);
+						}}
+					>
+						<div class="relative mr-1 h-5 w-5">
+							{#if downloadedPaste}
+								<span
+									transition:fade={{ duration: 200 }}
+									class="absolute inset-0 flex items-center justify-center"
+									><Check class="h-5 w-5 text-green-400" /></span
+								>
+							{:else}
+								<span
+									transition:fade={{ duration: 200 }}
+									class="absolute inset-0 flex items-center justify-center"
+									><Download class="h-5 w-5 text-neutral-400" /></span
+								>
+							{/if}
+						</div>
+
+						<span class="text-neutral-300">Download</span>
+					</button>
+
+					<a
+						href={resolve(`/raw/${data.paste.id}`)}
+						class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
+					>
+						<File class="mr-1 h-5 w-5 text-neutral-400" />
+						<span class="text-neutral-300">View Raw</span>
+					</a>
+
+					{#if $user !== null && $user.uuid !== data.paste?.author?.uuid}
 						<button
 							type="button"
-							class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
+							class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-amber-600/50"
 							on:click={() => {
-								navigator.clipboard.writeText(decryptedContent ?? data.content);
-								copiedPaste = true;
-								setTimeout(() => (copiedPaste = false), 1000);
+								promptUser('report');
 							}}
 						>
-							<div class="relative mr-1 h-5 w-5">
-								{#if copiedPaste}
-									<span
-										transition:fade={{ duration: 200 }}
-										class="absolute inset-0 flex items-center justify-center"
-										><Check class="h-5 w-5 text-green-400" /></span
-									>
-								{:else}
-									<span
-										transition:fade={{ duration: 200 }}
-										class="absolute inset-0 flex items-center justify-center"
-										><Copy class="h-5 w-5 text-neutral-400" /></span
-									>
-								{/if}
-							</div>
-
-							<span class="text-neutral-300">Copy</span>
+							<Flag class="mr-1 h-5 w-5 text-amber-400" />
+							<span class="text-amber-300">Report</span>
 						</button>
-						<button
-							type="button"
-							class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
-							on:click={() => {
-								const blob = new Blob([decryptedContent ?? data.content], {
-									type: 'text/plain'
-								});
-								const url = URL.createObjectURL(blob);
-								const a = document.createElement('a');
-								a.href = url;
-								a.download = data.paste?.title
-									? data.paste.title.replace(/[^a-z0-9_\-.]/gi, '_').slice(0, 100) + '.txt'
-									: `paste_${data.paste?.id}.txt`;
-								document.body.appendChild(a);
-								a.click();
-								document.body.removeChild(a);
-								URL.revokeObjectURL(url);
-								downloadedPaste = true;
-								setTimeout(() => (downloadedPaste = false), 1000);
-							}}
-						>
-							<div class="relative mr-1 h-5 w-5">
-								{#if downloadedPaste}
-									<span
-										transition:fade={{ duration: 200 }}
-										class="absolute inset-0 flex items-center justify-center"
-										><Check class="h-5 w-5 text-green-400" /></span
-									>
-								{:else}
-									<span
-										transition:fade={{ duration: 200 }}
-										class="absolute inset-0 flex items-center justify-center"
-										><Download class="h-5 w-5 text-neutral-400" /></span
-									>
-								{/if}
-							</div>
-
-							<span class="text-neutral-300">Download</span>
-						</button>
-						{#if $user !== null && $user.uuid !== data.paste?.author?.uuid}
+					{/if}
+					{#if $user && ($user.uuid === data.paste?.author?.uuid || $user.roles.some((r) => r === 1 || r === 255))}
+						{#if !editing}
 							<button
 								type="button"
-								class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-amber-600/50"
+								class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
 								on:click={() => {
-									promptUser('report');
+									editContent = decryptedContent ?? data.content;
+									editError = '';
+									editing = true;
 								}}
 							>
-								<Flag class="mr-1 h-5 w-5 text-amber-400" />
-								<span class="text-amber-300">Report</span>
+								<Pencil class="mr-1 h-5 w-5 text-neutral-400" />
+								<span class="text-neutral-300">Edit</span>
+							</button>
+							<button
+								type="button"
+								class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-red-900"
+								on:click={() => {
+									promptUser('confirm').then(async (value) => {
+										if (value) {
+											const token = getToken();
+											if (!token) {
+												return;
+											}
+											const res = await fetch(`/api/paste/${data.paste?.id}`, {
+												method: 'DELETE',
+												headers: {
+													Authorization: `Bearer ${token}`
+												}
+											});
+											if (res.ok) {
+												window.location.href = resolve('/');
+											} else {
+												alert('Failed to delete paste.');
+											}
+										}
+									});
+								}}
+							>
+								<Trash2 class="mr-1 h-5 w-5 text-red-400" />
+								<span class="text-red-300">Delete</span>
+							</button>
+						{:else}
+							<button
+								type="button"
+								class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
+								on:click={async () => {
+									if (editContent !== null || editMetadata !== null) {
+										await updatePaste(editContent, editMetadata);
+									}
+								}}
+								disabled={editLoading}
+							>
+								<PencilLine class="mr-1 h-5 w-5 text-neutral-400" />
+								<span class="text-neutral-300">{editLoading ? 'Saving...' : 'Save Edits'}</span>
+							</button>
+							<button
+								type="button"
+								class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
+								on:click={() => {
+									editing = false;
+									editError = '';
+								}}
+							>
+								<PencilOff class="mr-1 h-5 w-5 text-neutral-400" />
+								<span class="text-neutral-300">Cancel Edit</span>
 							</button>
 						{/if}
-						{#if $user && ($user.uuid === data.paste?.author?.uuid || $user.roles.some((r) => r === 1 || r === 255))}
-							{#if !editing}
-								<button
-									type="button"
-									class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
-									on:click={() => {
-										editContent = decryptedContent ?? data.content;
-										editError = '';
-										editing = true;
-									}}
-								>
-									<Pencil class="mr-1 h-5 w-5 text-neutral-400" />
-									<span class="text-neutral-300">Edit</span>
-								</button>
-								<button
-									type="button"
-									class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-red-900"
-									on:click={() => {
-										promptUser('confirm').then(async (value) => {
-											if (value) {
-												const token = getToken();
-												if (!token) {
-													return;
-												}
-												const res = await fetch(`/api/paste/${data.paste?.id}`, {
-													method: 'DELETE',
-													headers: {
-														Authorization: `Bearer ${token}`
-													}
-												});
-												if (res.ok) {
-													window.location.href = resolve('/');
-												} else {
-													alert('Failed to delete paste.');
-												}
-											}
-										});
-									}}
-								>
-									<Trash2 class="mr-1 h-5 w-5 text-red-400" />
-									<span class="text-red-300">Delete</span>
-								</button>
-							{:else}
-								<button
-									type="button"
-									class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
-									on:click={async () => {
-										if (editContent !== null || editMetadata !== null) {
-											await updatePaste(editContent, editMetadata);
-										}
-									}}
-									disabled={editLoading}
-								>
-									<PencilLine class="mr-1 h-5 w-5 text-neutral-400" />
-									<span class="text-neutral-300">{editLoading ? 'Saving...' : 'Save Edits'}</span>
-								</button>
-								<button
-									type="button"
-									class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
-									on:click={() => {
-										editing = false;
-										editError = '';
-									}}
-								>
-									<PencilOff class="mr-1 h-5 w-5 text-neutral-400" />
-									<span class="text-neutral-300">Cancel Edit</span>
-								</button>
-							{/if}
-						{/if}
-					</div>
-				</div>
-				{#if editing}
-					<textarea
-						class="mb-3 max-h-[40vh] min-h-10 w-full rounded-b bg-neutral-800 p-2 font-mono"
-						rows="14"
-						placeholder="Paste content"
-						bind:value={editContent}
-					></textarea>
-					{#if editError}
-						<div class="mb-3 rounded border border-red-900 bg-red-950 p-2 text-sm text-red-200">
-							{editError}
-						</div>
 					{/if}
-				{:else}
-					<div
-						class="h-15 w-full rounded-b bg-neutral-800"
-						class:hidden={contentRendered && !editing}
-					></div>
-					<code
-						class="codeblock-with-lines overflow-x-auto overflow-y-auto"
-						class:hidden={!contentRendered}
-					>
-						<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-						{@html pasteContent}
-					</code>
-				{/if}
+					{#if scrollY > 400 && contentRendered && !editing}
+						<button
+							transition:fade={{ duration: 200 }}
+							class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
+							on:click={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+							aria-label="Scroll to top"
+						>
+							<ArrowUp class="mr-1 h-5 w-5 text-neutral-400" />
+							<span class="text-neutral-300">Scroll to top</span>
+						</button>
+					{/if}
+				</div>
 			</div>
+			{#if editing}
+				<textarea
+					class="mb-3 max-h-[40vh] min-h-10 w-full rounded-b bg-neutral-800 p-2 font-mono"
+					rows="14"
+					placeholder="Paste content"
+					bind:value={editContent}
+				></textarea>
+				{#if editError}
+					<div class="mb-3 rounded border border-red-900 bg-red-950 p-2 text-sm text-red-200">
+						{editError}
+					</div>
+				{/if}
+			{:else}
+				<div
+					class="h-15 w-full rounded-b bg-neutral-800"
+					class:hidden={contentRendered && !editing}
+				></div>
+				<code
+					class="codeblock-with-lines overflow-x-auto overflow-y-auto"
+					class:hidden={!contentRendered}
+				>
+					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+					{@html pasteContent}
+				</code>
+			{/if}
 		{:else}
 			<h1 class="mb-4 text-center text-4xl font-bold">Paste not found</h1>
 			<h2 class="mt-2 text-center text-xl">The paste you are looking for does not exist.</h2>
@@ -732,7 +753,6 @@
 			box-sizing: border-box;
 			min-width: 0;
 			width: 100%;
-			max-height: 40vh;
 		}
 		.code-row {
 			display: flex;
