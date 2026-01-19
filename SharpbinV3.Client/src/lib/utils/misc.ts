@@ -1,3 +1,5 @@
+import { syntaxes } from "$lib/consts";
+
 export function formatBytes(bytes: number, decimals = 2): string {
 	if (bytes === 0) return '0 Bytes';
 
@@ -53,6 +55,16 @@ export function extractError(resData: unknown): string | null {
 		return data.message;
 	}
 
+	return null;
+}
+
+export function syntaxFromExtension(extension: string): string | null {
+	const ext = extension.startsWith('.') ? extension.slice(1) : extension;
+	for (const [key, value] of Object.entries(syntaxes)) {
+		if (value.extension === `.${ext}`) {
+			return key;
+		}
+	}
 	return null;
 }
 

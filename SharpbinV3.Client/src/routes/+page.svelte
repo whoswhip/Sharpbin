@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { displayNames } from '$lib/consts';
+	import { syntaxes } from '$lib/consts';
 	import { user } from '$lib/stores/user';
 	import { getToken } from '$lib/utils/auth';
 	import { onMount } from 'svelte';
@@ -10,6 +10,7 @@
 	import Dropdown from '$lib/components/Dropdown.svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { FileUp, X } from '@lucide/svelte';
+	import { syntaxFromExtension } from '$lib/utils/misc';
 
 	export let data: PageData;
 
@@ -52,7 +53,7 @@
 	const syntaxOptions =
 		data.options?.syntaxes?.map((lang: string) => ({
 			value: lang,
-			label: displayNames[lang] ?? lang.charAt(0).toUpperCase() + lang.slice(1)
+			label: syntaxes[lang]?.name ?? lang.charAt(0).toUpperCase() + lang.slice(1)
 		})) ?? [];
 
 	const expiresOptions = [
@@ -214,6 +215,12 @@
 
 							const file = e.dataTransfer?.files[0];
 							if (!file) return;
+
+							const syntax = syntaxFromExtension(file.name.split('.').pop() || '');
+							if (syntax && selectedSyntax !== syntax) {
+								selectedSyntax = syntax;
+							}
+							title = file.name;
 
 							const reader = new FileReader();
 

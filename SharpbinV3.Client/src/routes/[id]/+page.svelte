@@ -31,7 +31,7 @@
 		tooltip,
 		isBinaryData
 	} from '$lib/utils/misc';
-	import { displayNames } from '$lib/consts';
+	import { syntaxes } from '$lib/consts';
 	import { resolve } from '$app/paths';
 	import { decryptAES, encryptAES } from '$lib/utils/encryption';
 	import { fade } from 'svelte/transition';
@@ -69,7 +69,7 @@
 	const syntaxOptions =
 		data.options?.syntaxes?.map((lang: string) => ({
 			value: lang,
-			label: displayNames[lang] ?? lang.charAt(0).toUpperCase() + lang.slice(1)
+			label: syntaxes[lang]?.name ?? lang.charAt(0).toUpperCase() + lang.slice(1)
 		})) ?? [];
 	const expiresOptions = [
 		{ value: 0, label: 'Never Expire' },
@@ -485,7 +485,7 @@
 						<Code class="mr-2 h-6 w-6 text-neutral-400" />
 						{#if !editing}
 							<span class="text-neutral-400">
-								{displayNames[data.paste.syntax] ??
+								{syntaxes[data.paste.syntax]?.name ??
 									data.paste.syntax.charAt(0).toUpperCase() + data.paste.syntax.slice(1)}
 							</span>
 						{:else if editMetadata && syntaxOptions}
@@ -585,12 +585,18 @@
 							const blob = new Blob([decryptedContent ?? data.content], {
 								type: 'text/plain'
 							});
+
+							const syntax = syntaxes[data.paste?.syntax ?? 'plaintext'];
+
+							console.log(syntax);
+							console.log(data.paste?.syntax);
+
 							const url = URL.createObjectURL(blob);
 							const a = document.createElement('a');
 							a.href = url;
 							a.download = data.paste?.title
-								? data.paste.title.replace(/[^a-z0-9_\-.]/gi, '_').slice(0, 100) + '.txt'
-								: `paste_${data.paste?.id}.txt`;
+								? data.paste.title.replace(/[^a-z0-9_\-.]/gi, '_').slice(0, 100) + (syntax?.extension ? `.${syntax.extension}` : '.txt')
+								: `paste_${data.paste?.id}.${syntax?.extension ?? 'txt'}`;
 							document.body.appendChild(a);
 							a.click();
 							document.body.removeChild(a);
