@@ -385,9 +385,9 @@
 			<div class="mb-2">
 				<div class="flex flex-wrap items-center justify-center gap-4">
 					<div class="relative flex shrink-0 items-center">
-						<div class="flex" use:tooltip={`True Size: ${formatBytes(data.paste.trueSize)}`}>
+						<div class="flex" use:tooltip={data.paste.isCompressed ? `Compressed Size: ${formatBytes(data.paste.size)}` : `This paste is not compressed.`}>
 							<FileBox class="mr-2 h-6 w-6 text-neutral-400" />
-							<span class="text-neutral-400">{formatBytes(data.paste.size)}</span>
+							<span class="text-neutral-400">{formatBytes(data.paste.trueSize)}</span>
 						</div>
 					</div>
 
