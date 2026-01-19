@@ -28,7 +28,8 @@
 		formatNumber,
 		extractDateFromUUIDv7,
 		dateToRelativeString,
-		tooltip
+		tooltip,
+		isBinaryData
 	} from '$lib/utils/misc';
 	import { displayNames } from '$lib/consts';
 	import { resolve } from '$app/paths';
@@ -47,6 +48,7 @@
 	let editMetadata: Paste | null = data.paste ? { ...data.paste } : null;
 	let editError = '';
 	let editLoading = false;
+	let isBinary = false;
 	let pasteContent = '';
 	let decryptedContent: string | null = null;
 	let decryptError = '';
@@ -124,6 +126,15 @@
 	function renderCode(content: string | null = null) {
 		if (!data?.paste) return;
 		let code = content ?? decryptedContent ?? data.content ?? '';
+
+		const encoder = new TextEncoder();
+		const buffer = encoder.encode(code).buffer;
+		isBinary = isBinaryData(buffer);
+		if (isBinary) {
+			contentRendered = true;
+			return;
+		}
+
 		const lang = (data.paste.syntax ?? '').toLowerCase();
 		let highlighted = '';
 		try {
@@ -385,7 +396,12 @@
 			<div class="mb-2">
 				<div class="flex flex-wrap items-center justify-center gap-4">
 					<div class="relative flex shrink-0 items-center">
-						<div class="flex" use:tooltip={data.paste.isCompressed ? `Compressed Size: ${formatBytes(data.paste.size)}` : `This paste is not compressed.`}>
+						<div
+							class="flex"
+							use:tooltip={data.paste.isCompressed
+								? `Compressed Size: ${formatBytes(data.paste.size)}`
+								: `This paste is not compressed.`}
+						>
 							<FileBox class="mr-2 h-6 w-6 text-neutral-400" />
 							<span class="text-neutral-400">{formatBytes(data.paste.trueSize)}</span>
 						</div>
@@ -509,53 +525,59 @@
 			<div
 				class="sticky top-0 z-10 flex flex-col items-center justify-between gap-2 rounded-t-md border-b border-neutral-700 bg-neutral-800 px-3 py-2 md:flex-row"
 			>
-				<div class="flex items-center gap-2 text-sm text-neutral-300">
-					<span class="font-medium text-neutral-100"
-						>{formatNumber((editContent ?? decryptedContent ?? data.content).length)}</span
-					>
-					<span class="text-neutral-400">chars</span>
-					<span class="text-neutral-600">•</span>
-					<span class="font-medium text-neutral-100"
-						>{formatNumber(
-							(editing ? (editContent ?? '') : (decryptedContent ?? data.content)).split('\n')
-								.length
-						)}</span
-					>
-					<span class="text-neutral-400"
-						>line{(editing ? (editContent ?? '') : (decryptedContent ?? data.content)).split('\n')
-							.length !== 1
-							? 's'
-							: ''}</span
-					>
-				</div>
+				{#if !isBinary}
+					<div class="flex items-center gap-2 text-sm text-neutral-300">
+						<span class="font-medium text-neutral-100"
+							>{formatNumber((editContent ?? decryptedContent ?? data.content).length)}</span
+						>
+						<span class="text-neutral-400">chars</span>
+						<span class="text-neutral-600">•</span>
+						<span class="font-medium text-neutral-100"
+							>{formatNumber(
+								(editing ? (editContent ?? '') : (decryptedContent ?? data.content)).split('\n')
+									.length
+							)}</span
+						>
+						<span class="text-neutral-400"
+							>line{(editing ? (editContent ?? '') : (decryptedContent ?? data.content)).split('\n')
+								.length !== 1
+								? 's'
+								: ''}</span
+						>
+					</div>
+				{:else}
+					<div></div>
+				{/if}
 				<div class="flex shrink-0 flex-wrap items-center gap-2 sm:flex-nowrap">
-					<button
-						type="button"
-						class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
-						on:click={() => {
-							navigator.clipboard.writeText(decryptedContent ?? data.content);
-							copiedPaste = true;
-							setTimeout(() => (copiedPaste = false), 1000);
-						}}
-					>
-						<div class="relative mr-1 h-5 w-5">
-							{#if copiedPaste}
-								<span
-									transition:fade={{ duration: 200 }}
-									class="absolute inset-0 flex items-center justify-center"
-									><Check class="h-5 w-5 text-green-400" /></span
-								>
-							{:else}
-								<span
-									transition:fade={{ duration: 200 }}
-									class="absolute inset-0 flex items-center justify-center"
-									><Copy class="h-5 w-5 text-neutral-400" /></span
-								>
-							{/if}
-						</div>
+					{#if !isBinary}
+						<button
+							type="button"
+							class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
+							on:click={() => {
+								navigator.clipboard.writeText(decryptedContent ?? data.content);
+								copiedPaste = true;
+								setTimeout(() => (copiedPaste = false), 1000);
+							}}
+						>
+							<div class="relative mr-1 h-5 w-5">
+								{#if copiedPaste}
+									<span
+										transition:fade={{ duration: 200 }}
+										class="absolute inset-0 flex items-center justify-center"
+										><Check class="h-5 w-5 text-green-400" /></span
+									>
+								{:else}
+									<span
+										transition:fade={{ duration: 200 }}
+										class="absolute inset-0 flex items-center justify-center"
+										><Copy class="h-5 w-5 text-neutral-400" /></span
+									>
+								{/if}
+							</div>
 
-						<span class="text-neutral-300">Copy</span>
-					</button>
+							<span class="text-neutral-300">Copy</span>
+						</button>
+					{/if}
 					<button
 						type="button"
 						class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
@@ -618,18 +640,20 @@
 					{/if}
 					{#if $user && ($user.uuid === data.paste?.author?.uuid || $user.roles.some((r) => r === 1 || r === 255))}
 						{#if !editing}
-							<button
-								type="button"
-								class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
-								on:click={() => {
-									editContent = decryptedContent ?? data.content;
-									editError = '';
-									editing = true;
-								}}
-							>
-								<Pencil class="mr-1 h-5 w-5 text-neutral-400" />
-								<span class="text-neutral-300">Edit</span>
-							</button>
+							{#if !isBinary}
+								<button
+									type="button"
+									class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
+									on:click={() => {
+										editContent = decryptedContent ?? data.content;
+										editError = '';
+										editing = true;
+									}}
+								>
+									<Pencil class="mr-1 h-5 w-5 text-neutral-400" />
+									<span class="text-neutral-300">Edit</span>
+								</button>
+							{/if}
 							<button
 								type="button"
 								class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-red-900"
@@ -698,7 +722,13 @@
 					{/if}
 				</div>
 			</div>
-			{#if editing}
+			{#if isBinary}
+				<div
+					class="flex h-16 w-full flex-col items-center justify-center rounded-b bg-neutral-800 p-4 text-neutral-400"
+				>
+					<p>We cannot display this paste because it is not text</p>
+				</div>
+			{:else if editing}
 				<textarea
 					class="mb-3 max-h-[40vh] min-h-10 w-full rounded-b bg-neutral-800 p-2 font-mono"
 					rows="14"

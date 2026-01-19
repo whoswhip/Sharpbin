@@ -24,6 +24,19 @@ export function extractDateFromUUIDv7(uuid?: string): Date | null {
 	return new Date(parseInt(timestampHex, 16));
 }
 
+export function isBinaryData(buffer: ArrayBuffer | Uint8Array): boolean {
+	const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+
+	if (bytes.includes(0)) return true;
+
+	try {
+		new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+		return false;
+	} catch {
+		return true;
+	}
+}
+
 export function extractError(resData: unknown): string | null {
 	if (!resData || typeof resData !== 'object') return null;
 

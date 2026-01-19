@@ -4,11 +4,12 @@
 	import { user } from '$lib/stores/user';
 	import { getToken } from '$lib/utils/auth';
 	import { onMount } from 'svelte';
-	import { fly } from 'svelte/transition';
+	import { fly, fade } from 'svelte/transition';
 	import { encryptAES } from '$lib/utils/encryption';
-	import { formatBytes, formatNumber } from '$lib/utils/misc';
+	import { formatBytes, formatNumber, isBinaryData } from '$lib/utils/misc';
 	import Dropdown from '$lib/components/Dropdown.svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import { FileUp, X } from '@lucide/svelte';
 
 	export let data: PageData;
 
@@ -20,6 +21,8 @@
 	let selectedVisibility = data.options?.visibilities?.[0]?.value;
 	let password = '';
 	let anonymousUpload = false;
+	let isDragging = false;
+	let dragError = '';
 
 	onMount(() => {
 		const render = () => {
@@ -98,12 +101,14 @@
 		if (selectedVisibility === 2) {
 			body = await encryptAES(content, password);
 		}
+
 		const url = `/api/paste/create?${params.toString()}`;
 		const options: RequestInit = {
 			method: 'POST',
 			headers: { 'Content-Type': 'text/plain' },
 			body
 		};
+
 		if ($user && !anonymousUpload) {
 			const token = getToken();
 			if (token) {
@@ -142,7 +147,7 @@
 					error = resData.message || 'Registration failed. Please try again.';
 				}
 			}
-			setInterval(() => {
+			setTimeout(() => {
 				error = '';
 			}, 5000);
 		}
@@ -173,24 +178,88 @@
 				bind:value={title}
 				maxlength={data.options?.maxTitleLength ?? 500}
 			/>
-			<div class="relative">
-				<textarea
-					placeholder="Your paste content here..."
-					class=" h-64 max-h-[50vh] min-h-10 w-full resize-y rounded rounded-b-none border border-neutral-700 bg-neutral-800 p-2"
-					spellcheck="false"
-					autocomplete="off"
-					bind:value={content}
-					on:beforeinput={(e) => {
-						if (
-							data.options?.maxPasteSize &&
-							(new TextEncoder().encode(content).length >= data.options.maxPasteSize ||
-								(e.data &&
-									new TextEncoder().encode(content + e.data).length > data.options.maxPasteSize))
-						) {
+			<div>
+				<div class="relative">
+					<textarea
+						placeholder="Your paste content here..."
+						class="h-64 max-h-[50vh] min-h-20 w-full resize-y rounded rounded-b-none border border-neutral-700 bg-neutral-800 p-2 transition-colors duration-200"
+						spellcheck="false"
+						autocomplete="off"
+						bind:value={content}
+						on:beforeinput={(e) => {
+							if (
+								data.options?.maxPasteSize &&
+								(new TextEncoder().encode(content).length >= data.options.maxPasteSize ||
+									(e.data &&
+										new TextEncoder().encode(content + e.data).length > data.options.maxPasteSize))
+							) {
+								e.preventDefault();
+							}
+						}}
+						on:dragenter={(e) => {
 							e.preventDefault();
-						}
-					}}
-				></textarea>
+							isDragging = true;
+						}}
+						on:dragover={(e) => {
+							e.preventDefault();
+							isDragging = true;
+						}}
+						on:dragleave={(e) => {
+							e.preventDefault();
+							isDragging = false;
+						}}
+						on:drop={(e) => {
+							e.preventDefault();
+							isDragging = false;
+
+							const file = e.dataTransfer?.files[0];
+							if (!file) return;
+
+							const reader = new FileReader();
+
+							reader.onload = (e) => {
+								const arrayBuffer = e.target?.result as ArrayBuffer;
+								if (isBinaryData(new Uint8Array(arrayBuffer))) {
+									content = '';
+									dragError = 'The dropped file appears to be binary and cannot be pasted as text.';
+									setTimeout(() => {
+										dragError = '';
+									}, 5000);
+									return;
+								}
+								const decoder = new TextDecoder();
+								content = decoder.decode(arrayBuffer);
+							};
+
+							reader.readAsArrayBuffer(file);
+						}}
+					></textarea>
+					{#if isDragging || (dragError && dragError !== '')}
+						<div
+							class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-md rounded-b-none border-2 border-dashed border-neutral-500 bg-neutral-800/70 text-center text-neutral-300"
+							transition:fade={{ duration: 150 }}
+						>
+							<div class="relative flex h-full w-full items-center justify-center">
+								{#if dragError && dragError !== ''}
+									<div
+										class="absolute flex flex-col items-center gap-4"
+										transition:fly={{ y: -20, duration: 200 }}
+									>
+										<X class="h-12 w-12 text-red-500" />
+										<p>{dragError}</p>
+									</div>
+								{:else}
+									<div
+										class="absolute flex flex-col items-center gap-4"
+										transition:fly={{ y: -20, duration: 200 }}
+									>
+										<FileUp class="h-12 w-12" />
+									</div>
+								{/if}
+							</div>
+						</div>
+					{/if}
+				</div>
 				<div
 					class="monospace mb-4 flex h-12 items-center justify-between rounded-b border border-neutral-700 bg-neutral-800 p-1 pr-2 pl-2 text-sm text-neutral-400 md:h-8"
 				>
