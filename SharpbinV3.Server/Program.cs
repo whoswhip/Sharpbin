@@ -139,6 +139,8 @@ namespace SharpbinV3.Server
                     }
                 ));
 
+                options.AddPolicy("NoLimit", _ => RateLimitPartition.GetNoLimiter());
+
                 options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
                 {
                     var remoteIp = httpContext.GetRequestIP();

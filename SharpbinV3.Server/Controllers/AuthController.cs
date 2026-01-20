@@ -148,6 +148,7 @@ namespace SharpbinV3.Server.Controllers
         }
 
         [HttpGet]
+        [EnableRateLimiting("NoLimit")]
         [Route("info")]
         public IActionResult GetSiteInfo()
         {
