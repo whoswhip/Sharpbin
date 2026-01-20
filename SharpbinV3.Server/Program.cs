@@ -139,7 +139,7 @@ namespace SharpbinV3.Server
                     }
                 ));
 
-                options.AddPolicy("NoLimit", _ => RateLimitPartition.GetNoLimiter());
+                options.AddPolicy("NoLimit", _ => RateLimitPartition.GetNoLimiter(0));
 
                 options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
                 {
