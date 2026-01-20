@@ -231,8 +231,7 @@
 								const syntax = syntaxFromExtension(file.name.split('.').pop() || '');
 								if (syntax && selectedSyntax !== syntax) {
 									selectedSyntax = syntax;
-								}
-								else (!syntax && selectedSyntax !== 'plaintext') {
+								} else if (!syntax && selectedSyntax !== 'plaintext') {
 									selectedSyntax = 'plaintext';
 								}
 								title = file.name;
