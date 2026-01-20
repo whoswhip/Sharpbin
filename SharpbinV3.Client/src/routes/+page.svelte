@@ -381,7 +381,7 @@
 					/>
 					<button
 						type="button"
-						class="mr-1 ml-1 flex w-12.5 items-center justify-center border border-neutral-700 bg-neutral-800 p-2 text-neutral-400 hover:bg-neutral-700"
+						class="mr-1 ml-1 flex w-12.5 items-center justify-center border border-neutral-700 bg-neutral-800 p-2 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600"
 						on:click={() => {
 							const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 							const bytes = new Uint8Array(16);
@@ -394,7 +394,7 @@
 					</button>
 					<button
 						type="button"
-						class="flex w-12.5 items-center justify-center rounded-r border border-neutral-700 bg-neutral-800 p-2 text-neutral-400 hover:bg-neutral-700"
+						class="flex w-12.5 items-center justify-center rounded-r border border-neutral-700 bg-neutral-800 p-2 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600"
 						on:click={() => (passwordVisible = !passwordVisible)}
 					>
 						{#if passwordVisible}
