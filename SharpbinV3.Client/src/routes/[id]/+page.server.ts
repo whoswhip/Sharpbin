@@ -2,6 +2,7 @@ import type { PageServerLoad } from './$types';
 import type { Paste } from '$lib/types/paste';
 import { getServerToken } from '$lib/utils/auth';
 import { env } from '$env/dynamic/private';
+import { error } from '@sveltejs/kit';
 
 const apiUrl = process.env.VITE_API_URL || 'http://localhost:5050';
 const apiKey =
@@ -22,10 +23,7 @@ export const load: PageServerLoad = async ({ params, fetch, url, cookies, parent
 	});
 
 	if (pasteRes.status === 404) {
-		return {
-			status: 404,
-			error: { message: 'Paste not found' }
-		};
+		throw error(pasteRes.status, 'Paste not found.');
 	}
 
 	const viewed = await fetch(`${apiUrl}/api/paste/${id}/view`, {
