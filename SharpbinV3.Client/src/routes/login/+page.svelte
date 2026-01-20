@@ -81,6 +81,11 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Login - Sharpbin</title>
+	<meta name="description" content="Login to your Sharpbin account to manage your pastes and settings." />
+</svelte:head>
+
 <main
 	class="flex min-h-[calc(100vh-120px)] w-full flex-col items-center justify-center pt-5 pb-5 text-white"
 >
