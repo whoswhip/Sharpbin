@@ -216,12 +216,6 @@
 							const file = e.dataTransfer?.files[0];
 							if (!file) return;
 
-							const syntax = syntaxFromExtension(file.name.split('.').pop() || '');
-							if (syntax && selectedSyntax !== syntax) {
-								selectedSyntax = syntax;
-							}
-							title = file.name;
-
 							const reader = new FileReader();
 
 							reader.onload = (e) => {
@@ -234,6 +228,14 @@
 									}, 5000);
 									return;
 								}
+								const syntax = syntaxFromExtension(file.name.split('.').pop() || '');
+								if (syntax && selectedSyntax !== syntax) {
+									selectedSyntax = syntax;
+								}
+								else (!syntax && selectedSyntax !== 'plaintext') {
+									selectedSyntax = 'plaintext';
+								}
+								title = file.name;
 								const decoder = new TextDecoder();
 								content = decoder.decode(arrayBuffer);
 							};
