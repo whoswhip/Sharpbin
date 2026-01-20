@@ -47,7 +47,7 @@
 </svelte:head>
 
 <main
-	class="flex min-h-[calc(100vh-60px)] w-full flex-col items-center justify-center pt-5 pb-5 text-white"
+	class="flex min-h-[calc(100vh-120px)] w-full flex-col items-center justify-center pt-5 pb-5 text-white"
 >
 	<div class="mx-auto w-[95%] max-w-4xl rounded border-2 border-neutral-800 bg-neutral-900 p-6">
 		<h1 class="mb-6 text-center text-3xl font-bold">Report #{report.reportID}</h1>

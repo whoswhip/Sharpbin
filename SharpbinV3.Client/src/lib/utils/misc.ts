@@ -1,4 +1,4 @@
-import { syntaxes } from "$lib/consts";
+import { syntaxes } from '$lib/consts';
 
 export function formatBytes(bytes: number, decimals = 2): string {
 	if (bytes === 0) return '0 Bytes';
