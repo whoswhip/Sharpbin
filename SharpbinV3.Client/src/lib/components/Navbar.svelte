@@ -20,8 +20,8 @@
 			: '';
 </script>
 
-<div class=" top-0 left-0 z-100 h-15 w-full bg-neutral-900">
-	<div class="mx-auto flex h-15 max-w-5xl items-center px-4 py-2">
+<div class="top-0 left-0 z-100 h-15 w-full bg-neutral-900">
+	<div class="mx-auto flex h-15 w-[95%] max-w-7xl items-center py-2">
 		<a href={resolve('/')} class="text-xl font-bold text-white hover:text-neutral-300">Sharpbin</a>
 		{#if $user}
 			<div class="ml-auto flex items-center space-x-4">
