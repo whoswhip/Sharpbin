@@ -3,6 +3,7 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import Navbar from '$lib/components/Navbar.svelte';
+	import Footer from '$lib/components/Footer.svelte';
 	import ModalHost from '$lib/components/ModalHost.svelte';
 	import { user } from '$lib/stores/user';
 	import { startTokenRefreshInterval, getToken, refreshTokenIfNeeded } from '$lib/utils/auth';
@@ -59,5 +60,6 @@
 <Navbar {data} />
 <!-- <div class="h-15 w-full"></div> -->
 <slot />
+<Footer />
 
 <ModalHost />
