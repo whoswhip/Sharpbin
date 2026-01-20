@@ -10,7 +10,7 @@
 	import { resolve } from '$app/paths';
 	import { Eye, FileBox, Code, User, History, Calendar, Timer } from '@lucide/svelte';
 	import { onMount } from 'svelte';
-    import { syntaxes } from '$lib/consts';
+	import { syntaxes } from '$lib/consts';
 
 	export let data: PageData;
 
@@ -26,8 +26,8 @@
 </script>
 
 <svelte:head>
-    <title>Recent Pastes - Sharpbin</title>
-    <meta name="description" content="Browse the most recent pastes shared on Sharpbin." />
+	<title>Recent Pastes - Sharpbin</title>
+	<meta name="description" content="Browse the most recent pastes shared on Sharpbin." />
 </svelte:head>
 
 <main
@@ -41,8 +41,7 @@
 			<div class="grid grid-cols-1 gap-4">
 				{#each data.recentPastes as paste}
 					{@const createdAt = extractDateFromUUIDv7(paste.uuid)}
-					{@const isExpired = paste.expiresAt > 0 && paste.expiresAt < Date.now()}
-                    {@const syntax = syntaxes[paste.syntax] ?? syntaxes['plaintext']}
+					{@const syntax = syntaxes[paste.syntax] ?? syntaxes['plaintext']}
 
 					<a
 						href={resolve(`/${paste.id}`)}
@@ -80,7 +79,7 @@
 									>
 										<Timer class="h-4 w-4" />
 										<span>
-											{isExpired
+											{paste.expiresAt > 0 && paste.expiresAt < Date.now()
 												? `Expired ${dateToRelativeString(new Date(paste.expiresAt), true, false, now)}`
 												: `Expires in ${dateToRelativeString(new Date(paste.expiresAt), true, false, now)}`}
 										</span>
@@ -96,7 +95,14 @@
 										use:tooltip={new Date(paste.editedAt).toLocaleString()}
 									>
 										<History class="h-4 w-4" />
-										<span>Edited {dateToRelativeString(new Date(paste.editedAt), true, false, now)}</span>
+										<span
+											>Edited {dateToRelativeString(
+												new Date(paste.editedAt),
+												true,
+												false,
+												now
+											)}</span
+										>
 									</div>
 								{/if}
 							</div>
@@ -109,10 +115,10 @@
 									<FileBox class="h-4 w-4" />
 									<span>{formatBytes(paste.size)}</span>
 								</div>
-                                <div class="mt-1 flex items-center gap-2 text-sm text-neutral-400">
-                                    <Code class="h-4 w-4" />
-                                    <span>{syntax.name}</span>
-                                </div>
+								<div class="mt-1 flex items-center gap-2 text-sm text-neutral-400">
+									<Code class="h-4 w-4" />
+									<span>{syntax.name}</span>
+								</div>
 							</div>
 						</div>
 					</a>
