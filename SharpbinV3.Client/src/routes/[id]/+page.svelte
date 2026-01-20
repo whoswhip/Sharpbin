@@ -52,6 +52,7 @@
 	let pasteContent = '';
 	let decryptedContent: string | null = null;
 	let decryptError = '';
+	let decryptStatus = '';
 	let contentRendered = false;
 	let downloadedPaste = false;
 	let copiedPaste = false;
@@ -132,6 +133,7 @@
 		isBinary = isBinaryData(buffer);
 		if (isBinary) {
 			contentRendered = true;
+			decryptStatus = '';
 			return;
 		}
 
@@ -159,6 +161,7 @@
 		const wrapped = `<pre><code class="hljs">${highlighted}</code></pre>`;
 		pasteContent = addLineNumbers(wrapped);
 		contentRendered = true;
+		decryptStatus = '';
 	}
 
 	async function updatePaste(content: string | null, metadata: Paste | null) {
@@ -278,39 +281,53 @@
 		try {
 			if (data?.paste && data.paste.visibility === 2) {
 				contentRendered = false;
+				decryptStatus = 'Preparing decryption...';
 				const urlHash = window.location.hash.slice(1);
 				if (urlHash) {
 					const passwordFromUrl = atob(urlHash);
+					decryptStatus = 'Deriving key...';
 					decryptedContent = await decryptAES(data.content, passwordFromUrl);
 					if (decryptedContent === null) {
+						decryptStatus = 'Waiting for password...';
 						const password = await promptUser('decrypt');
 						if (password) {
+							decryptStatus = 'Deriving key...';
 							decryptedContent = await decryptAES(data.content, password);
 							if (decryptedContent === null) {
 								decryptError = 'Incorrect password. Please try again.';
+								decryptStatus = 'Decryption failed.';
 							} else {
 								renderCode();
 								history.replaceState(null, '', window.location.pathname + window.location.search);
 							}
+						} else {
+							decryptStatus = 'Decryption canceled.';
 						}
 					} else {
 						renderCode();
 					}
 					return;
 				}
+				decryptStatus = 'Waiting for password...';
 				const password = await promptUser('decrypt');
 				if (password) {
+					decryptStatus = 'Deriving key...';
 					decryptedContent = await decryptAES(data.content, password);
 					if (decryptedContent === null) {
 						decryptError = 'Incorrect password. Please try again.';
+						decryptStatus = 'Decryption failed.';
 					} else {
 						renderCode();
 					}
+				} else {
+					decryptStatus = 'Decryption canceled.';
 				}
 			} else {
+				decryptStatus = 'Rendering content...';
 				renderCode();
 			}
 		} catch {
+			decryptStatus = 'Rendering content...';
 			renderCode();
 		}
 	});
@@ -359,9 +376,9 @@
 </svelte:head>
 
 <main
-	class="flex min-h-[calc(100vh-60px)] w-full flex-col items-center justify-center pt-5 pb-5 text-white"
+	class="flex min-h-[calc(100vh-120px)] w-full flex-col items-center justify-center pt-5 pb-5 text-white"
 >
-	<div class=" w-[95%] max-w-7xl rounded border-2 border-neutral-800 bg-neutral-900 p-4">
+	<div class="w-[95%] max-w-7xl rounded border-2 border-neutral-800 bg-neutral-900 p-4">
 		{#if data.paste}
 			<div class="mb-4 w-full text-center">
 				<h1
@@ -754,9 +771,11 @@
 				{/if}
 			{:else}
 				<div
-					class="h-15 w-full rounded-b bg-neutral-800"
+					class="flex h-20 w-full items-center justify-center rounded-b bg-neutral-800 text-sm text-neutral-400"
 					class:hidden={contentRendered && !editing}
-				></div>
+				>
+					<span class="monospace">{decryptStatus || 'Loading...'}</span>
+				</div>
 				<code
 					class="codeblock-with-lines overflow-x-auto overflow-y-auto"
 					class:hidden={!contentRendered}
