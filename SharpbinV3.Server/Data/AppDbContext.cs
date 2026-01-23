@@ -48,12 +48,14 @@ namespace SharpbinV3.Server.Data
             modelBuilder.Entity<Report>()
                 .HasOne(r => r.Paste)
                 .WithMany(p => p.Reports)
-                .HasForeignKey(r => r.PastePID);
+                .HasForeignKey(r => r.PastePID)
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<Report>()
                 .HasOne(r => r.User)
                 .WithMany(u => u.Reports)
-                .HasForeignKey(r => r.UserUUID);
+                .HasForeignKey(r => r.UserUUID)
+                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }
