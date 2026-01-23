@@ -947,6 +947,21 @@
 			font-style: italic;
 			margin-bottom: 1rem;
 		}
+		.markdown table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-bottom: 1rem;
+		}
+		.markdown th,
+		.markdown td {
+			border: 1px solid #404040;
+			padding: 0.5rem;
+			text-align: left;
+		}
+		.markdown th {
+			background-color: #2a2a2a;
+		}
+
 		.codeblock-with-lines {
 			display: block;
 			width: 100%;
