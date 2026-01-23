@@ -14,7 +14,7 @@
 
 	export let data: PageData;
 
-	$: now = new Date();
+	let now = new Date();
 
 	onMount(() => {
 		const interval = setInterval(() => {
@@ -39,7 +39,7 @@
 		{:else}
 			<h1 class="mb-4 text-3xl font-bold">Recent Pastes</h1>
 			<div class="grid grid-cols-1 gap-4">
-				{#each data.recentPastes as paste}
+				{#each data.recentPastes as paste (paste.uuid)}
 					{@const createdAt = extractDateFromUUIDv7(paste.uuid)}
 					{@const syntax = syntaxes[paste.syntax] ?? syntaxes['plaintext']}
 
@@ -48,7 +48,7 @@
 						class="flex flex-col gap-2 rounded border border-neutral-700 bg-neutral-800 px-5 py-4 transition-colors duration-200 hover:bg-neutral-700 focus:ring-2 focus:ring-neutral-600 focus:outline-none"
 					>
 						<span
-							class="w-fit truncate text-lg max-w-full font-semibold text-neutral-100 hover:text-white"
+							class="w-fit max-w-full truncate text-lg font-semibold text-neutral-100 hover:text-white"
 							use:tooltip={paste.title || 'Untitled Paste'}
 						>
 							{paste.title || 'Untitled Paste'}

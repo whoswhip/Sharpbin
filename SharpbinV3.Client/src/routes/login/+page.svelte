@@ -83,7 +83,10 @@
 
 <svelte:head>
 	<title>Login - Sharpbin</title>
-	<meta name="description" content="Login to your Sharpbin account to manage your pastes and settings." />
+	<meta
+		name="description"
+		content="Login to your Sharpbin account to manage your pastes and settings."
+	/>
 </svelte:head>
 
 <main

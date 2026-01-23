@@ -252,7 +252,10 @@
 									? estimateEncryptedSize(content + (e.data ?? ''))
 									: new TextEncoder().encode(content + (e.data ?? '')).length;
 
-							if (futureSize > data.options.maxPasteSize && (e.data?.length ?? Number.MAX_SAFE_INTEGER < content.length)) {
+							if (
+								futureSize > data.options.maxPasteSize &&
+								(e.data?.length ?? Number.MAX_SAFE_INTEGER < content.length)
+							) {
 								e.preventDefault();
 							}
 						}}

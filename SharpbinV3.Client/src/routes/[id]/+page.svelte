@@ -31,6 +31,7 @@
 		tooltip,
 		isBinaryData
 	} from '$lib/utils/misc';
+	import { parseMarkdown } from '$lib/utils/markdown';
 	import { syntaxes } from '$lib/consts';
 	import { resolve } from '$app/paths';
 	import { decryptAES, encryptAES } from '$lib/utils/encryption';
@@ -124,7 +125,7 @@
 		return html.replace(code, numbered);
 	}
 
-	function renderCode(content: string | null = null) {
+	async function renderCode(content: string | null = null) {
 		if (!data?.paste) return;
 		let code = content ?? decryptedContent ?? data.content ?? '';
 
@@ -138,6 +139,14 @@
 		}
 
 		const lang = (data.paste.syntax ?? '').toLowerCase();
+
+		if (lang === 'markdown') {
+			pasteContent = await parseMarkdown(code);
+			contentRendered = true;
+			decryptStatus = '';
+			return;
+		}
+
 		let highlighted = '';
 		try {
 			if (lang === 'plaintext') {
@@ -212,7 +221,7 @@
 				}
 				data.content = rawContent;
 				decryptedContent = rawContent;
-				renderCode(rawContent);
+				await renderCode(rawContent);
 			}
 			if (
 				(metadata?.syntax !== data.paste.syntax ||
@@ -277,6 +286,76 @@
 		return value;
 	}
 
+	function handleMarkdownClick(event: MouseEvent) {
+		const target = event.target as HTMLElement;
+		const placeholder = target.closest('.media-placeholder') as HTMLElement;
+		if (placeholder) {
+			event.preventDefault();
+			event.stopPropagation();
+
+			if (target.classList.contains('load-media-btn')) {
+				const src = target.getAttribute('data-src');
+				const tag = target.getAttribute('data-tag');
+				if (!src || !tag) return;
+
+				const element = document.createElement(tag);
+
+				if (tag === 'img') {
+					element.setAttribute('alt', target.getAttribute('data-alt') || '');
+					element.setAttribute('style', 'max-width:100%; height:auto; border-radius:0.375rem;');
+					element.onload = () => {
+						const href = target.getAttribute('data-href');
+						if (href) {
+							const anchor = document.createElement('a');
+							anchor.setAttribute('href', href);
+							const targetAttr = target.getAttribute('data-target');
+							if (targetAttr) anchor.setAttribute('target', targetAttr);
+							anchor.appendChild(element);
+							placeholder.replaceWith(anchor);
+						} else {
+							placeholder.replaceWith(element);
+						}
+					};
+					element.onerror = () => {
+						target.textContent = 'Error loading image';
+						target.style.backgroundColor = '#7f1d1d';
+						target.style.opacity = '1';
+					};
+				} else {
+					if (tag === 'video' || tag === 'audio') {
+						element.setAttribute('controls', '');
+						element.setAttribute('style', 'max-width:100%;');
+					} else if (tag === 'iframe') {
+						element.setAttribute('style', 'width:100%; min-height:400px; border:none;');
+					}
+
+					const href = target.getAttribute('data-href');
+					if (href) {
+						const anchor = document.createElement('a');
+						anchor.setAttribute('href', href);
+						const targetAttr = target.getAttribute('data-target');
+						if (targetAttr) anchor.setAttribute('target', targetAttr);
+						anchor.appendChild(element);
+						placeholder.replaceWith(anchor);
+					} else {
+						placeholder.replaceWith(element);
+					}
+				}
+
+				['width', 'height', 'title'].forEach((attr) => {
+					const val = target.getAttribute(`data-${attr}`);
+					if (val) element.setAttribute(attr, val);
+				});
+
+				target.textContent = 'Loading...';
+				target.style.opacity = '0.5';
+				target.style.cursor = 'wait';
+
+				element.setAttribute('src', src);
+			}
+		}
+	}
+
 	onMount(async () => {
 		try {
 			if (data?.paste && data.paste.visibility === 2) {
@@ -297,14 +376,14 @@
 								decryptError = 'Incorrect password. Please try again.';
 								decryptStatus = 'Decryption failed.';
 							} else {
-								renderCode();
+								await renderCode();
 								history.replaceState(null, '', window.location.pathname + window.location.search);
 							}
 						} else {
 							decryptStatus = 'Decryption canceled.';
 						}
 					} else {
-						renderCode();
+						await renderCode();
 					}
 					return;
 				}
@@ -317,18 +396,18 @@
 						decryptError = 'Incorrect password. Please try again.';
 						decryptStatus = 'Decryption failed.';
 					} else {
-						renderCode();
+						await renderCode();
 					}
 				} else {
 					decryptStatus = 'Decryption canceled.';
 				}
 			} else {
 				decryptStatus = 'Rendering content...';
-				renderCode();
+				await renderCode();
 			}
 		} catch {
 			decryptStatus = 'Rendering content...';
-			renderCode();
+			await renderCode();
 		}
 	});
 
@@ -776,13 +855,17 @@
 				>
 					<span class="monospace">{decryptStatus || 'Loading...'}</span>
 				</div>
-				<code
-					class="codeblock-with-lines overflow-x-auto overflow-y-auto"
+				<div
+					class={data.paste.syntax === 'markdown'
+						? 'markdown rounded-b-md bg-neutral-800 p-4'
+						: 'codeblock-with-lines overflow-x-auto overflow-y-auto'}
 					class:hidden={!contentRendered}
+					on:click={handleMarkdownClick}
+					role="presentation"
 				>
 					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 					{@html pasteContent}
-				</code>
+				</div>
 			{/if}
 		{:else}
 			<h1 class="mb-4 text-center text-4xl font-bold">Paste not found</h1>
@@ -793,6 +876,72 @@
 	<style>
 		.hljs {
 			background-color: var(--color-neutral-800) !important;
+		}
+		.markdown h1 {
+			font-size: 2.25rem;
+			font-weight: 700;
+			margin-top: 1.5rem;
+			margin-bottom: 1rem;
+			border-bottom: 1px solid var(--color-neutral-700);
+			padding-bottom: 0.3rem;
+		}
+		.markdown h2 {
+			font-size: 1.875rem;
+			font-weight: 600;
+			margin-top: 1.25rem;
+			margin-bottom: 0.75rem;
+			border-bottom: 1px solid var(--color-neutral-700);
+			padding-bottom: 0.2rem;
+		}
+		.markdown h3 {
+			font-size: 1.5rem;
+			font-weight: 600;
+			margin-top: 1rem;
+			margin-bottom: 0.5rem;
+		}
+		.markdown p {
+			margin-bottom: 1rem;
+			line-height: 1.6;
+		}
+		.markdown ul {
+			list-style-type: disc;
+			margin-left: 1.5rem;
+			margin-bottom: 1rem;
+		}
+		.markdown ol {
+			list-style-type: decimal;
+			margin-left: 1.5rem;
+			margin-bottom: 1rem;
+		}
+		.markdown li {
+			margin-bottom: 0.25rem;
+		}
+		.markdown a {
+			color: #3b82f6;
+			text-decoration: underline;
+		}
+		.markdown .load-media-btn:hover {
+			background-color: #525252 !important;
+		}
+		.markdown pre {
+			background-color: #1a1a1a;
+			padding: 1rem;
+			border-radius: 0.375rem;
+			margin-bottom: 1rem;
+			overflow-x: auto;
+		}
+		.markdown code {
+			background-color: #1a1a1a;
+			padding: 0.2rem 0.4rem;
+			border-radius: 0.25rem;
+			font-family: monospace;
+		}
+		.markdown blockquote {
+			border-left: 4px solid #404040;
+			padding-left: 1rem;
+			color: #a3a3a3;
+			font-style: italic;
+			margin-bottom: 1rem;
 		}
 		.codeblock-with-lines {
 			display: block;

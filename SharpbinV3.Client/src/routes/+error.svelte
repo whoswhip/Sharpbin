@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
 
-	$: status = page.status;
-	$: error = page.error;
-	$: message = error?.message || 'An unexpected error occurred.';
+	let status = page.status;
+	let error = page.error;
+	let message = error?.message || 'An unexpected error occurred.';
 </script>
 
 <svelte:head>
