@@ -13,6 +13,7 @@
 		tooltip,
 		syntaxFromExtension
 	} from '$lib/utils/misc';
+	import { parseMarkdown } from '$lib/utils/markdown';
 	import Dropdown from '$lib/components/Dropdown.svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { FileUp, X, Eye, EyeClosed, Dices } from '@lucide/svelte';
@@ -32,13 +33,31 @@
 	let anonymousUpload = false;
 	let isDragging = false;
 	let dragError = '';
+	let previewMode = false;
+	let renderedMarkdown = '';
 
 	$: currentByteSize =
 		selectedVisibility === 2
 			? estimateEncryptedSize(content)
 			: new TextEncoder().encode(content).length;
 
+	$: if (selectedSyntax !== 'markdown') {
+		previewMode = false;
+	}
+
 	const MAX_HEIGHT = () => Math.floor((window.innerHeight - 120) * 0.6);
+
+	let previewHeight = 'auto';
+	async function togglePreview(toPreview: boolean) {
+		if (toPreview && !previewMode) {
+			previewHeight = textArea?.style.height || 'auto';
+			renderedMarkdown = await parseMarkdown(content, false);
+		}
+		previewMode = toPreview;
+		if (!toPreview) {
+			requestAnimationFrame(resize);
+		}
+	}
 
 	function resize() {
 		if (!textArea) return;
@@ -233,78 +252,88 @@
 			/>
 			<div>
 				<div class="relative">
-					<textarea
-						placeholder="Your paste content here..."
-						class="min-h-20 w-full resize-none overflow-hidden rounded rounded-b-none border border-neutral-700 bg-neutral-800 p-2 transition-colors duration-200"
-						spellcheck="false"
-						autocomplete="off"
-						minlength="1"
-						bind:this={textArea}
-						bind:value={content}
-						on:input={resize}
-						on:change={resize}
-						on:focus={resize}
-						on:beforeinput={(e) => {
-							if (!data.options?.maxPasteSize) return;
+					{#if previewMode}
+						<div
+							class="markdown min-h-20 w-full overflow-y-auto rounded rounded-b-none border border-neutral-700 bg-neutral-800 p-2 transition-colors duration-200"
+							style="height: {previewHeight}"
+						>
+							{@html renderedMarkdown}
+						</div>
+					{:else}
+						<textarea
+							placeholder="Your paste content here..."
+							class="min-h-20 w-full resize-none overflow-hidden rounded rounded-b-none border border-neutral-700 bg-neutral-800 p-2 transition-colors duration-200"
+							spellcheck="false"
+							autocomplete="off"
+							minlength="1"
+							bind:this={textArea}
+							bind:value={content}
+							on:input={resize}
+							on:change={resize}
+							on:focus={resize}
+							on:beforeinput={(e) => {
+								if (!data.options?.maxPasteSize) return;
 
-							const futureSize =
-								selectedVisibility === 2
-									? estimateEncryptedSize(content + (e.data ?? ''))
-									: new TextEncoder().encode(content + (e.data ?? '')).length;
+								const futureSize =
+									selectedVisibility === 2
+										? estimateEncryptedSize(content + (e.data ?? ''))
+										: new TextEncoder().encode(content + (e.data ?? '')).length;
 
-							if (
-								futureSize > data.options.maxPasteSize &&
-								(e.data?.length ?? Number.MAX_SAFE_INTEGER < content.length)
-							) {
+								if (
+									futureSize > data.options.maxPasteSize &&
+									(e.data?.length ?? Number.MAX_SAFE_INTEGER < content.length)
+								) {
+									e.preventDefault();
+								}
+							}}
+							on:dragenter={(e) => {
 								e.preventDefault();
-							}
-						}}
-						on:dragenter={(e) => {
-							e.preventDefault();
-							isDragging = true;
-						}}
-						on:dragover={(e) => {
-							e.preventDefault();
-							isDragging = true;
-						}}
-						on:dragleave={(e) => {
-							e.preventDefault();
-							isDragging = false;
-						}}
-						on:drop={(e) => {
-							requestAnimationFrame(resize);
-							e.preventDefault();
-							isDragging = false;
+								isDragging = true;
+							}}
+							on:dragover={(e) => {
+								e.preventDefault();
+								isDragging = true;
+							}}
+							on:dragleave={(e) => {
+								e.preventDefault();
+								isDragging = false;
+							}}
+							on:drop={(e) => {
+								requestAnimationFrame(resize);
+								e.preventDefault();
+								isDragging = false;
 
-							const file = e.dataTransfer?.files[0];
-							if (!file) return;
+								const file = e.dataTransfer?.files[0];
+								if (!file) return;
 
-							const reader = new FileReader();
+								const reader = new FileReader();
 
-							reader.onload = (e) => {
-								const arrayBuffer = e.target?.result as ArrayBuffer;
-								if (isBinaryData(new Uint8Array(arrayBuffer))) {
-									content = '';
-									dragError = 'The dropped file appears to be binary and cannot be pasted as text.';
-									setTimeout(() => {
-										dragError = '';
-									}, 5000);
-									return;
-								}
-								const syntax = syntaxFromExtension(file.name.split('.').pop() || '');
-								if (syntax && selectedSyntax !== syntax) {
-									selectedSyntax = syntax;
-								} else if (!syntax && selectedSyntax !== 'plaintext') {
-									selectedSyntax = 'plaintext';
-								}
-								title = file.name;
-								const decoder = new TextDecoder();
-								content = decoder.decode(arrayBuffer);
-							};
+								reader.onload = (e) => {
+									const arrayBuffer = e.target?.result as ArrayBuffer;
+									if (isBinaryData(new Uint8Array(arrayBuffer))) {
+										content = '';
+										dragError =
+											'The dropped file appears to be binary and cannot be pasted as text.';
+										setTimeout(() => {
+											dragError = '';
+										}, 5000);
+										return;
+									}
+									const syntax = syntaxFromExtension(file.name.split('.').pop() || '');
+									if (syntax && selectedSyntax !== syntax) {
+										selectedSyntax = syntax;
+									} else if (!syntax && selectedSyntax !== 'plaintext') {
+										selectedSyntax = 'plaintext';
+									}
+									title = file.name;
+									const decoder = new TextDecoder();
+									content = decoder.decode(arrayBuffer);
+								};
 
-							reader.readAsArrayBuffer(file);
-						}}
-					></textarea>
+								reader.readAsArrayBuffer(file);
+							}}
+						></textarea>
+					{/if}
 					{#if isDragging || (dragError && dragError !== '')}
 						<div
 							class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-md rounded-b-none border-2 border-dashed border-neutral-500 bg-neutral-800/70 text-center text-neutral-300"
@@ -331,25 +360,54 @@
 						</div>
 					{/if}
 				</div>
-				<div
-					class="monospace mb-2 flex h-12 items-center justify-between rounded-b border border-neutral-700 bg-neutral-800 p-1 pr-2 pl-2 text-sm text-neutral-400 md:h-8"
-				>
-					<div class="flex flex-col md:flex-row md:gap-2">
-						<span>
-							{content.split('\n').length} line{content.split('\n').length !== 1 ? 's' : ''}
-						</span>
-						<span class="hidden text-neutral-600 md:block">•</span>
-						<span>{formatNumber(content.length)} char{content.length !== 1 ? 's' : ''}</span>
-					</div>
-					<div class="flex flex-col text-center md:flex-row md:gap-2">
-						<span
-							class="border-b border-neutral-600 md:border-0"
-							class:text-red-500={currentByteSize > (data.options?.maxPasteSize ?? 0)}
+				<div class="mt-1 flex">
+					{#if selectedSyntax === 'markdown'}
+						<div
+							class="monospace mb-2 flex h-12 w-36 items-center justify-between gap-1 rounded-bl border border-neutral-700 bg-neutral-800 p-1 text-sm text-neutral-400 md:h-8"
 						>
-							{formatBytes(currentByteSize)}
-						</span>
-						<span class="hidden md:block">/</span>
-						{formatBytes(data.options?.maxPasteSize ?? 0)}
+							<button
+								type="button"
+								class="h-full w-1/2 rounded-l transition-colors {previewMode
+									? 'hover:bg-neutral-700'
+									: 'bg-neutral-700 text-white'}"
+								on:click={() => togglePreview(false)}
+							>
+								Code
+							</button>
+							<button
+								type="button"
+								class="h-full w-1/2 rounded-r transition-colors {!previewMode
+									? 'hover:bg-neutral-700'
+									: 'bg-neutral-700 text-white'}"
+								on:click={() => togglePreview(true)}
+							>
+								Preview
+							</button>
+						</div>
+					{/if}
+					<div
+						class="monospace mb-2 flex h-12 items-center justify-between {selectedSyntax ===
+						'markdown'
+							? 'ml-auto w-[calc(100%-150px)] rounded-br'
+							: 'w-full rounded-b'} border border-neutral-700 bg-neutral-800 p-1 pr-2 pl-2 text-sm text-neutral-400 md:h-8"
+					>
+						<div class="flex flex-col md:flex-row md:gap-2">
+							<span>
+								{content.split('\n').length} line{content.split('\n').length !== 1 ? 's' : ''}
+							</span>
+							<span class="hidden text-neutral-600 md:block">•</span>
+							<span>{formatNumber(content.length)} char{content.length !== 1 ? 's' : ''}</span>
+						</div>
+						<div class="flex flex-col text-center md:flex-row md:gap-2">
+							<span
+								class="border-b border-neutral-600 md:border-0"
+								class:text-red-500={currentByteSize > (data.options?.maxPasteSize ?? 0)}
+							>
+								{formatBytes(currentByteSize)}
+							</span>
+							<span class="hidden md:block">/</span>
+							{formatBytes(data.options?.maxPasteSize ?? 0)}
+						</div>
 					</div>
 				</div>
 			</div>
