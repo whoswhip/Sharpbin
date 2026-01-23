@@ -429,7 +429,7 @@
 		<meta property="og:title" content={data.paste.title || 'Untitled Paste'} />
 		<meta
 			property="og:description"
-			content={`A paste on Sharpbin created by ${
+			content={`A ${data.paste.syntax} paste on Sharpbin created by ${
 				data.paste.author ? data.paste.author.username : 'Anonymous'
 			}, created on ${
 				extractDateFromUUIDv7(data.paste.uuid)?.toLocaleDateString() ?? 'Unknown Date'
