@@ -877,6 +877,10 @@
 		.hljs {
 			background-color: var(--color-neutral-800) !important;
 		}
+		.markdown > :first-child {
+			margin-top: 0 !important;
+			padding-top: 0 !important;
+		}
 		.markdown h1 {
 			font-size: 2.25rem;
 			font-weight: 700;
