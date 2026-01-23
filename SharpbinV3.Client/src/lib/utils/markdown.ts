@@ -15,9 +15,11 @@ export async function parseMarkdown(md: string): Promise<string> {
 
 	if (typeof window !== 'undefined') {
 		dom = window as unknown as WindowLike & { document: Document };
-	} else {
+	} else if (import.meta.env.SSR) {
 		const { JSDOM } = await import('jsdom');
 		dom = new JSDOM('').window as unknown as WindowLike & { document: Document };
+	} else {
+		throw new Error('JSDOM should only be loaded on the server');
 	}
 
 	const DOMPurify = createDOMPurify(dom);
