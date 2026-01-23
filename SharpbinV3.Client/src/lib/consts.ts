@@ -156,12 +156,43 @@ export const syntaxes: Record<string, Syntax> = {
 	zenscript: { name: 'ZenScript', extension: '.zs' }
 };
 
-// only include langs that need special display names
-// e.g. cpp -> C++ or toml -> TOML, langs like java are automatically capitalized
-
 export const roles = {
 	0: 'User',
 	1: 'Moderator',
 	255: 'Administrator',
 	403: 'Banned'
 };
+
+export const trustedDomains =
+	[
+		'img.youtube.com',
+		'i.ytimg.com',
+
+		'github.com',
+		'githubusercontent.com',
+		'avatars.githubusercontent.com',
+		'camo.githubusercontent.com',
+		'raw.githubusercontent.com',
+		'github.githubassets.com',
+
+		'cdn.discordapp.com',
+		'media.discordapp.net',
+
+		'i.redd.it',
+		'v.redd.it',
+		'external-preview.redd.it',
+		'preview.redd.it',
+
+		'i.imgur.com',
+		'imgur.com',
+
+		'pbs.twimg.com',
+		'video.twimg.com',
+		'twitter.com',
+		'x.com',
+
+		'images.cloudflare.com',
+		'cloudflare-ipfs.com',
+
+		'upload.wikimedia.org'
+	];

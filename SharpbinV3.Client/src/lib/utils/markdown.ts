@@ -1,6 +1,7 @@
 import { marked } from 'marked';
 import createDOMPurify from 'dompurify';
 import type { WindowLike } from 'dompurify';
+import { trustedDomains } from '$lib/consts';
 
 const tagMap: Record<string, string> = {
 	IMG: 'image',
@@ -9,7 +10,7 @@ const tagMap: Record<string, string> = {
 	IFRAME: 'iframe'
 };
 
-export async function parseMarkdown(md: string, preventExternal: boolean = true): Promise<string> {
+export async function parseMarkdown(md: string, preventExternal: boolean = true, allowTrustedDomains: boolean = true): Promise<string> {
 	const html = await marked.parse(md);
 	let dom: WindowLike & { document: Document };
 
@@ -35,11 +36,14 @@ export async function parseMarkdown(md: string, preventExternal: boolean = true)
 				if (!src) return;
 
 				let hostname = 'external server';
+
 				try {
 					hostname = new URL(src).hostname;
 				} catch {
 					//might be a relative url
 				}
+
+				if (allowTrustedDomains && trustedDomains.includes(hostname)) return;
 
 				const placeholder = dom.document.createElement('span');
 				placeholder.className = 'media-placeholder';
