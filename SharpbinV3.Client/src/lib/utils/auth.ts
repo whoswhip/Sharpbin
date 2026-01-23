@@ -58,7 +58,7 @@ export async function refreshTokenIfNeeded() {
 		});
 		if (res.ok) {
 			const data = await res.json();
-			if (data.token.token && data.token.refreshToken && data.token.success) {
+			if (data.success && data.token?.token && data.token?.refreshToken) {
 				console.log('Token refreshed successfully');
 				setTokens(data.token.token, data.token.refreshToken);
 			} else {

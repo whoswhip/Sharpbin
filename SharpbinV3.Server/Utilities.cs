@@ -10,7 +10,12 @@ namespace SharpbinV3.Server
             var random = new Random();
             return new string([.. Enumerable.Repeat(chars, length).Select(s => s[random.Next(s.Length)])]);
         }
-
+        public static string ComputeSha256(string input)
+        {
+            var inputBytes = System.Text.Encoding.UTF8.GetBytes(input);
+            var hashBytes = SHA256.HashData(inputBytes);
+            return Convert.ToHexString(hashBytes);
+        }
         public static string ComputeHmacSha256(string secret, string input)
         {
             var secretBytes = System.Text.Encoding.UTF8.GetBytes(secret);

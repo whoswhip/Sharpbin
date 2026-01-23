@@ -34,6 +34,11 @@ namespace SharpbinV3.Server.Data
                 .HasForeignKey(r => r.UserUUID)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<RefreshToken>()
+                .HasIndex(r => r.TokenHash)
+                .IsUnique();
+
+
             modelBuilder.Entity<UserTotp>()
                 .HasOne(t => t.User)
                 .WithOne(u => u.Totp)
@@ -43,14 +48,12 @@ namespace SharpbinV3.Server.Data
             modelBuilder.Entity<Report>()
                 .HasOne(r => r.Paste)
                 .WithMany(p => p.Reports)
-                .HasForeignKey(r => r.PastePID)
-                .OnDelete(DeleteBehavior.Cascade);
+                .HasForeignKey(r => r.PastePID);
 
             modelBuilder.Entity<Report>()
                 .HasOne(r => r.User)
                 .WithMany(u => u.Reports)
-                .HasForeignKey(r => r.UserUUID)
-                .OnDelete(DeleteBehavior.Cascade);
+                .HasForeignKey(r => r.UserUUID);
         }
     }
 }
