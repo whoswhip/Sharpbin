@@ -96,9 +96,9 @@
 			aria-expanded={menuOpen}
 		>
 			{#if menuOpen}
-				<X class="h-6 w-6 text-white" />
+				<X class="h-6 w-6 text-white pointer-events-none" />
 			{:else}
-				<Menu class="h-6 w-6 text-white" />
+				<Menu class="h-6 w-6 text-white pointer-events-none" />
 			{/if}
 		</button>
 	</div>
