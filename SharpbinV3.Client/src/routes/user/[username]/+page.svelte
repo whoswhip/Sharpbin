@@ -23,6 +23,7 @@
 	import { openModal } from '$lib/stores/modal';
 	import { user } from '$lib/stores/user';
 	import { onMount } from 'svelte';
+	import Paste from '$lib/components/Paste.svelte';
 	import { reportStatusLabels, reportTargetLabels, reportTypeLabels } from '$lib/types/report';
 
 	export let data: PageData;
@@ -412,17 +413,7 @@
 		<div class="mt-6 max-h-[60vh] space-y-4 overflow-y-auto">
 			{#if pastes && pastes.length > 0}
 				{#each pastes.slice().sort((a, b) => b.uuid.localeCompare(a.uuid)) as paste (paste.uuid)}
-					<a
-						href={resolve(`/${paste.id}`)}
-						class="flex flex-col gap-2 rounded border border-neutral-700 bg-neutral-800 px-5 py-4 transition-colors duration-200 hover:bg-neutral-700 focus:ring-2 focus:ring-neutral-600 focus:outline-none"
-					>
-						<span class="truncate text-lg font-semibold text-neutral-100 hover:text-white">
-							{paste.title || 'Untitled Paste'}
-						</span>
-						<p class="text-sm text-neutral-400">
-							Created on {extractDateFromUUIDv7(paste.uuid)?.toLocaleDateString() ?? 'Unknown Date'}
-						</p>
-					</a>
+					<Paste {paste} {now} />
 				{/each}
 			{:else}
 				<p class="text-center text-neutral-400">

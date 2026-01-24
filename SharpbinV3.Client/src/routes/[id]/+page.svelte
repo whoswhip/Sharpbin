@@ -527,8 +527,7 @@
 							class="text-neutral-400"
 							use:tooltip={`Created on ${
 								extractDateFromUUIDv7(data.paste.uuid)?.toLocaleString() ?? 'Unknown Date'
-							}
-								${dateToRelativeString(extractDateFromUUIDv7(data.paste.uuid) ?? new Date(), true, true, now, 3)}`}
+							} • ${dateToRelativeString(extractDateFromUUIDv7(data.paste.uuid) ?? new Date(), true, true, now, 3)}`}
 						>
 							{extractDateFromUUIDv7(data.paste.uuid)?.toLocaleDateString() ?? 'Unknown Date'}
 						</span>
@@ -538,8 +537,7 @@
 							<CalendarCog class="mr-2 h-6 w-6 text-neutral-400" />
 							<span
 								class="text-neutral-400"
-								use:tooltip={`Edited on ${new Date(data.paste.editedAt).toLocaleString()}
-									${dateToRelativeString(new Date(data.paste.editedAt), true, true, now, 3)}`}
+								use:tooltip={`Edited on ${new Date(data.paste.editedAt).toLocaleString()} • ${dateToRelativeString(new Date(data.paste.editedAt), true, true, now, 3)}`}
 							>
 								{#if new Date(data.paste.editedAt).getTime() > new Date().getTime() - 86400000}
 									Edited {dateToRelativeString(new Date(data.paste.editedAt), false, false, now)} ago
@@ -555,8 +553,7 @@
 							{#if !editing}
 								<span
 									class="text-neutral-400"
-									use:tooltip={`Expires on ${new Date(data.paste.expiresAt).toLocaleString()}
-									${dateToRelativeString(new Date(data.paste.expiresAt), true, true, now, 3)}`}
+									use:tooltip={`Expires on ${new Date(data.paste.expiresAt).toLocaleString()} • ${dateToRelativeString(new Date(data.paste.expiresAt), true, true, now, 3)}`}
 								>
 									{isExpired ? 'Expired' : 'Expires in'}
 									{dateToRelativeString(new Date(data.paste.expiresAt), false, false, now)}
