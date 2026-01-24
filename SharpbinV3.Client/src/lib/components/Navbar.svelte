@@ -122,13 +122,13 @@
 			{:else}
 				<a
 					href={resolve(`/login${returnParam}`)}
-					class="mt-1 block w-full rounded bg-neutral-800 px-3 py-2 text-neutral-100 transition-colors hover:bg-neutral-700"
+					class="mt-1 block w-full rounded bg-neutral-800 px-3 py-2 text-center text-neutral-100 transition-colors hover:bg-neutral-700"
 					on:click={() => (menuOpen = false)}>Login</a
 				>
 				<!-- eslint-disable svelte/no-navigation-without-resolve -->
 				<a
 					href={data.options?.registration_enabled ? resolve(`/register${returnParam}`) : '#'}
-					class="mt-1 block w-full rounded px-3 py-2 text-neutral-100 transition-colors hover:bg-neutral-700 {data
+					class="mt-1 block w-full rounded bg-neutral-800 px-3 py-2 text-center text-neutral-100 transition-colors hover:bg-neutral-700 {data
 						.options?.registration_enabled
 						? ''
 						: 'cursor-not-allowed bg-neutral-900 text-neutral-500'}"
