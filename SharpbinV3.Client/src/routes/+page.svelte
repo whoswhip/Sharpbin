@@ -430,7 +430,7 @@
 				/>
 			</div>
 			{#if selectedVisibility === 2}
-				<div class="flex w-full">
+				<div class="flex w-full mb-2">
 					<input
 						type={passwordVisible ? 'text' : 'password'}
 						placeholder="Password for private paste"
@@ -468,7 +468,7 @@
 			{/if}
 			{#if $user}
 				<label
-					class="flex w-full items-center gap-2 rounded border border-neutral-700 bg-neutral-800 p-2"
+					class="mb-2 flex w-full items-center gap-2 rounded border border-neutral-700 bg-neutral-800 p-2"
 				>
 					<input
 						type="checkbox"
@@ -480,7 +480,7 @@
 			{/if}
 			{#if data.options?.requiresVerification && data.auth?.cf_turnstile_site_key}
 				<div
-					class="mt-2 flex min-h-16.25 w-auto items-center justify-center rounded border border-neutral-700 bg-neutral-800 p-2 pb-1"
+					class="mb-2 flex min-h-16.25 w-auto items-center justify-center rounded border border-neutral-700 bg-neutral-800 p-2 pb-1"
 				>
 					<div class="cf-turnstile" data-sitekey={data.auth.cf_turnstile_site_key}></div>
 				</div>
@@ -488,13 +488,13 @@
 			<button
 				type="submit"
 				disabled={$user?.roles && $user.roles.includes(403)}
-				class="mt-2 w-full cursor-pointer rounded bg-neutral-700 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-neutral-800 active:bg-neutral-900 disabled:cursor-not-allowed disabled:bg-neutral-950/50 disabled:text-neutral-400"
+				class="mb-2 w-full cursor-pointer rounded bg-neutral-700 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-neutral-800 active:bg-neutral-900 disabled:cursor-not-allowed disabled:bg-neutral-950/50 disabled:text-neutral-400"
 				>Create Paste</button
 			>
 			{#if error}
 				<div
 					transition:fly={{ y: 40, duration: 300 }}
-					class="mt-2 rounded border border-red-900 bg-red-950 p-2 text-sm text-red-200"
+					class="mb-2 rounded border border-red-900 bg-red-950 p-2 text-sm text-red-200"
 				>
 					{error}
 				</div>
@@ -502,7 +502,7 @@
 			{#if $user?.roles && $user.roles.includes(403)}
 				<div
 					transition:fly={{ y: 40, duration: 300 }}
-					class="mt-2 rounded border border-red-900 bg-red-950 p-2 text-sm text-red-200"
+					class="mb-2 rounded border border-red-900 bg-red-950 p-2 text-sm text-red-200"
 				>
 					You are banned from creating new pastes.
 				</div>
