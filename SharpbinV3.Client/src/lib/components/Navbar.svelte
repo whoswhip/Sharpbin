@@ -7,6 +7,7 @@
 	import type { PageData } from '../../routes/$types';
 	import { slide } from 'svelte/transition';
 	import { Menu, X } from '@lucide/svelte';
+	import { onMount } from 'svelte';
 
 	function logout() {
 		clearTokens();
@@ -23,9 +24,24 @@
 		currentPath !== '/' && !currentPath.startsWith('/login') && !currentPath.startsWith('/register')
 			? `?return=${encodeURIComponent(page.url.pathname + page.url.search)}`
 			: '';
+
+	function handleClickOutside(event: MouseEvent) {
+		const navbar = document.getElementById('navbar');
+		const mobileMenu = document.getElementById('mobile-menu');
+		if (menuOpen && mobileMenu && navbar && !navbar.contains(event.target as Node)) {
+			menuOpen = false;
+		}
+	}
+	
+	onMount(() => {
+		document.addEventListener('click', handleClickOutside);
+		return () => {
+			document.removeEventListener('click', handleClickOutside);
+		};
+	});
 </script>
 
-<div class="top-0 left-0 z-100 h-15 w-full bg-neutral-900">
+<div class="top-0 left-0 z-100 h-15 w-full bg-neutral-900" id="navbar">
 	<div class="mx-auto hidden h-15 w-[95%] max-w-7xl items-center py-2 md:flex">
 		<div>
 			<a href={resolve('/')} class="text-xl font-bold text-white hover:text-neutral-300">Sharpbin</a
@@ -89,6 +105,7 @@
 	{#if menuOpen}
 		<div
 			class="mx-auto mb-2 w-full rounded-b border-b border-neutral-800 bg-neutral-900 px-2 py-3 md:hidden"
+			id="mobile-menu"
 			in:slide={{ duration: 180 }}
 			out:slide={{ duration: 180 }}
 			style="z-index:1000;position:relative;"
