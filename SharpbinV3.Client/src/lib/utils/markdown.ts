@@ -10,7 +10,11 @@ const tagMap: Record<string, string> = {
 	IFRAME: 'iframe'
 };
 
-export async function parseMarkdown(md: string, preventExternal: boolean = true, allowTrustedDomains: boolean = true): Promise<string> {
+export async function parseMarkdown(
+	md: string,
+	preventExternal: boolean = true,
+	allowTrustedDomains: boolean = true
+): Promise<string> {
 	const html = await marked.parse(md);
 	let dom: WindowLike & { document: Document };
 

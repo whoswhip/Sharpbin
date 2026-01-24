@@ -163,36 +163,35 @@ export const roles = {
 	403: 'Banned'
 };
 
-export const trustedDomains =
-	[
-		'img.youtube.com',
-		'i.ytimg.com',
+export const trustedDomains = [
+	'img.youtube.com',
+	'i.ytimg.com',
 
-		'github.com',
-		'githubusercontent.com',
-		'avatars.githubusercontent.com',
-		'camo.githubusercontent.com',
-		'raw.githubusercontent.com',
-		'github.githubassets.com',
+	'github.com',
+	'githubusercontent.com',
+	'avatars.githubusercontent.com',
+	'camo.githubusercontent.com',
+	'raw.githubusercontent.com',
+	'github.githubassets.com',
 
-		'cdn.discordapp.com',
-		'media.discordapp.net',
+	'cdn.discordapp.com',
+	'media.discordapp.net',
 
-		'i.redd.it',
-		'v.redd.it',
-		'external-preview.redd.it',
-		'preview.redd.it',
+	'i.redd.it',
+	'v.redd.it',
+	'external-preview.redd.it',
+	'preview.redd.it',
 
-		'i.imgur.com',
-		'imgur.com',
+	'i.imgur.com',
+	'imgur.com',
 
-		'pbs.twimg.com',
-		'video.twimg.com',
-		'twitter.com',
-		'x.com',
+	'pbs.twimg.com',
+	'video.twimg.com',
+	'twitter.com',
+	'x.com',
 
-		'images.cloudflare.com',
-		'cloudflare-ipfs.com',
+	'images.cloudflare.com',
+	'cloudflare-ipfs.com',
 
-		'upload.wikimedia.org'
-	];
+	'upload.wikimedia.org'
+];
