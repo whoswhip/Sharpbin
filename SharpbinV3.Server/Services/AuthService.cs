@@ -53,13 +53,13 @@ namespace SharpbinV3.Server.Services
 
             var totpEnabled = await _db.UserTotps.AnyAsync(t => t.UserUUID == user.UUID);
             var claims = new List<Claim>
-    {
-        new("uuid", user.UUID.ToString()),
-        new("username", user.Username),
-        new("displayname", user.DisplayName ?? ""),
-        new("totp_enabled", totpEnabled.ToString()),
-        new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-    };
+            {
+                new("uuid", user.UUID.ToString()),
+                new("username", user.Username),
+                new("displayname", user.DisplayName ?? ""),
+                new("totp_enabled", totpEnabled.ToString()),
+                new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
 
             if (user.Roles != null)
             {

@@ -394,7 +394,16 @@ namespace SharpbinV3.Server.Controllers
                 Syntax = p.Syntax,
                 Visibility = p.Visibility,
                 ExpiresAt = p.ExpiresAt,
-                EditedAt = p.EditedAt
+                EditedAt = p.EditedAt,
+                Author = p.User != null && p.User.Visibility == 0 ? new UserSimpleDto
+                {
+                    UID = p.User.UID,
+                    UUID = p.User.UUID,
+                    Username = p.User.Username,
+                    DisplayName = p.User.DisplayName,
+                    Visibility = p.User.Visibility,
+                    Roles = p.User.Roles
+                } : null
             }));
         }
 

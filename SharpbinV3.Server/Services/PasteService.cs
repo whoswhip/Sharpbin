@@ -126,6 +126,7 @@ namespace SharpbinV3.Server.Services
                 .OrderByDescending(p => p.PID)
                 .Skip(offset)
                 .Take(count)
+                .Include(p => p.User)
                 .ToListAsync();
         }
 
