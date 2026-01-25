@@ -6,7 +6,8 @@
 		File,
 		FileBox,
 		Eye,
-		EyeClosed,
+		Globe,
+		Lock,
 		EyeOff,
 		User,
 		CalendarDays,
@@ -580,13 +581,13 @@
 					<div>
 						<div class="flex shrink-0 items-center">
 							{#if data.paste.visibility === 0}
-								<Eye class="mr-2 h-6 w-6 text-neutral-400" />
+								<Globe class="mr-2 h-6 w-6 text-neutral-400" />
 								<span class="text-neutral-400">{editing ? '' : 'Public'}</span>
 							{:else if data.paste.visibility === 1}
-								<EyeClosed class="mr-2 h-6 w-6 text-neutral-400" />
+								<EyeOff class="mr-2 h-6 w-6 text-neutral-400" />
 								<span class="text-neutral-400">{editing ? '' : 'Unlisted'}</span>
 							{:else if data.paste.visibility === 2}
-								<EyeOff class="mr-2 h-6 w-6 text-neutral-400" />
+								<Lock class="mr-2 h-6 w-6 text-neutral-400" />
 								<span class="text-neutral-400">{editing ? '' : 'Private'}</span>
 							{/if}
 							{#if editing && editMetadata}
