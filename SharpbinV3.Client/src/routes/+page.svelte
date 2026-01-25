@@ -21,6 +21,7 @@
 	export let data: PageData;
 
 	let textArea: HTMLTextAreaElement;
+	let markdownConatiner: HTMLDivElement;
 
 	let error = '';
 	let title = '';
@@ -54,25 +55,34 @@
 			renderedMarkdown = await parseMarkdown(content, false);
 		}
 		previewMode = toPreview;
-		if (!toPreview) {
-			requestAnimationFrame(resize);
-		}
+		requestAnimationFrame(() => resize(true));
 	}
 
-	function resize() {
-		if (!textArea) return;
+	function resize(markdown: boolean = false) {
+		if ((!markdown && !textArea) || (markdown && !markdownConatiner)) return;
 
-		textArea.style.height = 'auto';
+		let h: number;
+		let max: number;
+		let element = markdown ? markdownConatiner : textArea;
 
-		const h = textArea.scrollHeight;
-		const max = MAX_HEIGHT();
+		if (!markdown) {
+			textArea.style.height = 'auto';
+
+			h = textArea.scrollHeight;
+			max = MAX_HEIGHT();
+		} else {
+			markdownConatiner.style.height = 'auto';
+
+			h = markdownConatiner.scrollHeight;
+			max = MAX_HEIGHT();
+		}
 
 		if (h > max) {
-			textArea.style.height = max + 'px';
-			textArea.style.overflowY = 'auto';
+			element.style.height = max + 'px';
+			element.style.overflowY = 'auto';
 		} else {
-			textArea.style.height = h + 'px';
-			textArea.style.overflowY = 'hidden';
+			element.style.height = h + 'px';
+			element.style.overflowY = 'hidden';
 		}
 	}
 
@@ -242,6 +252,7 @@
 						<div
 							class="markdown min-h-20 w-full overflow-y-auto rounded rounded-b-none border border-neutral-700 bg-neutral-800 p-2 transition-colors duration-200"
 							style="height: {previewHeight}"
+							bind:this={markdownConatiner}
 						>
 							{@html renderedMarkdown}
 						</div>
@@ -254,9 +265,9 @@
 							minlength="1"
 							bind:this={textArea}
 							bind:value={content}
-							on:input={resize}
-							on:change={resize}
-							on:focus={resize}
+							on:input={() => resize()}
+							on:change={() => resize()}
+							on:focus={() => resize()}
 							on:beforeinput={(e) => {
 								if (!data.options?.maxPasteSize) return;
 
@@ -285,7 +296,7 @@
 								isDragging = false;
 							}}
 							on:drop={(e) => {
-								requestAnimationFrame(resize);
+								requestAnimationFrame(() => resize());
 								e.preventDefault();
 								isDragging = false;
 
