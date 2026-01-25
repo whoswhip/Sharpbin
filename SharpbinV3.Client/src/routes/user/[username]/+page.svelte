@@ -413,7 +413,7 @@
 		<div class="mt-6 max-h-[60vh] space-y-4 overflow-y-auto">
 			{#if pastes && pastes.length > 0}
 				{#each pastes.slice().sort((a, b) => b.uuid.localeCompare(a.uuid)) as paste (paste.uuid)}
-					<Paste {paste} {now} />
+					<Paste {paste} {now} showUser={false} compact={true} />
 				{/each}
 			{:else}
 				<p class="text-center text-neutral-400">
