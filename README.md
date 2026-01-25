@@ -1,6 +1,6 @@
 # SharpbinV3
 
-Sharpbin is a pastebin-style website built with ASP.NET Core and SvelteKit.
+Sharpbin is a [pastebin](https://en.wikipedia.org/wiki/Pastebin)-style website built with ASP.NET Core and SvelteKit.
 
 A live instance is available at [sharpbin.cc](https://sharpbin.cc).
 
