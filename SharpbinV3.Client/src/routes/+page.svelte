@@ -86,7 +86,9 @@
 			) {
 				window.turnstile.render('.cf-turnstile', {
 					sitekey: data.auth.cf_turnstile_site_key,
-					theme: 'dark'
+					theme: 'dark',
+					size: 'flexible',
+					appearence: 'interaction-only'
 				});
 			}
 		};
@@ -463,11 +465,7 @@
 				</label>
 			{/if}
 			{#if data.options?.requiresVerification && data.auth?.cf_turnstile_site_key}
-				<div
-					class="mb-2 flex min-h-16.25 w-auto items-center justify-center rounded border border-neutral-700 bg-neutral-800 p-2 pb-1"
-				>
-					<div class="cf-turnstile" data-sitekey={data.auth.cf_turnstile_site_key}></div>
-				</div>
+				<div class="cf-turnstile mb-1 w-full" data-sitekey={data.auth.cf_turnstile_site_key}></div>
 			{/if}
 			<button
 				type="submit"
