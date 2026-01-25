@@ -21,9 +21,11 @@ The easiest way to run SharpbinV3 is using Docker Compose.
 
 1. Ensure Docker and Docker Compose are installed.
 2. Clone the repository.
+
 ```bash
 git clone https://github.com/whoswhip/Sharpbin.git
 ```
+
 3. Run the following command in the root directory:
 
 ```bash
@@ -40,7 +42,7 @@ You can configure the application using environment variables. When using Docker
 - `JwtSettings__Secret`: A secure string used for signing JWT tokens.
 - `AuthSettings__CF_Turnstile_SecretKey`: Your Cloudflare Turnstile secret key.
 - `AuthSettings__CF_Turnstile_SiteKey`: Your Cloudflare Turnstile site key.
-- `AuthSettings__Registration_Enabled`: Set to `true` by default, enables/disables registration. 
+- `AuthSettings__Registration_Enabled`: Set to `true` by default, enables/disables registration.
 - `AuthSettings__First_User_Admin`: Gives the first user the admin role, it is recommended to disable this after use.
 - `AuthSettings__Admins_Require_2FA`: Enforces Admins to have 2FA when trying to do certain actions.
 - `PasteSettings__MaxTitleLength`: Max title length in characters.
