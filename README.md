@@ -2,6 +2,8 @@
 
 Sharpbin is a pastebin-style website built with ASP.NET Core and SvelteKit.
 
+A live instance is available at [sharpbin.cc](https://sharpbin.cc).
+
 ## Features
 
 - User authentication and account management.
