@@ -32,7 +32,7 @@
 		isBinaryData
 	} from '$lib/utils/misc';
 	import { parseMarkdown } from '$lib/utils/markdown';
-	import { syntaxes } from '$lib/consts';
+	import { syntaxes, expiresOptions } from '$lib/consts';
 	import { resolve } from '$app/paths';
 	import { decryptAES, encryptAES } from '$lib/utils/encryption';
 	import { fade } from 'svelte/transition';
@@ -73,21 +73,7 @@
 			value: lang,
 			label: syntaxes[lang]?.name ?? lang.charAt(0).toUpperCase() + lang.slice(1)
 		})) ?? [];
-	const expiresOptions = [
-		{ value: 0, label: 'Never Expire' },
-		{ value: 600000, label: 'Expire in 10 Minutes' },
-		{ value: 3600000, label: 'Expire in 1 Hour' },
-		{ value: 86400000, label: 'Expire in 1 Day' },
-		{ value: 604800000, label: 'Expire in 1 Week' },
-		{ value: 1209600000, label: 'Expire in 2 Weeks' },
-		{ value: 2592000000, label: 'Expire in 1 Month' },
-		{ value: 7776000000, label: 'Expire in 3 Months' },
-		{ value: 15552000000, label: 'Expire in 6 Months' },
-		{ value: 31536000000, label: 'Expire in 1 Year' },
-		{ value: 63072000000, label: 'Expire in 2 Years' },
-		{ value: 157680000000, label: 'Expire in 5 Years' },
-		{ value: 315360000000, label: 'Expire in 10 Years' }
-	];
+		
 	const visibilityOptions =
 		data.options?.visibilities?.map((visibility: { value: number; displayName: string }) => ({
 			value: visibility.value,

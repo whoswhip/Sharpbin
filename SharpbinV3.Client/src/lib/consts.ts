@@ -156,6 +156,26 @@ export const syntaxes: Record<string, Syntax> = {
 	zenscript: { name: 'ZenScript', extension: '.zs' }
 };
 
+export const expiresOptions = [
+	{ value: 0, label: 'Never Expire' },
+	{ value: 30000, label: 'Expire in 5 Minutes' },
+	{ value: 600000, label: 'Expire in 10 Minutes' },
+	{ value: 1800000, label: 'Expire in 30 Minutes' },
+	{ value: 3600000, label: 'Expire in 1 Hour' },
+	{ value: 21600000, label: 'Expire in 6 Hours' },
+	{ value: 43200000, label: 'Expire in 12 Hours' },
+	{ value: 86400000, label: 'Expire in 1 Day' },
+	{ value: 604800000, label: 'Expire in 1 Week' },
+	{ value: 1209600000, label: 'Expire in 2 Weeks' },
+	{ value: 2592000000, label: 'Expire in 1 Month' },
+	{ value: 7776000000, label: 'Expire in 3 Months' },
+	{ value: 15552000000, label: 'Expire in 6 Months' },
+	{ value: 31536000000, label: 'Expire in 1 Year' },
+	{ value: 63072000000, label: 'Expire in 2 Years' },
+	{ value: 157680000000, label: 'Expire in 5 Years' },
+	{ value: 315360000000, label: 'Expire in 10 Years' }
+];
+
 export const roles = {
 	0: 'User',
 	1: 'Moderator',
