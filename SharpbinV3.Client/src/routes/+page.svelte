@@ -363,7 +363,7 @@
 				<div class="mt-1 flex">
 					{#if selectedSyntax === 'markdown'}
 						<div
-							class="monospace mb-2 flex h-12 w-36 items-center justify-between gap-1 rounded-bl border border-neutral-700 bg-neutral-800 p-1 text-sm text-neutral-400 md:h-8"
+							class="monospace mb-2 flex min-h-full w-36 items-center justify-between gap-1 rounded-bl border border-neutral-700 bg-neutral-800 p-1 text-sm text-neutral-400 md:h-8"
 						>
 							<button
 								type="button"
@@ -386,10 +386,10 @@
 						</div>
 					{/if}
 					<div
-						class="monospace mb-2 flex h-12 items-center justify-between {selectedSyntax ===
+						class="monospace mb-2 flex h-fit min-h-12 items-center justify-between {selectedSyntax ===
 						'markdown'
 							? 'ml-auto w-[calc(100%-150px)] rounded-br'
-							: 'w-full rounded-b'} border border-neutral-700 bg-neutral-800 p-1 pr-2 pl-2 text-sm text-neutral-400 md:h-8"
+							: 'w-full rounded-b'} border border-neutral-700 bg-neutral-800 p-1 pr-2 pl-2 text-sm text-neutral-400 md:min-h-8 md:h-8"
 					>
 						<div class="flex flex-col md:flex-row md:gap-2">
 							<span>
