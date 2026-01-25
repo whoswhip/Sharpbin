@@ -66,7 +66,7 @@
 
 <svelte:window on:click={handleClickOutside} />
 
-	<div bind:this={dropdownElement} class="relative mb-2 w-full" class:dropdown-sm={variant === 'sm'}>
+<div bind:this={dropdownElement} class="relative mb-2 w-full" class:dropdown-sm={variant === 'sm'}>
 	<button
 		type="button"
 		on:click={toggleDropdown}

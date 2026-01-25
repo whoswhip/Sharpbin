@@ -108,8 +108,6 @@
 			label: syntaxes[lang]?.name ?? lang.charAt(0).toUpperCase() + lang.slice(1)
 		})) ?? [];
 
-
-
 	const visibilityOptions =
 		data.options?.visibilities?.map((visibility: { value: number; displayName: string }) => ({
 			value: visibility.value,
@@ -375,7 +373,7 @@
 						class="monospace mb-2 flex h-fit min-h-12 items-center justify-between {selectedSyntax ===
 						'markdown'
 							? 'ml-auto w-[calc(100%-150px)] rounded-br'
-							: 'w-full rounded-b'} border border-neutral-700 bg-neutral-800 p-1 pr-2 pl-2 text-sm text-neutral-400 md:min-h-8 md:h-8"
+							: 'w-full rounded-b'} border border-neutral-700 bg-neutral-800 p-1 pr-2 pl-2 text-sm text-neutral-400 md:h-8 md:min-h-8"
 					>
 						<div class="flex flex-col md:flex-row md:gap-2">
 							<span>
@@ -416,7 +414,7 @@
 				/>
 			</div>
 			{#if selectedVisibility === 2}
-				<div class="flex w-full mb-2">
+				<div class="mb-2 flex w-full">
 					<input
 						type={passwordVisible ? 'text' : 'password'}
 						placeholder="Password for private paste"

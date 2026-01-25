@@ -32,7 +32,7 @@
 			menuOpen = false;
 		}
 	}
-	
+
 	onMount(() => {
 		document.addEventListener('click', handleClickOutside);
 		return () => {
@@ -96,9 +96,9 @@
 			aria-expanded={menuOpen}
 		>
 			{#if menuOpen}
-				<X class="h-6 w-6 text-white pointer-events-none" />
+				<X class="pointer-events-none h-6 w-6 text-white" />
 			{:else}
-				<Menu class="h-6 w-6 text-white pointer-events-none" />
+				<Menu class="pointer-events-none h-6 w-6 text-white" />
 			{/if}
 		</button>
 	</div>

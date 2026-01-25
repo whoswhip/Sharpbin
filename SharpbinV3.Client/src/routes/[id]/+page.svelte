@@ -73,7 +73,7 @@
 			value: lang,
 			label: syntaxes[lang]?.name ?? lang.charAt(0).toUpperCase() + lang.slice(1)
 		})) ?? [];
-		
+
 	const visibilityOptions =
 		data.options?.visibilities?.map((visibility: { value: number; displayName: string }) => ({
 			value: visibility.value,
