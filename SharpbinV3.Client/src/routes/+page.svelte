@@ -254,6 +254,7 @@
 							style="height: {previewHeight}"
 							bind:this={markdownConatiner}
 						>
+							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 							{@html renderedMarkdown}
 						</div>
 					{:else}
