@@ -15,11 +15,6 @@ A live instance is available at [sharpbin.cc](https://sharpbin.cc).
 - Server-side paste compression to save storage.
 - Captcha support via Cloudflare Turnstile.
 
-## Project Structure
-
-- **[SharpbinV3.Server](SharpbinV3.Server/README.md)**: Backend API built with C# and ASP.NET Core. Refer to its README for server-side development and configuration.
-- **[SharpbinV3.Client](SharpbinV3.Client/README.md)**: Frontend application built with SvelteKit and TypeScript. Refer to its README for client-side development and setup.
-
 ## Getting Started
 
 The easiest way to run SharpbinV3 is using Docker Compose.
@@ -63,3 +58,8 @@ You can configure the application using environment variables. When using Docker
 - `VIEW_INTERNAL_API_KEY`: Enforces views to be counted/recorded only by the frontend, if set it needs to be the same for both backend and frontend.
 
 The frontend will be accessible at http://localhost:5173.
+
+## Project Structure
+
+- **[SharpbinV3.Server](SharpbinV3.Server/README.md)**: Backend API built with C# and ASP.NET Core. Refer to its README for server-side development and configuration.
+- **[SharpbinV3.Client](SharpbinV3.Client/README.md)**: Frontend application built with SvelteKit and TypeScript. Refer to its README for client-side development and setup.
