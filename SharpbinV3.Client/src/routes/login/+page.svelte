@@ -17,7 +17,9 @@
 			if (window.turnstile && data.options?.cf_turnstile_site_key) {
 				window.turnstile.render('.cf-turnstile', {
 					sitekey: data.options.cf_turnstile_site_key,
-					theme: 'dark'
+					theme: 'dark',
+					size: 'flexible',
+					appearence: 'interaction-only'
 				});
 			}
 		};

@@ -230,7 +230,9 @@
 			}
 			turnstileWidgetId = window.turnstile.render(turnstileEl, {
 				sitekey: reportSiteKey,
-				theme: 'dark'
+				theme: 'dark',
+				size: 'flexible',
+				appearence: 'interaction-only'
 			});
 		};
 		if (window.turnstile) {
