@@ -482,9 +482,7 @@
 							class="h-28 w-full resize-none rounded border border-neutral-700 bg-neutral-800 p-2 text-white outline-none"
 						></textarea>
 						{#if reportSiteKey}
-							<div class="flex justify-center">
-								<div class="cf-turnstile" bind:this={turnstileEl}></div>
-							</div>
+							<div class="cf-turnstile w-full" bind:this={turnstileEl}></div>
 						{/if}
 					{/if}
 				</div>

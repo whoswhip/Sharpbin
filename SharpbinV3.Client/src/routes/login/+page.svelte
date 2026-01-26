@@ -132,9 +132,7 @@
 				/>
 			{/if}
 			{#if data.options?.cf_turnstile_site_key}
-				<div class="flex w-full justify-center">
-					<div class="cf-turnstile"></div>
-				</div>
+				<div class="cf-turnstile w-full"></div>
 			{/if}
 			<button
 				type="submit"
