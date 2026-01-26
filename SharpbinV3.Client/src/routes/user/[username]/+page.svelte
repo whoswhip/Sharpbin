@@ -423,81 +423,76 @@
 		</div>
 		{#if reportsSubmitted || reportsTarget}
 			<div class="mt-6 space-y-6">
-				{#if reportsSubmitted}
+				{#if reportsSubmitted && reportsSubmitted.reports.length > 0}
 					<div class="rounded border border-neutral-800 bg-neutral-900/60 p-4">
 						<h2 class="mb-3 text-xl font-semibold text-neutral-200">Submitted Reports</h2>
-						{#if reportsSubmitted.reports.length > 0}
-							<div class="space-y-3">
-								{#each reportsSubmitted.reports as report (report.reportID)}
-									<div
-										class="flex cursor-pointer flex-col gap-2 rounded border border-neutral-700 bg-neutral-800 px-5 py-4 transition-colors duration-200 hover:bg-neutral-700 focus:ring-2 focus:ring-neutral-600 focus:outline-none"
-										role="link"
-										tabindex="0"
-										on:click={() => goto(resolve(`/report/${report.reportID}`))}
-										on:keydown={(e) => {
-											if (e.key === 'Enter' || e.key === ' ') {
-												e.preventDefault();
-												goto(resolve(`/report/${report.reportID}`));
-											}
-										}}
-									>
-										<div class="flex flex-wrap items-center justify-between gap-2">
-											<span class="text-lg font-semibold text-neutral-100">
-												Report #{report.reportID}
-											</span>
-											<span class="text-sm text-neutral-300">
-												{reportTypeLabels[report.type] ?? 'Other'}
-												· {reportStatusLabels[report.status] ?? 'Open'}
-											</span>
-										</div>
-										<div class="flex flex-wrap items-center gap-3 text-sm text-neutral-400">
-											<span>{reportTargetLabels[report.targetType] ?? 'Unknown'}</span>
-											{#if report.pasteId}
+						<div class="space-y-3">
+							{#each reportsSubmitted.reports as report (report.reportID)}
+								<div
+									class="flex cursor-pointer flex-col gap-2 rounded border border-neutral-700 bg-neutral-800 px-5 py-4 transition-colors duration-200 hover:bg-neutral-700 focus:ring-2 focus:ring-neutral-600 focus:outline-none"
+									role="link"
+									tabindex="0"
+									on:click={() => goto(resolve(`/report/${report.reportID}`))}
+									on:keydown={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											e.preventDefault();
+											goto(resolve(`/report/${report.reportID}`));
+										}
+									}}
+								>
+									<div class="flex flex-wrap items-center justify-between gap-2">
+										<span class="text-lg font-semibold text-neutral-100">
+											Report #{report.reportID}
+										</span>
+										<span class="text-sm text-neutral-300">
+											{reportTypeLabels[report.type] ?? 'Other'}
+											· {reportStatusLabels[report.status] ?? 'Open'}
+										</span>
+									</div>
+									<div class="flex flex-wrap items-center gap-3 text-sm text-neutral-400">
+										<span>{reportTargetLabels[report.targetType] ?? 'Unknown'}</span>
+										{#if report.pasteId}
+											<a
+												href={resolve(`/${report.pasteId}`)}
+												class="text-neutral-300 hover:text-white"
+												on:click|stopPropagation
+											>
+												{report.pasteTitle !== '' ? report.pasteTitle : report.pasteId}
+											</a>
+										{/if}
+										{#if report.userUUID}
+											{#if report.targetUsername}
 												<a
-													href={resolve(`/${report.pasteId}`)}
+													href={resolve(`/user/${report.targetUsername}`)}
 													class="text-neutral-300 hover:text-white"
+													use:tooltip={report.userUUID}
 													on:click|stopPropagation
 												>
-													{report.pasteTitle !== '' ? report.pasteTitle : report.pasteId}
+													{report.targetDisplayName || report.targetUsername}
 												</a>
+											{:else}
+												<span>{report.userUUID}</span>
 											{/if}
-											{#if report.userUUID}
-												{#if report.targetUsername}
-													<a
-														href={resolve(`/user/${report.targetUsername}`)}
-														class="text-neutral-300 hover:text-white"
-														use:tooltip={report.userUUID}
-														on:click|stopPropagation
-													>
-														{report.targetDisplayName || report.targetUsername}
-													</a>
-												{:else}
-													<span>{report.userUUID}</span>
-												{/if}
-											{/if}
-											<span>
-												Created {new Date(report.createdAt * 1000).toLocaleString()}
-											</span>
-										</div>
-										{#if report.description}
-											<p class="text-sm text-neutral-300">{report.description}</p>
 										{/if}
+										<span>
+											Created {new Date(report.createdAt * 1000).toLocaleString()}
+										</span>
 									</div>
-								{/each}
-							</div>
-						{:else}
-							<p class="text-center text-neutral-400">No submitted reports to show.</p>
-						{/if}
+									{#if report.description}
+										<p class="text-sm text-neutral-300">{report.description}</p>
+									{/if}
+								</div>
+							{/each}
+						</div>
 					</div>
 				{/if}
-				{#if reportsTarget}
+				{#if reportsTarget && reportsTarget.reports.length > 0}
 					<div class="rounded border border-neutral-800 bg-neutral-900/60 p-4">
 						<h2 class="mb-3 text-xl font-semibold text-neutral-200">Reports About This User</h2>
-						{#if reportsTarget.reports.length > 0}
 							<div class="space-y-3">
 								{#each reportsTarget.reports as report (report.reportID)}
 									<div
-										class="flex flex-col gap-2 rounded border border-neutral-700 bg-neutral-800 px-5 py-4 transition-colors duration-200 hover:bg-neutral-700 focus:ring-2 focus:ring-neutral-600 focus:outline-none"
+										class="cursor-pointer flex flex-col gap-2 rounded border border-neutral-700 bg-neutral-800 px-5 py-4 transition-colors duration-200 hover:bg-neutral-700 focus:ring-2 focus:ring-neutral-600 focus:outline-none"
 										role="link"
 										tabindex="0"
 										on:click={() => goto(resolve(`/report/${report.reportID}`))}
@@ -564,9 +559,6 @@
 									</div>
 								{/each}
 							</div>
-						{:else}
-							<p class="text-center text-neutral-400">No reports to show.</p>
-						{/if}
 					</div>
 				{/if}
 			</div>
