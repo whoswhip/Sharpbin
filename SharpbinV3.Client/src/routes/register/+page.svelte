@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { setTokens, startTokenRefreshInterval } from '$lib/utils/auth';
 	import { extractError } from '$lib/utils/misc';
-	import { Check, X } from '@lucide/svelte';
+	import { Check, X, Eye, EyeClosed } from '@lucide/svelte';
 	import { slide, fade } from 'svelte/transition';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
@@ -16,8 +16,11 @@
 	let error = '';
 
 	let passwordFocused = false;
+	let showPassword = false;
+	1;
 	let passwordChecks = {
-		length: false,
+		minLength: false,
+		maxLength: false,
 		upper: false,
 		lower: false,
 		number: false
@@ -55,12 +58,14 @@
 	});
 
 	function validatePassword(pw: string) {
-		passwordChecks.length = pw.length >= 8;
+		passwordChecks.minLength = pw.length >= 8;
+		passwordChecks.maxLength = pw.length <= 128;
 		passwordChecks.upper = /[A-Z]/.test(pw);
 		passwordChecks.lower = /[a-z]/.test(pw);
 		passwordChecks.number = /[0-9]/.test(pw);
 		passwordValid =
-			passwordChecks.length &&
+			passwordChecks.minLength &&
+			passwordChecks.maxLength &&
 			passwordChecks.upper &&
 			passwordChecks.lower &&
 			passwordChecks.number;
@@ -168,33 +173,60 @@
 					class="focus:bg-neutral-750 w-full rounded border border-neutral-700 bg-neutral-800 p-2 placeholder-neutral-500 transition-colors duration-200 focus:border-neutral-600"
 				/>
 			</div>
-			<input
-				type="password"
-				placeholder="Password"
-				bind:value={password}
-				required
-				on:focus={() => (passwordFocused = true)}
-				on:blur={() => (passwordFocused = false)}
-				autocomplete="new-password"
-				disabled={loading || !data.options?.registration_enabled}
-				class="focus:bg-neutral-750 w-full rounded border border-neutral-700 bg-neutral-800 p-2 placeholder-neutral-500 transition-colors duration-200 focus:border-neutral-600"
-			/>
+			<div class="flex w-full">
+				<input
+					type={showPassword ? 'text' : 'password'}
+					placeholder="Password"
+					bind:value={password}
+					required
+					on:focus={() => (passwordFocused = true)}
+					on:blur={() => (passwordFocused = false)}
+					autocomplete="new-password"
+					disabled={loading || !data.options?.registration_enabled}
+					class="focus:bg-neutral-750 w-[calc(100%-40px)] rounded-l border border-neutral-700 bg-neutral-800 p-2 placeholder-neutral-500 transition-colors duration-200 focus:border-neutral-600"
+				/>
+				<button
+					type="button"
+					on:click={() => (showPassword = !showPassword)}
+					disabled={loading || !data.options?.registration_enabled}
+					class="ml-2 flex w-10 items-center rounded-r border border-neutral-700 bg-neutral-800 p-2 transition-colors duration-200 hover:bg-neutral-700 focus:outline-none"
+				>
+					{#if showPassword}
+						<EyeClosed class="h-5 w-5 text-neutral-400" />
+					{:else}
+						<Eye class="h-5 w-5 text-neutral-400" />
+					{/if}
+				</button>
+			</div>
+
 			{#if passwordFocused}
 				<ul
 					transition:slide
 					class="space-y-2 rounded border border-neutral-700 bg-neutral-800 p-3 text-sm"
 				>
 					<li
-						class="flex items-center gap-2 {passwordChecks.length
+						class="flex items-center gap-2 {passwordChecks.minLength
 							? 'text-green-400'
 							: 'text-red-400'}"
 					>
-						{#if passwordChecks.length}
+						{#if passwordChecks.minLength}
 							<Check class="h-4 w-4" />
 						{:else}
 							<X class="h-4 w-4" />
 						{/if}
 						At least 8 characters
+					</li>
+					<li
+						class="flex items-center gap-2 {passwordChecks.maxLength
+							? 'text-green-400'
+							: 'text-red-400'}"
+					>
+						{#if passwordChecks.maxLength}
+							<Check class="h-4 w-4" />
+						{:else}
+							<X class="h-4 w-4" />
+						{/if}
+						No more than 128 characters
 					</li>
 					<li
 						class="flex items-center gap-2 {passwordChecks.upper
@@ -243,6 +275,7 @@
 				disabled={loading || !data.options?.registration_enabled}
 				class="focus:bg-neutral-750 w-full rounded border border-neutral-700 bg-neutral-800 p-2 placeholder-neutral-500 transition-colors duration-200 focus:border-neutral-600"
 			/>
+
 			{#if confirmPassword && password !== confirmPassword}
 				<div
 					transition:fade
