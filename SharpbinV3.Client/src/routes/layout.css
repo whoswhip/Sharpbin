@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import 'highlight.js/styles/github-dark.css';
+@plugin 'tailwind-scrollbar';
 
 * {
 	box-sizing: border-box;
