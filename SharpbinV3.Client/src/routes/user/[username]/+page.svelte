@@ -489,76 +489,76 @@
 				{#if reportsTarget && reportsTarget.reports.length > 0}
 					<div class="rounded border border-neutral-800 bg-neutral-900/60 p-4">
 						<h2 class="mb-3 text-xl font-semibold text-neutral-200">Reports About This User</h2>
-							<div class="space-y-3">
-								{#each reportsTarget.reports as report (report.reportID)}
-									<div
-										class="cursor-pointer flex flex-col gap-2 rounded border border-neutral-700 bg-neutral-800 px-5 py-4 transition-colors duration-200 hover:bg-neutral-700 focus:ring-2 focus:ring-neutral-600 focus:outline-none"
-										role="link"
-										tabindex="0"
-										on:click={() => goto(resolve(`/report/${report.reportID}`))}
-										on:keydown={(e) => {
-											if (e.key === 'Enter' || e.key === ' ') {
-												e.preventDefault();
-												goto(resolve(`/report/${report.reportID}`));
-											}
-										}}
-									>
-										<div class="flex flex-wrap items-center justify-between gap-2">
-											<span class="text-lg font-semibold text-neutral-100">
-												Report #{report.reportID}
-											</span>
-											<span class="text-sm text-neutral-300">
-												{reportTypeLabels[report.type] ?? 'Other'}
-												· {reportStatusLabels[report.status] ?? 'Open'}
-											</span>
-										</div>
-										<div class="flex flex-wrap items-center gap-3 text-sm text-neutral-400">
-											<span>{reportTargetLabels[report.targetType] ?? 'Unknown'}</span>
-											{#if report.reporterUsername}
+						<div class="space-y-3">
+							{#each reportsTarget.reports as report (report.reportID)}
+								<div
+									class="flex cursor-pointer flex-col gap-2 rounded border border-neutral-700 bg-neutral-800 px-5 py-4 transition-colors duration-200 hover:bg-neutral-700 focus:ring-2 focus:ring-neutral-600 focus:outline-none"
+									role="link"
+									tabindex="0"
+									on:click={() => goto(resolve(`/report/${report.reportID}`))}
+									on:keydown={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											e.preventDefault();
+											goto(resolve(`/report/${report.reportID}`));
+										}
+									}}
+								>
+									<div class="flex flex-wrap items-center justify-between gap-2">
+										<span class="text-lg font-semibold text-neutral-100">
+											Report #{report.reportID}
+										</span>
+										<span class="text-sm text-neutral-300">
+											{reportTypeLabels[report.type] ?? 'Other'}
+											· {reportStatusLabels[report.status] ?? 'Open'}
+										</span>
+									</div>
+									<div class="flex flex-wrap items-center gap-3 text-sm text-neutral-400">
+										<span>{reportTargetLabels[report.targetType] ?? 'Unknown'}</span>
+										{#if report.reporterUsername}
+											<a
+												href={resolve(`/user/${report.reporterUsername}`)}
+												class="text-neutral-300 hover:text-white"
+												use:tooltip={report.reporterUUID}
+												on:click|stopPropagation
+											>
+												{report.reporterDisplayName || report.reporterUsername}
+											</a>
+										{:else}
+											<span>{report.reporterUUID}</span>
+										{/if}
+										{#if report.pastePID}
+											<a
+												href={resolve(`/${report.pasteId ?? report.pastePID}`)}
+												class="text-neutral-300 hover:text-white"
+												on:click|stopPropagation
+											>
+												{report.pasteTitle ? report.pasteTitle : `Paste #${report.pastePID}`}
+											</a>
+										{/if}
+										{#if report.userUUID}
+											{#if report.targetUsername}
 												<a
-													href={resolve(`/user/${report.reporterUsername}`)}
+													href={resolve(`/user/${report.targetUsername}`)}
 													class="text-neutral-300 hover:text-white"
-													use:tooltip={report.reporterUUID}
+													use:tooltip={report.userUUID}
 													on:click|stopPropagation
 												>
-													{report.reporterDisplayName || report.reporterUsername}
+													{report.targetDisplayName || report.targetUsername}
 												</a>
 											{:else}
-												<span>{report.reporterUUID}</span>
+												<span>{report.userUUID}</span>
 											{/if}
-											{#if report.pastePID}
-												<a
-													href={resolve(`/${report.pasteId ?? report.pastePID}`)}
-													class="text-neutral-300 hover:text-white"
-													on:click|stopPropagation
-												>
-													{report.pasteTitle ? report.pasteTitle : `Paste #${report.pastePID}`}
-												</a>
-											{/if}
-											{#if report.userUUID}
-												{#if report.targetUsername}
-													<a
-														href={resolve(`/user/${report.targetUsername}`)}
-														class="text-neutral-300 hover:text-white"
-														use:tooltip={report.userUUID}
-														on:click|stopPropagation
-													>
-														{report.targetDisplayName || report.targetUsername}
-													</a>
-												{:else}
-													<span>{report.userUUID}</span>
-												{/if}
-											{/if}
-											<span>
-												Created {new Date(report.createdAt * 1000).toLocaleString()}
-											</span>
-										</div>
-										{#if report.description}
-											<p class="text-sm text-neutral-300">{report.description}</p>
 										{/if}
+										<span>
+											Created {new Date(report.createdAt * 1000).toLocaleString()}
+										</span>
 									</div>
-								{/each}
-							</div>
+									{#if report.description}
+										<p class="text-sm text-neutral-300">{report.description}</p>
+									{/if}
+								</div>
+							{/each}
+						</div>
 					</div>
 				{/if}
 			</div>
