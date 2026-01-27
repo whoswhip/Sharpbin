@@ -55,7 +55,7 @@
 			renderedMarkdown = await parseMarkdown(content, false);
 		}
 		previewMode = toPreview;
-		requestAnimationFrame(() => resize(true));
+		requestAnimationFrame(() => resize(previewMode));
 	}
 
 	function resize(markdown: boolean = false) {
