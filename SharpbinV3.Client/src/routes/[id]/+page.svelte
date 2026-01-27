@@ -521,9 +521,13 @@
 					<div class="relative flex shrink-0 items-center">
 						<div
 							class="flex"
-							use:tooltip={data.paste.isCompressed
-								? `Compressed Size: ${formatBytes(data.paste.size)}`
-								: `This paste is not compressed.`}
+							use:tooltip={`${
+								data.paste.isCompressed ? `Compressed Size: ${formatBytes(data.paste.size)}` : ''
+							} • ${
+								data.paste.visibility === 2
+									? `Size (decrypted): ${formatBytes(decryptedContent ? new TextEncoder().encode(decryptedContent).length : 0)}`
+									: ''
+							}`}
 						>
 							<FileBox class="mr-2 h-6 w-6 text-neutral-400" />
 							<span class="text-neutral-400">{formatBytes(data.paste.trueSize)}</span>
@@ -883,7 +887,7 @@
 					class={data.paste.syntax === 'markdown'
 						? 'markdown rounded-b-md bg-neutral-800 p-4'
 						: data.paste.syntax === 'csv'
-							? 'csv-container overflow-x-auto overflow-y-auto scrollbar scrollbar-thumb-neutral-600 scrollbar-track-neutral-800'
+							? 'csv-container scrollbar overflow-x-auto overflow-y-auto scrollbar-thumb-neutral-600 scrollbar-track-neutral-800'
 							: 'codeblock-with-lines overflow-x-auto overflow-y-auto'}
 					class:hidden={!contentRendered}
 					on:click={handleMarkdownClick}
