@@ -34,6 +34,7 @@ export const syntaxes: Record<string, Syntax> = {
 	crystal: { name: 'Crystal', extension: '.cr' },
 	csharp: { name: 'C#', extension: '.cs' },
 	css: { name: 'CSS', extension: '.css' },
+	csv: { name: 'CSV', extension: '.csv' },
 	cue: { name: 'CUE', extension: '.cue' },
 	d: { name: 'D', extension: '.d' },
 	dart: { name: 'Dart', extension: '.dart' },
