@@ -182,13 +182,25 @@
 			}
 
 			const rows = results.data as string[][];
+			const [header, ...body] = rows;
+
+			const escape = (v: string) =>
+				v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
 			const tableHtml = `
-				<table class="csv-table">
-					<tbody>
-						${rows.map((row) => `<tr>${row.map((cell) => `<td>${cell ? cell.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : ''}</td>`).join('')}</tr>`).join('')}
-					</tbody>
-				</table>
-			`;
+			<table class="csv-table">
+				<thead>
+					<tr>
+						${header.map((c) => `<th>${c ? escape(c) : ''}</th>`).join('')}
+					</tr>
+				</thead>
+				<tbody>
+					${body
+						.map((row) => `<tr>${row.map((c) => `<td>${c ? escape(c) : ''}</td>`).join('')}</tr>`)
+						.join('')}
+				</tbody>
+			</table>
+		`;
 
 			pasteContent = tableHtml;
 			contentRendered = true;
@@ -959,29 +971,41 @@
 		}
 
 		.csv-table {
-			border-collapse: collapse;
+			border-collapse: separate;
+			border-spacing: 0;
 			background-color: var(--color-neutral-800);
 			border-bottom-left-radius: 0.25rem;
 			border-bottom-right-radius: 0.25rem;
 			min-width: 100%;
 		}
 
-		.csv-table tr {
+		.csv-table thead th {
+			position: sticky;
+			top: 0;
+			background-color: var(--color-neutral-800);
+			border-bottom: 2px solid var(--color-neutral-700);
+			z-index: 2;
+		}
+
+		.csv-table tbody tr,
+		.csv-table thead th {
 			border-bottom: 1px solid var(--color-neutral-700);
 		}
 
-		.csv-table tr:hover {
+		.csv-table tbody tr:hover,
+		.csv-table thead tr:hover {
 			background-color: rgba(255, 255, 255, 0.05);
 		}
 
-		.csv-table td {
+		.csv-table tbody td,
+		.csv-table thead th {
 			padding: 0.75rem 1rem;
 			text-align: left;
 			color: var(--color-neutral-300);
 			white-space: nowrap;
 		}
 
-		.csv-table tr:last-child {
+		.csv-table tbody tr:last-child {
 			border-bottom: none;
 		}
 
