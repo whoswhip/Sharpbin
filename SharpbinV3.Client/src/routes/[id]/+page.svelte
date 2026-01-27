@@ -537,7 +537,7 @@
 								data.paste.isCompressed ? `Compressed Size: ${formatBytes(data.paste.size)}` : ''
 							} • ${
 								data.paste.visibility === 2
-									? `Size (decrypted): ${formatBytes(decryptedContent ? new TextEncoder().encode(decryptedContent).length : 0)}`
+									? `Decrypted Size: ${formatBytes(decryptedContent ? new TextEncoder().encode(decryptedContent).length : 0)}`
 									: ''
 							}`}
 						>
