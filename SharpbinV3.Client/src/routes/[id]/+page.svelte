@@ -1,5 +1,6 @@
 <script lang="ts">
 	import hljs from 'highlight.js';
+	import Papa from 'papaparse';
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 	import {
@@ -134,6 +135,11 @@
 			return;
 		}
 
+		if (lang === 'csv') {
+			await renderCsv(code);
+			return;
+		}
+
 		let highlighted = '';
 		try {
 			if (lang === 'plaintext') {
@@ -158,6 +164,40 @@
 		pasteContent = addLineNumbers(wrapped);
 		contentRendered = true;
 		decryptStatus = '';
+	}
+
+	async function renderCsv(content: string) {
+		try {
+			const results = Papa.parse(content, {
+				header: false,
+				skipEmptyLines: true,
+				dynamicTyping: false
+			});
+
+			if (!results.data || results.data.length === 0) {
+				pasteContent = '<div class="p-4 text-neutral-400">No data in CSV</div>';
+				contentRendered = true;
+				decryptStatus = '';
+				return;
+			}
+
+			const rows = results.data as string[][];
+			const tableHtml = `
+				<table class="csv-table">
+					<tbody>
+						${rows.map((row) => `<tr>${row.map((cell) => `<td>${cell ? cell.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : ''}</td>`).join('')}</tr>`).join('')}
+					</tbody>
+				</table>
+			`;
+
+			pasteContent = tableHtml;
+			contentRendered = true;
+			decryptStatus = '';
+		} catch {
+			pasteContent = '<div class="p-4 text-red-400">Failed to parse CSV</div>';
+			contentRendered = true;
+			decryptStatus = '';
+		}
 	}
 
 	async function updatePaste(content: string | null, metadata: Paste | null) {
@@ -842,12 +882,13 @@
 				<div
 					class={data.paste.syntax === 'markdown'
 						? 'markdown rounded-b-md bg-neutral-800 p-4'
-						: 'codeblock-with-lines overflow-x-auto overflow-y-auto'}
+						: data.paste.syntax === 'csv'
+							? 'csv-container overflow-x-auto overflow-y-auto scrollbar scrollbar-thumb-neutral-600 scrollbar-track-neutral-800'
+							: 'codeblock-with-lines overflow-x-auto overflow-y-auto'}
 					class:hidden={!contentRendered}
 					on:click={handleMarkdownClick}
 					role="presentation"
 				>
-					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 					{@html pasteContent}
 				</div>
 			{/if}
@@ -911,6 +952,39 @@
 			overflow-wrap: anywhere;
 			padding-left: 0.25em;
 			min-width: 0;
+		}
+
+		.csv-table {
+			border-collapse: collapse;
+			background-color: var(--color-neutral-800);
+			border-bottom-left-radius: 0.25rem;
+			border-bottom-right-radius: 0.25rem;
+			min-width: 100%;
+		}
+
+		.csv-table tr {
+			border-bottom: 1px solid var(--color-neutral-700);
+		}
+
+		.csv-table tr:hover {
+			background-color: rgba(255, 255, 255, 0.05);
+		}
+
+		.csv-table td {
+			padding: 0.75rem 1rem;
+			text-align: left;
+			color: var(--color-neutral-300);
+			white-space: nowrap;
+		}
+
+		.csv-table tr:last-child {
+			border-bottom: none;
+		}
+
+		.csv-container {
+			max-height: 60vh;
+			border-bottom-left-radius: 0.25rem;
+			border-bottom-right-radius: 0.25rem;
 		}
 	</style>
 </main>
