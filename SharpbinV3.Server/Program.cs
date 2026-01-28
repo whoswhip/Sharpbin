@@ -249,7 +249,7 @@ namespace SharpbinV3.Server
                         },
                     }
                 });
-            }).CacheOutput("1Day");
+            }).CacheOutput(policy => policy.Expire(TimeSpan.FromDays(1)).Tag("stats"));
 
             app.Run();
         }
