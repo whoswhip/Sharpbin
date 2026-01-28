@@ -360,6 +360,7 @@ namespace SharpbinV3.Server.Controllers
                 {
                     ID = p.ID,
                     UUID = p.UUID,
+                    CreatedAt = p.CreatedAt,
                     Title = p.Title,
                     Syntax = p.Syntax,
                     Size = p.Size,
@@ -396,6 +397,7 @@ namespace SharpbinV3.Server.Controllers
                         UID = user.UID,
                         Username = user.Username,
                         UUID = user.UUID,
+                        CreatedAt = user.CreatedAt,
                         DisplayName = user.DisplayName,
                         Email = user.Email,
                         LastLogin = user.LastLogin,
@@ -422,6 +424,7 @@ namespace SharpbinV3.Server.Controllers
                     UID = user.UID,
                     Username = user.Username,
                     UUID = user.UUID,
+                    CreatedAt = user.CreatedAt,
                     DisplayName = user.DisplayName,
                     Roles = user.Roles,
                     Visibility = user.Visibility
