@@ -16,7 +16,8 @@ namespace SharpbinV3.Server.Data.Entities
     {
         [Key]
         public int PID { get; set; }
-        public required Guid UUID { get; set; } // uuid v7 includes timestamp, this counts as created at
+        public required Guid UUID { get; set; }
+        public long CreatedAt { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         public required string ID { get; set; }
         public string? Title { get; set; }
 
