@@ -164,6 +164,14 @@ namespace SharpbinV3.Server
                     }, cancellationToken: cancellationToken);
                 };
             });
+            builder.Services.AddOutputCache(options =>
+            {
+                options.AddPolicy("1Day", builder =>
+                {
+                    builder.Expire(TimeSpan.FromDays(1));
+                });
+            });
+
             builder.Services.AddCors(o =>
             {
                 o.AddDefaultPolicy(p =>
@@ -186,9 +194,12 @@ namespace SharpbinV3.Server
             }
 
             app.UseHttpsRedirection();
+            app.UseCors();
 
             app.UseAuthentication();
             app.UseAuthorization();
+
+            app.UseOutputCache();
 
             app.MapControllers();
 
@@ -212,6 +223,33 @@ namespace SharpbinV3.Server
             }
 
             app.MapHealthChecks("/health");
+
+            app.MapGet("/api/stats", async (AppDbContext db) =>
+            {
+                var pasteCount = await db.Pastes.CountAsync();
+                var userCount = await db.Users.CountAsync();
+                var totalPasteSize = await db.Pastes.SumAsync(p => p.Size);
+                var pastSevenDays = DateTimeOffset.UtcNow.AddDays(-7).ToUnixTimeMilliseconds();
+                var pasteCountWeek = await db.Pastes.CountAsync(p => p.CreatedAt >= pastSevenDays);
+
+                return Results.Ok(new
+                {
+                    success = true,
+                    stats = new
+                    {
+                        pastes = new
+                        {
+                            total = pasteCount,
+                            past7Days = pasteCountWeek,
+                            totalSizeInBytes = totalPasteSize
+                        },
+                        users = new
+                        {
+                            total = userCount
+                        },
+                    }
+                });
+            }).CacheOutput("1Day");
 
             app.Run();
         }
