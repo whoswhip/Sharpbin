@@ -31,13 +31,13 @@ namespace SharpbinV3.Server.Controllers
         [EnableRateLimiting("Strict")]
         public async Task<IActionResult> CreatePaste(string title = "", string syntax = "plaintext", int visibility = 0, long expiresAt = 0, string? token = null)
         {
-            if (!await _pasteService.ValidateExpiresAt(expiresAt))
+            if (!_pasteService.ValidateExpiresAt(expiresAt))
                 return BadRequest(new { success = false, message = "Invalid expiration time." });
-            if (!await _pasteService.ValidateVisibility(visibility))
+            if (!_pasteService.ValidateVisibility(visibility))
                 return BadRequest(new { success = false, message = "Invalid visibility level. Must be between 0 and 2." });
-            if (!await _pasteService.ValidateSyntax(syntax))
+            if (!_pasteService.ValidateSyntax(syntax))
                 return BadRequest(new { success = false, message = "Invalid syntax." });
-            if (!await _pasteService.ValidateTitle(title))
+            if (!_pasteService.ValidateTitle(title))
                 return BadRequest(new { success = false, message = $"Invalid title. Must be less than {_pasteSettings.MaxTitleLength} characters." });
 
             string content = await new StreamReader(Request.Body).ReadToEndAsync();
@@ -185,13 +185,13 @@ namespace SharpbinV3.Server.Controllers
             if (request.ExpiresAt.HasValue)
                 paste.ExpiresAt = request.ExpiresAt.Value;
 
-            if (!await _pasteService.ValidateExpiresAt(paste.ExpiresAt))
+            if (!_pasteService.ValidateExpiresAt(paste.ExpiresAt))
                 return BadRequest(new { success = false, message = "Invalid expiration time." });
-            if (!await _pasteService.ValidateVisibility(paste.Visibility))
+            if (!_pasteService.ValidateVisibility(paste.Visibility))
                 return BadRequest(new { success = false, message = "Invalid visibility level. Must be between 0 and 2." });
-            if (!await _pasteService.ValidateSyntax(paste.Syntax ?? "plaintext"))
+            if (!_pasteService.ValidateSyntax(paste.Syntax ?? "plaintext"))
                 return BadRequest(new { success = false, message = "Invalid syntax." });
-            if (!await _pasteService.ValidateTitle(paste.Title ?? ""))
+            if (!_pasteService.ValidateTitle(paste.Title ?? ""))
                 return BadRequest(new { success = false, message = $"Invalid title. Must be less than {_pasteSettings.MaxTitleLength} characters." });
 
             var newPaste = await _pasteService.Edit(paste);

@@ -130,23 +130,27 @@ namespace SharpbinV3.Server.Services
                 .ToListAsync();
         }
 
-        public async Task<bool> ValidateSyntax(string syntax)
+        public bool ValidateSyntax(string syntax)
         {
-            return await Task.FromResult(_pasteSettings.ValidSyntaxLanguages.Contains(syntax));
+            return _pasteSettings.ValidSyntaxLanguages.Contains(syntax);
         }
-        public async Task<bool> ValidateTitle(string title)
+
+        public bool ValidateTitle(string title)
         {
-            return await Task.FromResult(title.Length <= _pasteSettings.MaxTitleLength);
+            return title.Length <= _pasteSettings.MaxTitleLength;
         }
-        public async Task<bool> ValidateVisibility(int visibility)
+
+        public bool ValidateVisibility(int visibility)
         {
-            return await Task.FromResult(visibility >= 0 && visibility <= 2);
+            return visibility >= 0 && visibility <= 2;
         }
-        public async Task<bool> ValidateExpiresAt(long expiresAt)
+
+        public bool ValidateExpiresAt(long expiresAt)
         {
             if (expiresAt == 0) return true;
             var currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            return await Task.FromResult(expiresAt > currentTime - 1000);
+            return expiresAt > currentTime - 1000;
         }
     }
 }
+
