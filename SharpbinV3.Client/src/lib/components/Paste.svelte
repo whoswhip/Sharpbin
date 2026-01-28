@@ -132,6 +132,15 @@
 						{/if}
 					</span>
 				</div>
+				{#if paste.editedAt}
+					<div
+						class="mt-1 flex items-center gap-2 text-sm text-neutral-400"
+						use:tooltip={new Date(paste.editedAt).toLocaleString()}
+					>
+						<History class="h-4 w-4" />
+						<span>Edited {dateToRelativeString(new Date(paste.editedAt), true, false, now)}</span>
+					</div>
+				{/if}
 				{#if paste.expiresAt > 0}
 					<div
 						class="mt-1 flex items-center gap-2 text-sm text-neutral-400"
@@ -149,15 +158,6 @@
 					<div class="mt-1 flex items-center gap-2 text-sm text-neutral-400">
 						<User class="h-4 w-4" />
 						<span>{paste.author?.username ?? 'Anonymous'}</span>
-					</div>
-				{/if}
-				{#if paste.editedAt}
-					<div
-						class="mt-1 flex items-center gap-2 text-sm text-neutral-400"
-						use:tooltip={new Date(paste.editedAt).toLocaleString()}
-					>
-						<History class="h-4 w-4" />
-						<span>Edited {dateToRelativeString(new Date(paste.editedAt), true, false, now)}</span>
 					</div>
 				{/if}
 			</div>

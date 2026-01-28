@@ -95,7 +95,10 @@
 					/>
 				</div>
 			{/if}
-			<div class="scrollbar-thin scrollbar-thumb-neutral-600 scrollbar-track-neutral-700" style="overflow-y: auto; max-height: calc({dropdownMaxHeight} - 3rem);">
+			<div
+				class="scrollbar-thin scrollbar-thumb-neutral-600 scrollbar-track-neutral-700"
+				style="overflow-y: auto; max-height: calc({dropdownMaxHeight} - 3rem);"
+			>
 				{#each filteredOptions as option (option.value)}
 					<button
 						type="button"
