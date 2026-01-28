@@ -240,7 +240,7 @@
 			<input
 				type="text"
 				placeholder="Title (optional)"
-				class="mb-4 w-full rounded border border-neutral-700 bg-neutral-800 p-2"
+				class="mb-2 w-full rounded border border-neutral-700 bg-neutral-800 p-2"
 				spellcheck="false"
 				autocomplete="off"
 				bind:value={title}
