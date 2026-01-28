@@ -9,7 +9,8 @@ namespace SharpbinV3.Server.Data.Entities
     {
         public int? UID { get; set; }
         [Key]
-        public required Guid UUID { get; set; } = Guid.CreateVersion7(); // uuid v7 includes timestamp
+        public required Guid UUID { get; set; } = Guid.CreateVersion7();
+        public long CreatedAt { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         public required string Username { get; set; }
         public required string PasswordHash { get; set; }
 
