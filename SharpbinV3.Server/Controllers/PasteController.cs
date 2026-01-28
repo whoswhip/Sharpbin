@@ -59,6 +59,7 @@ namespace SharpbinV3.Server.Controllers
             {
                 ID = paste.ID,
                 UUID = paste.UUID,
+                CreatedAt = paste.CreatedAt,
                 IsCompressed = paste.IsCompressed,
                 Size = paste.Size,
                 TrueSize = paste.TrueSize,
@@ -92,6 +93,7 @@ namespace SharpbinV3.Server.Controllers
                 {
                     ID = paste.ID,
                     UUID = paste.UUID,
+                    CreatedAt = paste.CreatedAt,
                     Title = paste.Title,
                     Size = paste.Size,
                     TrueSize = paste.TrueSize,
@@ -201,6 +203,7 @@ namespace SharpbinV3.Server.Controllers
                 {
                     ID = newPaste.ID,
                     UUID = newPaste.UUID,
+                    CreatedAt = newPaste.CreatedAt,
                     Title = newPaste.Title,
                     Size = newPaste.Size,
                     TrueSize = newPaste.TrueSize,
@@ -386,6 +389,7 @@ namespace SharpbinV3.Server.Controllers
             {
                 ID = p.ID,
                 UUID = p.UUID,
+                CreatedAt = p.CreatedAt,
                 Title = p.Title,
                 Size = p.Size,
                 TrueSize = p.TrueSize,

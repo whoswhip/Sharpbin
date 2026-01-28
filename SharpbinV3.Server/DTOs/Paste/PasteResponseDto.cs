@@ -6,6 +6,7 @@ namespace SharpbinV3.Server.DTOs.Paste
     {
         public string ID { get; set; } = string.Empty;
         public Guid UUID { get; set; }
+        public long CreatedAt { get; set; }
         public string? Title { get; set; }
         public string? Syntax { get; set; }
         public long Size { get; set; }
@@ -23,6 +24,7 @@ namespace SharpbinV3.Server.DTOs.Paste
     {
         public string ID { get; set; } = string.Empty;
         public Guid UUID { get; set; }
+        public long CreatedAt { get; set; }
         public bool IsCompressed { get; set; }
         public long Size { get; set; }
         public long TrueSize { get; set; }
