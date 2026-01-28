@@ -418,7 +418,7 @@ namespace SharpbinV3.Server.Controllers
         {
             return Ok(new PasteOptionsDto
             {
-                Syntaxes = _pasteSettings.ValidSyntaxLanguages,
+                Syntaxes = [.. _pasteSettings.ValidSyntaxLanguages],
                 Visibilities =
                 [
                     new() { Value = 0, DisplayName = "Public" },
