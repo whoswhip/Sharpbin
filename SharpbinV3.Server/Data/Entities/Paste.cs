@@ -9,6 +9,9 @@ namespace SharpbinV3.Server.Data.Entities
     [Index(nameof(AuthorUUID))]
     [Index(nameof(ExpiresAt))]
     [Index(nameof(Visibility))]
+    [Index(nameof(Syntax))]
+    [Index(nameof(Views))]
+    [Index(nameof(Size))]
     public sealed class Paste
     {
         [Key]
