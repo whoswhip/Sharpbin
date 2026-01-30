@@ -113,32 +113,38 @@
 		return html.replace(code, numbered);
 	}
 
-	async function renderCode(content: string | null = null) {
+	async function renderPaste(content: string | null = null) {
 		if (!data?.paste) return;
-		let code = content ?? decryptedContent ?? data.content ?? '';
 
-		const encoder = new TextEncoder();
-		const buffer = encoder.encode(code).buffer;
-		isBinary = isBinaryData(buffer);
+		let contentToRender = content ?? decryptedContent ?? data.content ?? '';
+
+		isBinary = isBinaryData(new TextEncoder().encode(contentToRender).buffer);
 		if (isBinary) {
 			contentRendered = true;
 			decryptStatus = '';
 			return;
 		}
 
+		switch (data.paste.syntax) {
+			case 'markdown':
+				pasteContent = await parseMarkdown(contentToRender);
+				contentRendered = true;
+				decryptStatus = '';
+				break;
+			case 'csv':
+				await renderCsv(contentToRender);
+				break;
+			default:
+				await renderCode(contentToRender);
+				break;
+		}
+	}
+
+	async function renderCode(content: string | null = null) {
+		if (!data?.paste) return;
+		let code = content ?? decryptedContent ?? data.content ?? '';
+
 		const lang = (data.paste.syntax ?? '').toLowerCase();
-
-		if (lang === 'markdown') {
-			pasteContent = await parseMarkdown(code);
-			contentRendered = true;
-			decryptStatus = '';
-			return;
-		}
-
-		if (lang === 'csv') {
-			await renderCsv(code);
-			return;
-		}
 
 		let highlighted = '';
 		try {
@@ -260,7 +266,7 @@
 				}
 				data.content = rawContent;
 				decryptedContent = rawContent;
-				await renderCode(rawContent);
+				await renderPaste(rawContent);
 			}
 			if (
 				(metadata?.syntax !== data.paste.syntax ||
@@ -415,14 +421,14 @@
 								decryptError = 'Incorrect password. Please try again.';
 								decryptStatus = 'Decryption failed.';
 							} else {
-								await renderCode();
+								await renderPaste();
 								history.replaceState(null, '', window.location.pathname + window.location.search);
 							}
 						} else {
 							decryptStatus = 'Decryption canceled.';
 						}
 					} else {
-						await renderCode();
+						await renderPaste();
 					}
 					return;
 				}
@@ -435,22 +441,22 @@
 						decryptError = 'Incorrect password. Please try again.';
 						decryptStatus = 'Decryption failed.';
 					} else {
-						await renderCode();
+						await renderPaste();
 					}
 				} else {
 					decryptStatus = 'Decryption canceled.';
 				}
 			} else {
 				decryptStatus = 'Rendering content...';
-				await renderCode();
+				await renderPaste();
 			}
 		} catch {
 			decryptStatus = 'Rendering content...';
-			await renderCode();
+			await renderPaste();
 		}
 	});
 
-	$: if (data?.paste && (data.paste.visibility !== 2 || decryptedContent !== null)) renderCode();
+	$: if (data?.paste && (data.paste.visibility !== 2 || decryptedContent !== null)) renderPaste();
 	$: reportSiteKey =
 		(data as unknown as { authOptions?: { cf_turnstile_site_key?: string | null } }).authOptions
 			?.cf_turnstile_site_key ?? null;
