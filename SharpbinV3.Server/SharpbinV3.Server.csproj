@@ -9,6 +9,7 @@
 
     <EnableStaticWebAssets>false</EnableStaticWebAssets>
     <EnableDefaultContentItems>false</EnableDefaultContentItems>
+    <AllowMissingPrunePackageData>True</AllowMissingPrunePackageData>
   </PropertyGroup>
 
   <ItemGroup>
