@@ -36,16 +36,12 @@ namespace SharpbinV3.Server.Data.Entities
     public enum ReportStatus
     {
         Open,
-        InProgress,
-        Resolved,
         Closed
     }
     public enum ReportType
     {
-        Spam,
-        Abuse,
-        InappropriateContent,
         CopyrightViolation,
+        IllegalContent,
         Fraud,
         Other
     }

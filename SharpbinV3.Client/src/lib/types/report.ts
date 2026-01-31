@@ -25,14 +25,12 @@ export interface ReportListResponse {
 }
 
 export const reportTypeLabels = [
-	'Spam',
-	'Abuse',
-	'InappropriateContent',
 	'CopyrightViolation',
+	'IllegalContent',
 	'Fraud',
 	'Other'
 ] as const;
 
-export const reportStatusLabels = ['Open', 'InProgress', 'Resolved', 'Closed'] as const;
+export const reportStatusLabels = ['Open', 'Closed'] as const;
 
 export const reportTargetLabels = ['Paste', 'User'] as const;
