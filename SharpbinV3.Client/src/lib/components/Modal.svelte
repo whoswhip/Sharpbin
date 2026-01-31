@@ -20,6 +20,7 @@
 	export let error = '';
 	export let placeholder = '';
 	export let inputType = 'text';
+	export let inputMaxLength: number | null = null;
 	export let items: { label: string; value: unknown }[] = [];
 	export let initialValue: unknown = null;
 	export let totpActive: boolean | null = null;
@@ -477,7 +478,7 @@
 						{/if}
 						<textarea
 							bind:value={inputValue}
-							maxlength="1000"
+							maxlength={inputMaxLength ?? undefined}
 							placeholder={placeholder || 'Describe the issue'}
 							class="h-28 w-full resize-none rounded border border-neutral-700 bg-neutral-800 p-2 text-white outline-none"
 						></textarea>
@@ -489,6 +490,7 @@
 			{:else if shouldShowInput}
 				<input
 					type={inputType}
+					maxlength={inputMaxLength ?? undefined}
 					bind:value={inputValue}
 					class="mb-3 w-full rounded border border-neutral-700 bg-neutral-800 p-2 text-white outline-none"
 					{placeholder}

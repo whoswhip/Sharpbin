@@ -20,6 +20,7 @@ type ModalState = {
 	error: string;
 	placeholder: string;
 	inputType: string;
+	maxInputLength?: number;
 	items: ModalItem[];
 	initialValue: unknown;
 	totpActive: boolean | null;
@@ -42,6 +43,7 @@ const initialState: ModalState = {
 	error: '',
 	placeholder: '',
 	inputType: 'text',
+	maxInputLength: undefined,
 	items: [],
 	initialValue: null,
 	totpActive: null,

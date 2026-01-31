@@ -13,6 +13,7 @@
 	error={state.error}
 	placeholder={state.placeholder}
 	inputType={state.inputType}
+	inputMaxLength={state.maxInputLength ?? null}
 	items={state.items}
 	initialValue={state.initialValue}
 	totpActive={state.totpActive}
