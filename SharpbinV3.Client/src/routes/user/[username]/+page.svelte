@@ -16,7 +16,7 @@
 		Hash,
 		Flag
 	} from '@lucide/svelte';
-	import { extractDateFromUUIDv7, tooltip, dateToRelativeString } from '$lib/utils/misc';
+	import { extractDateFromUUIDv7, tooltip, dateToRelativeString, extractError } from '$lib/utils/misc';
 	import { roles } from '$lib/consts';
 	import { getToken } from '$lib/utils/auth';
 	import { needsAdminTotp } from '$lib/utils/totp';
@@ -111,7 +111,7 @@
 		loading = false;
 		if (!res.ok) {
 			const err = await res.json();
-			modalError = err.message || 'Failed to update display name';
+			modalError = extractError(err) || 'Failed to update user';
 			await openModal({
 				mode: 'confirm',
 				title: 'Error',
@@ -159,7 +159,7 @@
 		loading = false;
 		if (!res.ok) {
 			const err = await res.json();
-			modalError = err.message || 'Failed to delete account';
+			modalError = extractError(err) || 'Failed to delete account';
 			await openModal({
 				mode: 'confirm',
 				title: 'Error',
@@ -185,6 +185,7 @@
 			await openModal<string>({
 				mode: 'prompt',
 				title: 'Edit Display Name',
+				maxInputLength: 26,
 				placeholder: 'New Display Name',
 				error: modalError,
 				cancelValue: ''
@@ -268,7 +269,7 @@
 	class="flex min-h-[calc(100vh-120px)] w-full flex-col items-center justify-center pt-5 pb-5 text-white"
 >
 	<div class="relative w-[95%] max-w-5xl rounded border-2 border-neutral-800 bg-neutral-900 p-6">
-		<h1 class="flex items-center justify-center gap-4 text-center text-4xl font-bold">
+		<h1 class="flex flex-wrap items-center justify-center gap-4 text-center text-4xl font-bold">
 			{#if data.user?.roles?.includes(403)}
 				<span
 					class="relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-full"
@@ -288,7 +289,7 @@
 					<User class="h-8 w-8 text-neutral-400" />
 				</span>
 			{/if}
-			<span use:tooltip={data.user?.uuid || 'Unknown UUID'}>
+			<span use:tooltip={data.user?.uuid || 'Unknown UUID'} class="wrap-break-word whitespace-normal max-w-full">
 				{data.user?.displayName || data.user?.username}
 			</span>
 		</h1>
