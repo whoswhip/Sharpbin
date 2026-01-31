@@ -1,3 +1,28 @@
+## [3.0.2](https://github.com/whoswhip/Sharpbin/compare/v3.0.1...v3.0.2) (2026-01-31)
+
+
+### Bug Fixes
+
+* add IValidateableObject interface to required DTO's ensuring model validation ([270360a](https://github.com/whoswhip/Sharpbin/commit/270360a32f9b9217a1be1057058a61c57f578e95))
+* adjust input margin for title field in paste creation ([d2486b9](https://github.com/whoswhip/Sharpbin/commit/d2486b9f6e1b87e2d4e13fcc2550292ad77170c3))
+* enable AllowMissingPrunePackageData in project configuration ([c52ad8b](https://github.com/whoswhip/Sharpbin/commit/c52ad8ba9b12e62324fc6bac445a3e1c5b275e95))
+* improve error handling and update user display name modal ([a6ffa98](https://github.com/whoswhip/Sharpbin/commit/a6ffa982a4225ef4512b925af39ed4836be40fbb))
+* update version to 3.0.1 in package-lock.json ([15f0be5](https://github.com/whoswhip/Sharpbin/commit/15f0be5a2f902429906c1acdfe7923b25c16be12))
+
+
+### Features
+
+* add conventional-changelog and conventional-changelog-angular dependencies ([e4cf98a](https://github.com/whoswhip/Sharpbin/commit/e4cf98af096b4909e97898eaa452447a09307d31))
+* add inputMaxLength property to Modal component for better input control ([005cb5d](https://github.com/whoswhip/Sharpbin/commit/005cb5de23e244a4b07ea1173b7805f7cd2b2561))
+* add output caching and stats endpoint to track pastes and users ([ca210c5](https://github.com/whoswhip/Sharpbin/commit/ca210c5ea3e97d7a4e93f51794d1da7a6da40ebf))
+* createdAt paste property ([9d0cc54](https://github.com/whoswhip/Sharpbin/commit/9d0cc54db46a24d16f752b5db66baf1565891d26))
+* enhance PasteService with caching and cache invalidation methods ([5375e1c](https://github.com/whoswhip/Sharpbin/commit/5375e1caa64ce51bd0cd3613f8df68d6ea2d7aa4))
+* include createdAt in user responses ([854e50f](https://github.com/whoswhip/Sharpbin/commit/854e50fe78265a58af6004c3db12ca551c4372f9))
+* include paste createdAt in responses ([8aa1543](https://github.com/whoswhip/Sharpbin/commit/8aa1543296817745f66a724e349897d8496bb193))
+* user createdAt property ([500f457](https://github.com/whoswhip/Sharpbin/commit/500f457f976bc4742e8e3395f01eef84a0c16558))
+
+
+
 ## [3.0.1](https://github.com/whoswhip/Sharpbin/compare/v3.0.0...v3.0.1) (2026-01-27)
 
 
