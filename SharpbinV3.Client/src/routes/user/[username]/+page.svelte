@@ -16,7 +16,12 @@
 		Hash,
 		Flag
 	} from '@lucide/svelte';
-	import { extractDateFromUUIDv7, tooltip, dateToRelativeString, extractError } from '$lib/utils/misc';
+	import {
+		extractDateFromUUIDv7,
+		tooltip,
+		dateToRelativeString,
+		extractError
+	} from '$lib/utils/misc';
 	import { roles } from '$lib/consts';
 	import { getToken } from '$lib/utils/auth';
 	import { needsAdminTotp } from '$lib/utils/totp';
@@ -289,7 +294,10 @@
 					<User class="h-8 w-8 text-neutral-400" />
 				</span>
 			{/if}
-			<span use:tooltip={data.user?.uuid || 'Unknown UUID'} class="wrap-break-word whitespace-normal max-w-full">
+			<span
+				use:tooltip={data.user?.uuid || 'Unknown UUID'}
+				class="max-w-full wrap-break-word whitespace-normal"
+			>
 				{data.user?.displayName || data.user?.username}
 			</span>
 		</h1>
