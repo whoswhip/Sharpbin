@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace SharpbinV3.Server.DTOs
 {
-    public partial class RegisterUserDto
+    public partial class RegisterUserDto : IValidatableObject
     {
         [Required]
         [StringLength(50, MinimumLength = 3)]
@@ -18,7 +18,7 @@ namespace SharpbinV3.Server.DTOs
         public string? DisplayName { get; set; }
         public string? Token { get; set; }
 
-        public IEnumerable<ValidationResult> Validate()
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             var results = new List<ValidationResult>();
             if (!ValidateUsername().IsMatch(Username))

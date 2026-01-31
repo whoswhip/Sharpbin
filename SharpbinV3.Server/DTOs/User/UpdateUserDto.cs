@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace SharpbinV3.Server.DTOs
 {
-    public partial class UpdateUserDto
+    public partial class UpdateUserDto : IValidatableObject
     {
         public string? DisplayName { get; set; }
         public string? Email { get; set; }
@@ -11,7 +11,7 @@ namespace SharpbinV3.Server.DTOs
         public int[]? Roles { get; set; }
         public string? TotpCode { get; set; }
 
-        public IEnumerable<ValidationResult> Validate()
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             var results = new List<ValidationResult>();
             if (DisplayName != null)
