@@ -33,7 +33,7 @@ namespace SharpbinV3.Server.DTOs
                 if (!ValidateDisplayname().IsMatch(DisplayName))
                     results.Add(new ValidationResult("DisplayName can only contain alphanumeric characters, underscores, periods, and spaces (no leading or trailing spaces).", [nameof(DisplayName)]));
             }
-            if (Email != null)
+            if (Email != null && Email.Length > 0)
             {
                 var emailAttribute = new EmailAddressAttribute();
                 if (!emailAttribute.IsValid(Email))
