@@ -43,6 +43,7 @@
 	let reportType = '';
 	let reportInitialized = false;
 	let reportLoading = false;
+	let multiselectInitialized = false;
 	let turnstileEl: HTMLDivElement | null = null;
 	let turnstileWidgetId: string | null = null;
 
@@ -85,6 +86,13 @@
 		initializeReport();
 	}
 
+	$: if (show && mode === 'multiselect' && !multiselectInitialized) {
+		multiselectInitialized = true;
+		inputValue = Array.isArray(initialValue)
+			? JSON.parse(JSON.stringify(initialValue))
+			: [];
+	}
+
 	function resetModal() {
 		inputValue =
 			initialValue !== null
@@ -102,6 +110,7 @@
 		reportType = '';
 		reportInitialized = false;
 		reportLoading = false;
+		multiselectInitialized = false;
 		if (turnstileWidgetId && typeof window !== 'undefined' && window.turnstile?.remove) {
 			window.turnstile.remove(turnstileWidgetId);
 		}
