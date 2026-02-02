@@ -14,25 +14,25 @@ namespace SharpbinV3.Server.DTOs
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             var results = new List<ValidationResult>();
-            if (DisplayName != null)
+            if (DisplayName != null && DisplayName.Length > 0)
             {
                 if (DisplayName.Length < 3 || DisplayName.Length > 26)
                     results.Add(new ValidationResult("DisplayName must be between 3 and 26 characters.", [nameof(DisplayName)]));
                 if (!ValidateDisplayname().IsMatch(DisplayName))
                     results.Add(new ValidationResult("DisplayName can only contain alphanumeric characters, underscores, periods, and spaces (no leading or trailing spaces).", [nameof(DisplayName)]));
             }
-            if (Email != null)
+            if (Email != null && Email.Length > 0)
             {
                 var emailAttribute = new EmailAddressAttribute();
                 if (!emailAttribute.IsValid(Email))
                     results.Add(new ValidationResult("Invalid email format.", [nameof(Email)]));
             }
-            if (Visibility != null)
+            if (Visibility != null && Visibility.HasValue)
             {
                 if (Visibility < 0 || Visibility > 2)
                     results.Add(new ValidationResult("Visibility must be between 0 and 2.", [nameof(Visibility)]));
             }
-            if (Roles != null)
+            if (Roles != null && Roles.Length > 0)
             {
                 if (Roles.Length == 0)
                     results.Add(new ValidationResult("Roles cannot be an empty array.", [nameof(Roles)]));

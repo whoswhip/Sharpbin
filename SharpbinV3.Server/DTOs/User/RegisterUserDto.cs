@@ -26,7 +26,7 @@ namespace SharpbinV3.Server.DTOs
             if (!ValidatePassword().IsMatch(Password))
                 results.Add(new ValidationResult("Password should have at least 8 characters, including uppercase, lowercase, and digits.", [nameof(Password)]));
 
-            if (DisplayName != null)
+            if (DisplayName != null && DisplayName.Length > 0)
             {
                 if (DisplayName.Length < 3 || DisplayName.Length > 26)
                     results.Add(new ValidationResult("DisplayName must be between 3 and 26 characters.", [nameof(DisplayName)]));
