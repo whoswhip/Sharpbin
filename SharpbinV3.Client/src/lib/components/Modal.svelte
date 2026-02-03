@@ -88,9 +88,7 @@
 
 	$: if (show && mode === 'multiselect' && !multiselectInitialized) {
 		multiselectInitialized = true;
-		inputValue = Array.isArray(initialValue)
-			? JSON.parse(JSON.stringify(initialValue))
-			: [];
+		inputValue = Array.isArray(initialValue) ? JSON.parse(JSON.stringify(initialValue)) : [];
 	}
 
 	function resetModal() {

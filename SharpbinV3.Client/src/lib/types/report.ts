@@ -24,12 +24,7 @@ export interface ReportListResponse {
 	pagination: Pagination;
 }
 
-export const reportTypeLabels = [
-	'CopyrightViolation',
-	'IllegalContent',
-	'Fraud',
-	'Other'
-] as const;
+export const reportTypeLabels = ['CopyrightViolation', 'IllegalContent', 'Fraud', 'Other'] as const;
 
 export const reportStatusLabels = ['Open', 'Closed'] as const;
 
