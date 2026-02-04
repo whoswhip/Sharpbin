@@ -93,7 +93,7 @@
 					{#each dailyData as d}
 						<div class="group relative flex h-full flex-1 flex-col justify-end">
 							<div
-								use:tooltip={[`${formatNumber(d.count)} pastes`, true]}
+								use:tooltip={[`${formatNumber(d.count)} paste${d.count !== 1 ? 's' : ''}`, true]}
 								class="w-full rounded-t-sm bg-neutral-600 transition-all hover:bg-neutral-500"
 								style="height: {d.count === 0 ? '2px' : Math.max((d.count / maxCount) * 95, 2)}%"
 							></div>
