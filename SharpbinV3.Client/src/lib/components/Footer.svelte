@@ -1,3 +1,7 @@
+<script lang="ts">
+	import { resolve } from '$app/paths';
+</script>
+
 <div
 	class="mb-5 max-h-10 w-full border-t border-neutral-800 pt-5 text-center text-sm text-neutral-500"
 >
@@ -9,6 +13,10 @@
 	>
 		Source Code
 	</a>
+	<span class="mx-1">•</span>
+	<a href={resolve('/stats')} class="text-neutral-400 underline hover:text-neutral-200"
+		>Statistics</a
+	>
 	<span class="mx-1">•</span>
 	v{__APP_VERSION__}
 </div>
