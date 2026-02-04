@@ -113,8 +113,9 @@ export function dateToRelativeString(
 	return `${parts.join(', ')} ${suffix}`.trim();
 }
 
-export function tooltip(node: HTMLElement, text: string) {
-	let currentText = text ?? '';
+export function tooltip(node: HTMLElement, params: string | [string, boolean?]) {
+	let currentText = typeof params === 'string' ? params : (params[0] ?? '');
+	let darker = typeof params === 'string' ? false : (params[1] ?? false);
 	let tooltipEl: HTMLDivElement | null = null;
 	let caretEl: HTMLDivElement | null = null;
 	let showTimeout: ReturnType<typeof setTimeout>;
@@ -123,8 +124,9 @@ export function tooltip(node: HTMLElement, text: string) {
 	function createTooltip() {
 		if (!currentText || currentText.trim() === '') return;
 		const el = document.createElement('div');
-		el.className =
-			'fixed z-50 rounded bg-neutral-800 px-2 py-1 text-sm text-white shadow-lg opacity-0 transition-opacity duration-150';
+		el.className = `fixed z-50 rounded ${
+			darker ? 'bg-neutral-900 border border-neutral-800' : 'bg-neutral-800'
+		} px-2 py-1 text-sm text-white shadow-lg opacity-0 transition-opacity duration-150`;
 		el.style.maxWidth = '90%';
 		el.style.wordBreak = 'break-word';
 
@@ -219,10 +221,10 @@ export function tooltip(node: HTMLElement, text: string) {
 		caretEl.style.borderLeft = '7px solid transparent';
 		caretEl.style.borderRight = '7px solid transparent';
 		if (caretOnTop) {
-			caretEl.style.borderBottom = '7px solid #27272a';
+			caretEl.style.borderBottom = `7px solid ${darker ? '#171717' : '#27272a'}`;
 			caretEl.style.borderTop = '';
 		} else {
-			caretEl.style.borderTop = '7px solid #27272a';
+			caretEl.style.borderTop = `7px solid ${darker ? '#171717' : '#27272a'}`;
 			caretEl.style.borderBottom = '';
 		}
 	}
@@ -260,8 +262,10 @@ export function tooltip(node: HTMLElement, text: string) {
 	window.addEventListener('resize', mouseOut, true);
 
 	return {
-		update(newText: string) {
-			currentText = newText ?? '';
+		update(newParams: string | [string, boolean?]) {
+			currentText = typeof newParams === 'string' ? newParams : (newParams[0] ?? '');
+			darker = typeof newParams === 'string' ? false : (newParams[1] ?? false);
+
 			if (!currentText || currentText.trim() === '') {
 				if (tooltipEl) {
 					tooltipEl.remove();
