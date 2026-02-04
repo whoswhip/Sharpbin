@@ -226,11 +226,31 @@ namespace SharpbinV3.Server
 
             app.MapGet("/api/stats", async (AppDbContext db) =>
             {
+                var now = DateTimeOffset.UtcNow;
+                var todayStart = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
+                var sevenDaysAgo = todayStart.AddDays(-6).ToUnixTimeMilliseconds();
+
                 var pasteCount = await db.Pastes.CountAsync();
                 var userCount = await db.Users.CountAsync();
                 var totalPasteSize = await db.Pastes.SumAsync(p => p.Size);
-                var pastSevenDays = DateTimeOffset.UtcNow.AddDays(-7).ToUnixTimeMilliseconds();
-                var pasteCountWeek = await db.Pastes.CountAsync(p => p.CreatedAt >= pastSevenDays);
+
+                var dailyCounts = await db.Pastes
+                    .Where(p => p.CreatedAt >= sevenDaysAgo)
+                    .GroupBy(p => p.CreatedAt / 86400000)
+                    .Select(g => new { Day = g.Key, Count = g.Count() })
+                    .ToDictionaryAsync(x => x.Day, x => x.Count);
+
+                var dailyStats = new List<object>();
+                var pasteCountWeek = 0;
+
+                for (int i = 6; i >= 0; i--)
+                {
+                    var dayTs = todayStart.AddDays(-i).ToUnixTimeMilliseconds();
+                    dailyCounts.TryGetValue(dayTs / 86400000, out var count);
+
+                    dailyStats.Add(new { date = dayTs, count });
+                    pasteCountWeek += count;
+                }
 
                 return Results.Ok(new
                 {
@@ -241,12 +261,13 @@ namespace SharpbinV3.Server
                         {
                             total = pasteCount,
                             past7Days = pasteCountWeek,
-                            totalSizeInBytes = totalPasteSize
+                            totalSizeInBytes = totalPasteSize,
+                            daily = dailyStats
                         },
                         users = new
                         {
                             total = userCount
-                        },
+                        }
                     }
                 });
             }).CacheOutput(policy => policy.Expire(TimeSpan.FromDays(1)).Tag("stats"));
