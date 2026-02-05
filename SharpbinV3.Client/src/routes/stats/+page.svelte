@@ -7,7 +7,7 @@
 	$: stats = data.stats.stats;
 
 	$: dailyData = stats.pastes.daily || [];
-	$: maxCount = Math.max(...dailyData.map((d: any) => d.count), 5);
+	$: maxCount = Math.max(...dailyData.map((d: { count: number; date: number }) => d.count), 5);
 
 	function getOrdinal(n: number) {
 		const s = ['th', 'st', 'nd', 'rd'];
@@ -90,7 +90,7 @@
 			<h2 class="mb-6 text-xl font-semibold">Pastes Growth (Last 7 Days)</h2>
 			<div class="flex h-64 w-full items-end justify-between gap-2 px-2">
 				{#if dailyData.length > 0}
-					{#each dailyData as d}
+					{#each dailyData as d (d.date)}
 						<div class="group relative flex h-full flex-1 flex-col justify-end">
 							<div
 								use:tooltip={[`${formatNumber(d.count)} paste${d.count !== 1 ? 's' : ''}`, true]}

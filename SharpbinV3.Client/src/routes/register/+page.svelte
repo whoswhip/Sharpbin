@@ -17,7 +17,7 @@
 
 	let passwordFocused = false;
 	let showPassword = false;
-	1;
+
 	let passwordChecks = {
 		minLength: false,
 		maxLength: false,

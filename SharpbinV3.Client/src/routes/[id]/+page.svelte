@@ -911,6 +911,7 @@
 					on:click={handleMarkdownClick}
 					role="presentation"
 				>
+					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 					{@html pasteContent}
 				</div>
 			{/if}
