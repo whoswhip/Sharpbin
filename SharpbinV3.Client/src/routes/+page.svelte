@@ -67,7 +67,7 @@
 
 		element.style.height = 'auto';
 		h = element.scrollHeight;
-			max = MAX_HEIGHT();
+		max = MAX_HEIGHT();
 
 		if (h > max) {
 			element.style.height = max + 'px';
