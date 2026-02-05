@@ -65,17 +65,9 @@
 		let max: number;
 		let element = markdown ? markdownConatiner : textArea;
 
-		if (!markdown) {
-			textArea.style.height = 'auto';
-
-			h = textArea.scrollHeight;
+		element.style.height = 'auto';
+		h = element.scrollHeight;
 			max = MAX_HEIGHT();
-		} else {
-			markdownConatiner.style.height = 'auto';
-
-			h = markdownConatiner.scrollHeight;
-			max = MAX_HEIGHT();
-		}
 
 		if (h > max) {
 			element.style.height = max + 'px';
