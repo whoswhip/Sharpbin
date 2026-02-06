@@ -270,7 +270,7 @@ namespace SharpbinV3.Server
                         }
                     }
                 });
-            }).CacheOutput(policy => policy.Expire(TimeSpan.FromDays(1)).Tag("stats"));
+            }).CacheOutput(policy => policy.Expire(TimeSpan.FromHours(6)).Tag("stats"));
 
             app.Run();
         }
