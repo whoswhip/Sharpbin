@@ -46,7 +46,7 @@ namespace SharpbinV3.Server.Controllers
             if (System.Text.Encoding.UTF8.GetByteCount(content) > _pasteSettings.MaxPasteSizeInBytes)
                 return BadRequest(new { success = false, message = $"Paste size exceeds the maximum allowed size of {_pasteSettings.MaxPasteSizeInBytes} bytes." });
 
-            if (_pasteSettings.RequiresVerfication && !await _verificationService.VerifyAsync(new VerificationContext
+            if (_pasteSettings.RequiresVerification && !await _verificationService.VerifyAsync(new VerificationContext
             {
                 Token = token,
                 Ip = HttpContext.GetRequestIP()
@@ -427,7 +427,7 @@ namespace SharpbinV3.Server.Controllers
                 ],
                 MaxTitleLength = _pasteSettings.MaxTitleLength,
                 MaxPasteSize = _pasteSettings.MaxPasteSizeInBytes,
-                RequiresVerification = _pasteSettings.RequiresVerfication
+                RequiresVerification = _pasteSettings.RequiresVerification
             });
         }
     }
