@@ -34,7 +34,17 @@ namespace SharpbinV3.Server
                         JsonIgnoreCondition.WhenWritingNull;
                 });
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-            builder.Services.AddOpenApi();
+            builder.Services.AddOpenApi(options =>
+            {
+                options.AddDocumentTransformer(
+                    (document, context, cancellationToken) =>
+                    {
+                        document?.Servers?.Clear();
+                        return Task.CompletedTask;
+                    }
+                );
+            });
+
             builder.Services.AddDbContext<AppDbContext>(opt =>
             {
                 opt.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
