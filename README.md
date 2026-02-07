@@ -34,7 +34,15 @@ docker-compose up -d
 
 ### Configuration
 
-You can configure the application using environment variables. When using Docker Compose, these can be set in the `docker-compose.yml` file.
+You can configure Sharpbin using environment variables or `appsettings.json`. When using Docker Compose, these can be set in the `docker-compose.yml` file.
+
+> When configuring via `appsettings.json` instead of for example `ConnectionStrings__DefaultConnection` it would be:
+
+```json
+  "ConnectionStrings": {
+    "DefaultConnection": "Data Source=sharpbin.db"
+  },
+```
 
 #### Backend (SharpbinV3.Server)
 
