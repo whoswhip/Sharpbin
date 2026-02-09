@@ -43,6 +43,7 @@
 	import Dropdown from '$lib/components/Dropdown.svelte';
 	import { openModal } from '$lib/stores/modal';
 	import type { Paste } from '$lib/types/paste';
+	import HighlightWorker from '$lib/workers/highlight.worker?worker';
 	export let data: PageData;
 
 	let reportSiteKey: string | null = null;
@@ -59,6 +60,8 @@
 	let contentRendered = false;
 	let downloadedPaste = false;
 	let copiedPaste = false;
+	let highlightWorker: Worker | null = null;
+	let highlightRequestId = 0;
 
 	let scrollY = 0;
 
@@ -90,10 +93,12 @@
 	};
 
 	onMount(() => {
+		highlightWorker = new HighlightWorker();
 		interval = setInterval(() => {
 			now = new Date();
 		}, 1000);
 		return () => {
+			if (highlightWorker) highlightWorker.terminate();
 			if (interval) clearInterval(interval);
 		};
 	});
@@ -147,23 +152,37 @@
 		const lang = (data.paste.syntax ?? '').toLowerCase();
 
 		let highlighted = '';
-		try {
-			if (lang === 'plaintext') {
-				const escapeHtml = (s: string) =>
-					s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-				highlighted = escapeHtml(code);
-			} else if (lang && hljs.getLanguage && hljs.getLanguage(lang)) {
-				highlighted = hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
-			} else {
-				highlighted = hljs.highlightAuto(code).value;
-			}
-		} catch {
-			if (lang === 'plaintext') {
-				const escapeHtml = (s: string) =>
-					s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-				highlighted = escapeHtml(code);
-			} else {
-				highlighted = hljs.highlightAuto(code).value;
+		const worker = highlightWorker;
+		if (worker) {
+			const requestId = ++highlightRequestId;
+			highlighted = await new Promise((resolve) => {
+				const handler = (event: MessageEvent<{ id: number; html: string }>) => {
+					if (event.data.id !== requestId) return;
+					worker.removeEventListener('message', handler);
+					resolve(event.data.html);
+				};
+				worker.addEventListener('message', handler);
+				worker.postMessage({ id: requestId, code, lang });
+			});
+		} else {
+			try {
+				if (lang === 'plaintext') {
+					const escapeHtml = (s: string) =>
+						s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+					highlighted = escapeHtml(code);
+				} else if (lang && hljs.getLanguage && hljs.getLanguage(lang)) {
+					highlighted = hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
+				} else {
+					highlighted = hljs.highlightAuto(code).value;
+				}
+			} catch {
+				if (lang === 'plaintext') {
+					const escapeHtml = (s: string) =>
+						s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+					highlighted = escapeHtml(code);
+				} else {
+					highlighted = hljs.highlightAuto(code).value;
+				}
 			}
 		}
 		const wrapped = `<pre><code class="hljs">${highlighted}</code></pre>`;
