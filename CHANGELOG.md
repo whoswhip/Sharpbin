@@ -1,3 +1,34 @@
+## [3.0.3](https://github.com/whoswhip/Sharpbin/compare/v3.0.2...v3.0.3) (2026-02-10)
+
+
+### Bug Fixes
+
+* correct spelling of 'Verification' in PasteSettings and PasteController ([697ec38](https://github.com/whoswhip/Sharpbin/commit/697ec384f8a0d3d86eb7e523595ddda3cda256b4))
+* do not generate open api documents on build ([e901849](https://github.com/whoswhip/Sharpbin/commit/e90184992a1dd585bfb3728dc866193ab870fb86))
+* ensure length > 0 and that arrays have value before validating ([f95b347](https://github.com/whoswhip/Sharpbin/commit/f95b347191854e8057c8086e52165a83e2fa8a7d))
+* initialize multiselect state in modal component ([908441d](https://github.com/whoswhip/Sharpbin/commit/908441de4b7e857d8cbcc520da86cf1abaab0fa2))
+* prevent internal server endpoint leakage in openapi ([4917180](https://github.com/whoswhip/Sharpbin/commit/4917180624d1ec2f7af784c50c5cd2810beba1b3))
+* resolve lint issues ([b56a848](https://github.com/whoswhip/Sharpbin/commit/b56a848d21da5d8bb57c22bdc03bd84449813338))
+* simplify height adjustment logic for text area and markdown container ([f37e647](https://github.com/whoswhip/Sharpbin/commit/f37e647a1c0264a3b6229c270e75b8176ec93628))
+* update display name validation to allow spaces and improve error message ([755b356](https://github.com/whoswhip/Sharpbin/commit/755b356d616a339273c7e45207304e901617c367))
+* update stats tooltip to display correct pluralization for paste counts ([54ca2ee](https://github.com/whoswhip/Sharpbin/commit/54ca2ee6417e0a6cfcc14ccb0be6e79d9dc4cacd))
+
+
+### Features
+
+* add statistics link to footer component ([cbbed2d](https://github.com/whoswhip/Sharpbin/commit/cbbed2d341670ba7b034af161ccdb3ddb3101dc0))
+* add statistics page ([22317a2](https://github.com/whoswhip/Sharpbin/commit/22317a2fae8f8a8ed45f313a46bb2489b8042f92))
+* allow spaces in display names ([abcf79c](https://github.com/whoswhip/Sharpbin/commit/abcf79c6458b97d1f75b6c31020fdc7ab957d4f2))
+* **backend:** allow spaces in display name during registration ([71363fa](https://github.com/whoswhip/Sharpbin/commit/71363fa1a467c660297301d4f35513bdfe39ccd5))
+* cache for 6 hours instead of 24 hours ([d04e296](https://github.com/whoswhip/Sharpbin/commit/d04e2962b51796393f77b66fd37f6efad924b413))
+* enhance API stats endpoint to include daily paste counts for the past week ([23e7973](https://github.com/whoswhip/Sharpbin/commit/23e7973e972f197954568fb292f1c8f6e5272c50))
+* implement web worker for syntax highlighting using highlight.js ([1cd6d16](https://github.com/whoswhip/Sharpbin/commit/1cd6d16d8538bf3b990f523703eb9abc19da5f36))
+* proxy openapi url ([698db0a](https://github.com/whoswhip/Sharpbin/commit/698db0a85e000e8b1ab76d82827b8f404ffd0f67))
+* true total paste size; always map the openapi route ([6b32994](https://github.com/whoswhip/Sharpbin/commit/6b32994d16b201a5a99037fcb23af30bd35876bc))
+* update tooltip function to accept parameters for styling ([c9591a4](https://github.com/whoswhip/Sharpbin/commit/c9591a43c78b7c8a09b3e7afa0e8b401b70efae0))
+
+
+
 ## [3.0.2](https://github.com/whoswhip/Sharpbin/compare/v3.0.1...v3.0.2) (2026-01-31)
 
 
