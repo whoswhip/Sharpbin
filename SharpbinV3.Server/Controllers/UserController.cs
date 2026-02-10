@@ -19,8 +19,14 @@ namespace SharpbinV3.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class UserController(UserService userService, AppDbContext db, TotpVerificationProvider totp,
-        VerificationService verificationService, ReportService reportServer, IOptions<AuthSettings> authSettings) : ControllerBase
+    public class UserController(
+        UserService userService,
+        AppDbContext db,
+        TotpVerificationProvider totp,
+        VerificationService verificationService,
+        ReportService reportServer,
+        IOptions<AuthSettings> authSettings
+    ) : ControllerBase
     {
         private readonly UserService _userService = userService;
         private readonly AppDbContext _db = db;
@@ -72,7 +78,10 @@ namespace SharpbinV3.Server.Controllers
             if (user == null)
                 return NotFound(new { success = false, message = "User not found." });
 
-            if ((user.Roles.Contains(255) && !jwtUser.Roles.Contains(255)) || (!jwtUser.Roles.Any(r => r == 1 || r == 255) && user.UUID != jwtUser.UUID))
+            if (
+                (user.Roles.Contains(255) && !jwtUser.Roles.Contains(255))
+                || (!jwtUser.Roles.Any(r => r == 1 || r == 255) && user.UUID != jwtUser.UUID)
+            )
                 return StatusCode(403, new { success = false, message = "You do not have permission to modify this user." });
 
             if (jwtUser.Roles.Contains(255) && !jwtUser.TotpEnabled && _authSettings.Admins_Require_2FA)
@@ -88,11 +97,10 @@ namespace SharpbinV3.Server.Controllers
             {
                 if (updatedUser.Roles.Contains(255) && jwtUser.TotpEnabled)
                 {
-                    if (string.IsNullOrEmpty(updatedUser.TotpCode) || !await _totp.VerifyAsync(new VerificationContext
-                    {
-                        UserUUID = jwtUser.UUID,
-                        Code = updatedUser.TotpCode
-                    }))
+                    if (
+                        string.IsNullOrEmpty(updatedUser.TotpCode)
+                        || !await _totp.VerifyAsync(new VerificationContext { UserUUID = jwtUser.UUID, Code = updatedUser.TotpCode })
+                    )
                     {
                         return Unauthorized(new { message = "Invalid TOTP code." });
                     }
@@ -124,22 +132,20 @@ namespace SharpbinV3.Server.Controllers
 
             if (jwtUser.TotpEnabled)
             {
-                if (string.IsNullOrEmpty(dto.TotpCode) || !await _totp.VerifyAsync(new VerificationContext
-                {
-                    UserUUID = jwtUser.UUID,
-                    Code = dto.TotpCode
-                }))
+                if (
+                    string.IsNullOrEmpty(dto.TotpCode)
+                    || !await _totp.VerifyAsync(new VerificationContext { UserUUID = jwtUser.UUID, Code = dto.TotpCode })
+                )
                 {
                     return Unauthorized(new { message = "Invalid TOTP code." });
                 }
             }
             else
             {
-                if (string.IsNullOrEmpty(dto.Token) || !await _verificationService.VerifyAsync(new VerificationContext
-                {
-                    Token = dto.Token,
-                    Ip = HttpContext.GetRequestIP()
-                }))
+                if (
+                    string.IsNullOrEmpty(dto.Token)
+                    || !await _verificationService.VerifyAsync(new VerificationContext { Token = dto.Token, Ip = HttpContext.GetRequestIP() })
+                )
                 {
                     return Unauthorized(new { message = "Invalid verification token." });
                 }
@@ -169,34 +175,36 @@ namespace SharpbinV3.Server.Controllers
             if (!Enum.IsDefined(reportType))
                 return BadRequest(new { success = false, message = "Invalid report type." });
 
-            if (!await _verificationService.VerifyAsync(new VerificationContext
-            {
-                Token = request.VerificationToken,
-                Ip = HttpContext.GetRequestIP()
-            }))
+            if (
+                !await _verificationService.VerifyAsync(
+                    new VerificationContext { Token = request.VerificationToken, Ip = HttpContext.GetRequestIP() }
+                )
+            )
                 return Unauthorized(new { success = false, message = "Invalid verification token." });
 
             Report report = await _reportService.CreateReport(reporter.UUID, ReportTargetType.User, uuid, reportType, request.Description);
             if (report == null)
                 return StatusCode(500, new { success = false, message = "An error occurred while creating the report." });
 
-            return Ok(new
-            {
-                success = true,
-                message = "User reported successfully.",
-                report = new ReportResponseDto
+            return Ok(
+                new
                 {
-                    ReportID = report.ReportID,
-                    Type = report.Type,
-                    Status = report.Status,
-                    Description = report.Description,
-                    CreatedAt = report.CreatedAt,
-                    UpdatedAt = report.UpdatedAt,
-                    ReporterUUID = report.ReporterUUID,
-                    TargetType = report.TargetType,
-                    UserUUID = report.UserUUID
+                    success = true,
+                    message = "User reported successfully.",
+                    report = new ReportResponseDto
+                    {
+                        ReportID = report.ReportID,
+                        Type = report.Type,
+                        Status = report.Status,
+                        Description = report.Description,
+                        CreatedAt = report.CreatedAt,
+                        UpdatedAt = report.UpdatedAt,
+                        ReporterUUID = report.ReporterUUID,
+                        TargetType = report.TargetType,
+                        UserUUID = report.UserUUID,
+                    },
                 }
-            });
+            );
         }
 
         [HttpPatch]
@@ -269,26 +277,23 @@ namespace SharpbinV3.Server.Controllers
             if (!jwtUser.Roles.Any(r => r == 1 || r == 255))
                 return StatusCode(403, new { success = false, message = "You do not have permission to view this user's reports." });
 
-            var query = request with
-            {
-                UserUUID = user.UUID,
-                Page = Math.Max(request.Page, 1),
-                PageSize = Math.Clamp(request.PageSize, 1, 100)
-            };
+            var query = request with { UserUUID = user.UUID, Page = Math.Max(request.Page, 1), PageSize = Math.Clamp(request.PageSize, 1, 100) };
             var reports = await _reportService.GetUserReports(query);
             var totalCount = await _reportService.GetReportCount(query);
             var totalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize);
-            return Ok(new
-            {
-                Reports = reports,
-                Pagination = new
+            return Ok(
+                new
                 {
-                    query.Page,
-                    query.PageSize,
-                    TotalCount = totalCount,
-                    TotalPages = totalPages
+                    Reports = reports,
+                    Pagination = new
+                    {
+                        query.Page,
+                        query.PageSize,
+                        TotalCount = totalCount,
+                        TotalPages = totalPages,
+                    },
                 }
-            });
+            );
         }
 
         [HttpGet]
@@ -309,28 +314,25 @@ namespace SharpbinV3.Server.Controllers
             if (!isOwner && !hasPrivilegedRole)
                 return StatusCode(403, new { success = false, message = "You do not have permission to view this user's submitted reports." });
 
-            var query = request with
-            {
-                ReporterUUID = user.UUID,
-                Page = Math.Max(request.Page, 1),
-                PageSize = Math.Clamp(request.PageSize, 1, 100)
-            };
+            var query = request with { ReporterUUID = user.UUID, Page = Math.Max(request.Page, 1), PageSize = Math.Clamp(request.PageSize, 1, 100) };
 
             var reports = await _reportService.GetReports(query);
             var totalCount = await _reportService.GetReportCount(query);
             var totalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize);
 
-            return Ok(new
-            {
-                Reports = reports,
-                Pagination = new
+            return Ok(
+                new
                 {
-                    query.Page,
-                    query.PageSize,
-                    TotalCount = totalCount,
-                    TotalPages = totalPages
+                    Reports = reports,
+                    Pagination = new
+                    {
+                        query.Page,
+                        query.PageSize,
+                        TotalCount = totalCount,
+                        TotalPages = totalPages,
+                    },
                 }
-            });
+            );
         }
 
         private async Task<IActionResult> BuildUserResponse(User user, int page = 1)
@@ -369,7 +371,7 @@ namespace SharpbinV3.Server.Controllers
                     Views = p.Views,
                     Visibility = p.Visibility,
                     EditedAt = p.EditedAt,
-                    ExpiresAt = p.ExpiresAt
+                    ExpiresAt = p.ExpiresAt,
                 })
                 .ToListAsync();
 
@@ -378,61 +380,67 @@ namespace SharpbinV3.Server.Controllers
                 Page = page,
                 PageSize = pageSize,
                 TotalCount = totalCount,
-                TotalPages = totalPages
+                TotalPages = totalPages,
             };
 
             if (isAuthenticatedUser)
             {
-                var reports = await _reportService.GetReports(new ReportQuery
-                {
-                    ReporterUUID = user.UUID,
-                    Page = page,
-                    PageSize = pageSize
-                });
+                var reports = await _reportService.GetReports(
+                    new ReportQuery
+                    {
+                        ReporterUUID = user.UUID,
+                        Page = page,
+                        PageSize = pageSize,
+                    }
+                );
                 var reportsCount = await _reportService.GetReportCountByReporter(user.UUID);
 
-                return Ok(new
+                return Ok(
+                    new
+                    {
+                        User = new UserResponseDto
+                        {
+                            UID = user.UID,
+                            Username = user.Username,
+                            UUID = user.UUID,
+                            CreatedAt = user.CreatedAt,
+                            DisplayName = user.DisplayName,
+                            Email = user.Email,
+                            LastLogin = user.LastLogin,
+                            Roles = user.Roles,
+                            Visibility = user.Visibility,
+                        },
+                        Pastes = pastes,
+                        Reports = reports,
+                        Pagination = pagination,
+                        ReportsPagination = new
+                        {
+                            Page = page,
+                            PageSize = pageSize,
+                            TotalCount = reportsCount,
+                            TotalPages = (int)Math.Ceiling(reportsCount / (double)pageSize),
+                        },
+                    }
+                );
+            }
+
+            return Ok(
+                new
                 {
-                    User = new UserResponseDto
+                    User = new UserSimpleDto
                     {
                         UID = user.UID,
                         Username = user.Username,
                         UUID = user.UUID,
                         CreatedAt = user.CreatedAt,
                         DisplayName = user.DisplayName,
-                        Email = user.Email,
-                        LastLogin = user.LastLogin,
                         Roles = user.Roles,
-                        Visibility = user.Visibility
+                        Visibility = user.Visibility,
                     },
                     Pastes = pastes,
-                    Reports = reports,
                     Pagination = pagination,
-                    ReportsPagination = new
-                    {
-                        Page = page,
-                        PageSize = pageSize,
-                        TotalCount = reportsCount,
-                        TotalPages = (int)Math.Ceiling(reportsCount / (double)pageSize)
-                    }
-                });
-            }
-
-            return Ok(new
-            {
-                User = new UserSimpleDto
-                {
-                    UID = user.UID,
-                    Username = user.Username,
-                    UUID = user.UUID,
-                    CreatedAt = user.CreatedAt,
-                    DisplayName = user.DisplayName,
-                    Roles = user.Roles,
-                    Visibility = user.Visibility
-                },
-                Pastes = pastes,
-                Pagination = pagination
-            });
+                }
+            );
         }
     }
 }

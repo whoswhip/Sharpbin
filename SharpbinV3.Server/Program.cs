@@ -30,8 +30,7 @@ namespace SharpbinV3.Server
                 .AddJsonOptions(options =>
                 {
                     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-                    options.JsonSerializerOptions.DefaultIgnoreCondition =
-                        JsonIgnoreCondition.WhenWritingNull;
+                    options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
                 });
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi(options =>
@@ -74,13 +73,9 @@ namespace SharpbinV3.Server
                 .Bind(builder.Configuration.GetSection("JwtSettings"))
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
-            builder.Services.Configure<AuthSettings>(
-                builder.Configuration.GetSection("AuthSettings")
-            );
+            builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection("AuthSettings"));
 
-            builder
-                .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer();
+            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 
             builder
                 .Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
@@ -112,18 +107,8 @@ namespace SharpbinV3.Server
                     }
                 );
 
-            builder
-                .Services.AddAuthorizationBuilder()
-                .AddPolicy(
-                    "NotBanned",
-                    policy => policy.Requirements.Add(new NotBannedRequirement())
-                );
-            builder
-                .Services.AddAuthorizationBuilder()
-                .AddPolicy(
-                    "AuthAndNotBanned",
-                    policy => policy.Requirements.Add(new NotBannedRequirement())
-                );
+            builder.Services.AddAuthorizationBuilder().AddPolicy("NotBanned", policy => policy.Requirements.Add(new NotBannedRequirement()));
+            builder.Services.AddAuthorizationBuilder().AddPolicy("AuthAndNotBanned", policy => policy.Requirements.Add(new NotBannedRequirement()));
             builder.Services.AddSingleton<IAuthorizationHandler>(new NotBannedHandler(false));
             builder.Services.AddSingleton<IAuthorizationHandler>(new NotBannedHandler(true));
 
@@ -181,33 +166,27 @@ namespace SharpbinV3.Server
 
                 options.AddPolicy("NoLimit", _ => RateLimitPartition.GetNoLimiter(0));
 
-                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(
-                    httpContext =>
-                    {
-                        var remoteIp = httpContext.GetRequestIP();
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+                {
+                    var remoteIp = httpContext.GetRequestIP();
 
-                        return RateLimitPartition.GetFixedWindowLimiter(
-                            remoteIp,
-                            _ => new FixedWindowRateLimiterOptions
-                            {
-                                PermitLimit = 100,
-                                Window = TimeSpan.FromMinutes(1),
-                                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                                QueueLimit = 0,
-                            }
-                        );
-                    }
-                );
+                    return RateLimitPartition.GetFixedWindowLimiter(
+                        remoteIp,
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 100,
+                            Window = TimeSpan.FromMinutes(1),
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                            QueueLimit = 0,
+                        }
+                    );
+                });
 
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
                 options.OnRejected = async (context, cancellationToken) =>
                 {
                     await context.HttpContext.Response.WriteAsJsonAsync(
-                        new
-                        {
-                            success = false,
-                            Message = "Too many requests. Please try again later.",
-                        },
+                        new { success = false, Message = "Too many requests. Please try again later." },
                         cancellationToken: cancellationToken
                     );
                 };
@@ -225,9 +204,7 @@ namespace SharpbinV3.Server
 
             builder.Services.AddCors(o =>
             {
-                o.AddDefaultPolicy(p =>
-                    p.WithOrigins("http://localhost:5173").AllowAnyHeader().AllowAnyMethod()
-                );
+                o.AddDefaultPolicy(p => p.WithOrigins("http://localhost:5173").AllowAnyHeader().AllowAnyMethod());
             });
 
             builder
@@ -278,15 +255,7 @@ namespace SharpbinV3.Server
                     async (AppDbContext db) =>
                     {
                         var now = DateTimeOffset.UtcNow;
-                        var todayStart = new DateTimeOffset(
-                            now.Year,
-                            now.Month,
-                            now.Day,
-                            0,
-                            0,
-                            0,
-                            TimeSpan.Zero
-                        );
+                        var todayStart = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
                         var sevenDaysAgo = todayStart.AddDays(-6).ToUnixTimeMilliseconds();
 
                         var pasteCount = await db.Pastes.CountAsync();
@@ -343,9 +312,7 @@ namespace SharpbinV3.Server
             if (!string.IsNullOrEmpty(overridepath))
                 return new DirectoryInfo(overridepath);
 
-            var basePath = env.IsDevelopment()
-                ? Environment.CurrentDirectory
-                : Environment.SpecialFolder.ApplicationData.ToString();
+            var basePath = env.IsDevelopment() ? Environment.CurrentDirectory : Environment.SpecialFolder.ApplicationData.ToString();
 
             var path = Path.Combine(basePath, "SharpbinV3", "DataProtectionKeys");
 

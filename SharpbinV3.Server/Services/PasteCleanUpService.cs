@@ -6,6 +6,7 @@ namespace SharpbinV3.Server.Services
     public class PasteCleanUpService(IServiceProvider serviceProvider, ILogger<PasteCleanUpService> logger) : BackgroundService
     {
         private readonly TimeSpan _period = TimeSpan.FromMinutes(5);
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             using var timer = new PeriodicTimer(_period);

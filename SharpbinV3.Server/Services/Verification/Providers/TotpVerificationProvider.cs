@@ -6,7 +6,8 @@ using SharpbinV3.Server.Data;
 
 namespace SharpbinV3.Server.Services.Verification.Providers
 {
-    public sealed class TotpVerificationProvider(AppDbContext db, IDataProtectionProvider dataProtectionProvider, IMemoryCache cache) : IVerificationProvider
+    public sealed class TotpVerificationProvider(AppDbContext db, IDataProtectionProvider dataProtectionProvider, IMemoryCache cache)
+        : IVerificationProvider
     {
         private readonly AppDbContext _db = db;
         private readonly IDataProtector _protector = dataProtectionProvider.CreateProtector("TotpSecret-v1");
@@ -17,11 +18,14 @@ namespace SharpbinV3.Server.Services.Verification.Providers
 
         public async Task<bool> VerifyAsync(VerificationContext ctx)
         {
-            if (ctx.UserUUID is null) return false;
-            if (string.IsNullOrWhiteSpace(ctx.Code)) return false;
+            if (ctx.UserUUID is null)
+                return false;
+            if (string.IsNullOrWhiteSpace(ctx.Code))
+                return false;
 
             var userTotp = await _db.UserTotps.FirstOrDefaultAsync(t => t.UserUUID == ctx.UserUUID.Value);
-            if (userTotp is null) return false;
+            if (userTotp is null)
+                return false;
 
             var secret = _protector.Unprotect(userTotp.EncryptedSecret);
             if (!VerifyCode(secret, ctx.Code, out var step))
@@ -39,7 +43,14 @@ namespace SharpbinV3.Server.Services.Verification.Providers
 
         public byte[] FromBase32(string base32) => string.IsNullOrWhiteSpace(base32) ? [] : Base32Encoding.ToBytes(base32);
 
-        public string BuildOtpAuthUri(string issuer, string accountName, string secretBase32, int digits = 6, int period = 30, string algorithm = "SHA1")
+        public string BuildOtpAuthUri(
+            string issuer,
+            string accountName,
+            string secretBase32,
+            int digits = 6,
+            int period = 30,
+            string algorithm = "SHA1"
+        )
         {
             var label = Uri.EscapeDataString($"{issuer}:{accountName}");
             var query = $"secret={secretBase32}&issuer={Uri.EscapeDataString(issuer)}&algorithm={algorithm}&digits={digits}&period={period}";
@@ -47,6 +58,7 @@ namespace SharpbinV3.Server.Services.Verification.Providers
         }
 
         public byte[] Protect(byte[] secret) => _protector.Protect(secret);
+
         public byte[] Unprotect(byte[] protectedSecret) => _protector.Unprotect(protectedSecret);
 
         public bool VerifyWithSecretBase32(string secretBase32, string code, int digits = 6, int period = 30, int window = 1)

@@ -1,5 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace SharpbinV3.Server.Authorization
 {
@@ -7,18 +7,14 @@ namespace SharpbinV3.Server.Authorization
     {
         private readonly bool _requireAuth = requireAuth;
 
-        protected override Task HandleRequirementAsync(
-            AuthorizationHandlerContext context,
-            NotBannedRequirement requirement)
+        protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, NotBannedRequirement requirement)
         {
             var isAuthenticated = context.User.Identity?.IsAuthenticated ?? false;
 
             if (_requireAuth && !isAuthenticated)
                 return Task.CompletedTask;
 
-            var isBanned = context.User.Claims.Any(c =>
-                (c.Type == ClaimTypes.Role || c.Type == "role") &&
-                c.Value == "403");
+            var isBanned = context.User.Claims.Any(c => (c.Type == ClaimTypes.Role || c.Type == "role") && c.Value == "403");
 
             if (!isBanned)
                 context.Succeed(requirement);

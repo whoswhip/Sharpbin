@@ -32,24 +32,26 @@ namespace SharpbinV3.Server.Controllers
 
             var (Username, DisplayName) = await reportService.GetReporterInfo(report.ReporterUUID);
 
-            return Ok(new ReportResponseDto
-            {
-                ReportID = report.ReportID,
-                Type = report.Type,
-                Status = report.Status,
-                Description = report.Description,
-                CreatedAt = report.CreatedAt,
-                UpdatedAt = report.UpdatedAt,
-                ReporterUUID = report.ReporterUUID,
-                ReporterUsername = Username,
-                ReporterDisplayName = DisplayName,
-                TargetType = report.TargetType,
-                PasteId = report.Paste?.ID,
-                PasteTitle = report.Paste?.Title,
-                UserUUID = report.UserUUID,
-                TargetUsername = report.User?.Username,
-                TargetDisplayName = report.User?.DisplayName
-            });
+            return Ok(
+                new ReportResponseDto
+                {
+                    ReportID = report.ReportID,
+                    Type = report.Type,
+                    Status = report.Status,
+                    Description = report.Description,
+                    CreatedAt = report.CreatedAt,
+                    UpdatedAt = report.UpdatedAt,
+                    ReporterUUID = report.ReporterUUID,
+                    ReporterUsername = Username,
+                    ReporterDisplayName = DisplayName,
+                    TargetType = report.TargetType,
+                    PasteId = report.Paste?.ID,
+                    PasteTitle = report.Paste?.Title,
+                    UserUUID = report.UserUUID,
+                    TargetUsername = report.User?.Username,
+                    TargetDisplayName = report.User?.DisplayName,
+                }
+            );
         }
 
         [Route("{reportId:int}")]
@@ -91,24 +93,26 @@ namespace SharpbinV3.Server.Controllers
             var updated = await reportService.UpdateReport(report);
             var (Username, DisplayName) = await reportService.GetReporterInfo(updated.ReporterUUID);
 
-            return Ok(new ReportResponseDto
-            {
-                ReportID = updated.ReportID,
-                Type = updated.Type,
-                Status = updated.Status,
-                Description = updated.Description,
-                CreatedAt = updated.CreatedAt,
-                UpdatedAt = updated.UpdatedAt,
-                ReporterUUID = updated.ReporterUUID,
-                ReporterUsername = Username,
-                ReporterDisplayName = DisplayName,
-                TargetType = updated.TargetType,
-                PasteId = updated.Paste?.ID,
-                PasteTitle = updated.Paste?.Title,
-                UserUUID = updated.UserUUID,
-                TargetUsername = updated.User?.Username,
-                TargetDisplayName = updated.User?.DisplayName
-            });
+            return Ok(
+                new ReportResponseDto
+                {
+                    ReportID = updated.ReportID,
+                    Type = updated.Type,
+                    Status = updated.Status,
+                    Description = updated.Description,
+                    CreatedAt = updated.CreatedAt,
+                    UpdatedAt = updated.UpdatedAt,
+                    ReporterUUID = updated.ReporterUUID,
+                    ReporterUsername = Username,
+                    ReporterDisplayName = DisplayName,
+                    TargetType = updated.TargetType,
+                    PasteId = updated.Paste?.ID,
+                    PasteTitle = updated.Paste?.Title,
+                    UserUUID = updated.UserUUID,
+                    TargetUsername = updated.User?.Username,
+                    TargetDisplayName = updated.User?.DisplayName,
+                }
+            );
         }
 
         [Route("options")]
@@ -132,27 +136,24 @@ namespace SharpbinV3.Server.Controllers
             if (!user.Roles.Contains(1) && !user.Roles.Contains(255))
                 return StatusCode(403, new { success = false, message = "You do not have permission to view pastes." });
 
-            var query = request with
-            {
-                Page = Math.Max(request.Page, 1),
-                PageSize = Math.Clamp(request.PageSize, 1, 100),
-                UserUUID = null
-            };
+            var query = request with { Page = Math.Max(request.Page, 1), PageSize = Math.Clamp(request.PageSize, 1, 100), UserUUID = null };
 
             var reports = await reportService.GetPasteReports(query);
             var totalCount = await reportService.GetReportCount(query);
             var totalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize);
-            return Ok(new
-            {
-                Reports = reports,
-                Pagination = new
+            return Ok(
+                new
                 {
-                    query.Page,
-                    query.PageSize,
-                    TotalCount = totalCount,
-                    TotalPages = totalPages
+                    Reports = reports,
+                    Pagination = new
+                    {
+                        query.Page,
+                        query.PageSize,
+                        TotalCount = totalCount,
+                        TotalPages = totalPages,
+                    },
                 }
-            });
+            );
         }
 
         [Route("users")]
@@ -172,23 +173,25 @@ namespace SharpbinV3.Server.Controllers
                 Page = Math.Max(request.Page, 1),
                 PageSize = Math.Clamp(request.PageSize, 1, 100),
                 PastePID = null,
-                PasteId = null
+                PasteId = null,
             };
 
             var reports = await reportService.GetUserReports(query);
             var totalCount = await reportService.GetReportCount(query);
             var totalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize);
-            return Ok(new
-            {
-                Reports = reports,
-                Pagination = new
+            return Ok(
+                new
                 {
-                    query.Page,
-                    query.PageSize,
-                    TotalCount = totalCount,
-                    TotalPages = totalPages
+                    Reports = reports,
+                    Pagination = new
+                    {
+                        query.Page,
+                        query.PageSize,
+                        TotalCount = totalCount,
+                        TotalPages = totalPages,
+                    },
                 }
-            });
+            );
         }
 
         [Route("all")]
@@ -201,7 +204,8 @@ namespace SharpbinV3.Server.Controllers
             [FromQuery] ReportType? type,
             [FromQuery] ReportStatus? status,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20)
+            [FromQuery] int pageSize = 20
+        )
         {
             var user = HttpContext.GetJwtUser();
             if (user is null)
@@ -216,23 +220,25 @@ namespace SharpbinV3.Server.Controllers
                 Type = type,
                 Status = status,
                 Page = Math.Max(page, 1),
-                PageSize = Math.Clamp(pageSize, 1, 100)
+                PageSize = Math.Clamp(pageSize, 1, 100),
             };
 
             var reports = await reportService.GetReports(query);
             var totalCount = await reportService.GetReportCount(query);
             var totalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize);
-            return Ok(new
-            {
-                Reports = reports,
-                Pagination = new
+            return Ok(
+                new
                 {
-                    query.Page,
-                    query.PageSize,
-                    TotalCount = totalCount,
-                    TotalPages = totalPages
+                    Reports = reports,
+                    Pagination = new
+                    {
+                        query.Page,
+                        query.PageSize,
+                        TotalCount = totalCount,
+                        TotalPages = totalPages,
+                    },
                 }
-            });
+            );
         }
     }
 }

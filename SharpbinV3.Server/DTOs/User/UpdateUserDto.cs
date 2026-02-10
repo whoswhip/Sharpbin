@@ -19,7 +19,12 @@ namespace SharpbinV3.Server.DTOs
                 if (DisplayName.Length < 3 || DisplayName.Length > 26)
                     results.Add(new ValidationResult("DisplayName must be between 3 and 26 characters.", [nameof(DisplayName)]));
                 if (!ValidateDisplayname().IsMatch(DisplayName))
-                    results.Add(new ValidationResult("DisplayName can only contain alphanumeric characters, underscores, periods, and spaces (no leading or trailing spaces).", [nameof(DisplayName)]));
+                    results.Add(
+                        new ValidationResult(
+                            "DisplayName can only contain alphanumeric characters, underscores, periods, and spaces (no leading or trailing spaces).",
+                            [nameof(DisplayName)]
+                        )
+                    );
             }
             if (Email != null && Email.Length > 0)
             {
@@ -42,7 +47,6 @@ namespace SharpbinV3.Server.DTOs
                     if (!validRoles.Contains(role))
                         results.Add(new ValidationResult($"Invalid role: {role}.", [nameof(Roles)]));
                 }
-
             }
             return results;
         }

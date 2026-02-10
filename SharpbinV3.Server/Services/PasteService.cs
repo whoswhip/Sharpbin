@@ -9,12 +9,7 @@ using SharpbinV3.Server.Settings;
 
 namespace SharpbinV3.Server.Services
 {
-    public sealed class PasteService(
-        AppDbContext db,
-        ICompressionService cs,
-        IMemoryCache cache,
-        IOptions<PasteSettings> options
-    )
+    public sealed class PasteService(AppDbContext db, ICompressionService cs, IMemoryCache cache, IOptions<PasteSettings> options)
     {
         private readonly AppDbContext _db = db;
         private readonly ICompressionService _cs = cs;
@@ -114,10 +109,7 @@ namespace SharpbinV3.Server.Services
             return result > 0;
         }
 
-        public async Task<(Paste? paste, bool alreadyExists)> RecordView(
-            Paste paste,
-            HttpContext context
-        )
+        public async Task<(Paste? paste, bool alreadyExists)> RecordView(Paste paste, HttpContext context)
         {
             if (paste == null)
                 return (null, false);
@@ -132,21 +124,11 @@ namespace SharpbinV3.Server.Services
 
             string viewerHash;
             if (viewerUser != null)
-                viewerHash = Utilities.ComputeHmacSha256(
-                    _pasteSettings.View_HMAC_Secret,
-                    viewerUser.UUID.ToString()
-                );
+                viewerHash = Utilities.ComputeHmacSha256(_pasteSettings.View_HMAC_Secret, viewerUser.UUID.ToString());
             else
-                viewerHash = Utilities.ComputeHmacSha256(
-                    _pasteSettings.View_HMAC_Secret,
-                    viewerIp + viewerUserAgent
-                );
+                viewerHash = Utilities.ComputeHmacSha256(_pasteSettings.View_HMAC_Secret, viewerIp + viewerUserAgent);
 
-            if (
-                await _db.PasteViews.AnyAsync(pv =>
-                    pv.PastePID == paste.PID && pv.ViewerHash == viewerHash
-                )
-            )
+            if (await _db.PasteViews.AnyAsync(pv => pv.PastePID == paste.PID && pv.ViewerHash == viewerHash))
                 return (null, true);
 
             _db.PasteViews.Add(
@@ -176,9 +158,7 @@ namespace SharpbinV3.Server.Services
                 async entry =>
                 {
                     entry.SetSlidingExpiration(TimeSpan.FromMinutes(10));
-                    return await _db
-                        .Pastes.Include(p => p.User)
-                        .FirstOrDefaultAsync(p => p.ID == id);
+                    return await _db.Pastes.Include(p => p.User).FirstOrDefaultAsync(p => p.ID == id);
                 }
             );
             return paste ?? null;
@@ -201,12 +181,7 @@ namespace SharpbinV3.Server.Services
                     if (publicOnly)
                         query = query.Where(p => p.Visibility == 0);
 
-                    return await query
-                        .OrderByDescending(p => p.PID)
-                        .Skip(offset)
-                        .Take(count)
-                        .Include(p => p.User)
-                        .ToListAsync();
+                    return await query.OrderByDescending(p => p.PID).Skip(offset).Take(count).Include(p => p.User).ToListAsync();
                 }
             );
 

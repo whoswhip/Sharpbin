@@ -8,10 +8,7 @@ namespace SharpbinV3.Server.Services.Verification
 
         private IVerificationProvider? GetActiveProvider()
         {
-            return _providers
-                .Where(p => p.IsConfigured)
-                .OrderByDescending(p => p.Priority)
-                .FirstOrDefault();
+            return _providers.Where(p => p.IsConfigured).OrderByDescending(p => p.Priority).FirstOrDefault();
         }
 
         public async Task<bool> VerifyAsync(VerificationContext context, IVerificationProvider? provider = null)

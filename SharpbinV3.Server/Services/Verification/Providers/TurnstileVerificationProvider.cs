@@ -1,7 +1,7 @@
-﻿using Microsoft.Extensions.Options;
+﻿using System.Text.Json;
+using Microsoft.Extensions.Options;
 using SharpbinV3.Server.DTOs.Auth;
 using SharpbinV3.Server.Settings;
-using System.Text.Json;
 
 namespace SharpbinV3.Server.Services.Verification.Providers
 {
@@ -11,7 +11,8 @@ namespace SharpbinV3.Server.Services.Verification.Providers
         private const string SiteverifyUrl = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
         public int Priority => 1;
-        public bool IsConfigured => !string.IsNullOrEmpty(_authSettings.CF_Turnstile_SecretKey) && !string.IsNullOrEmpty(_authSettings.CF_Turnstile_SiteKey);
+        public bool IsConfigured =>
+            !string.IsNullOrEmpty(_authSettings.CF_Turnstile_SecretKey) && !string.IsNullOrEmpty(_authSettings.CF_Turnstile_SiteKey);
 
         public async Task<bool> VerifyAsync(VerificationContext ctx)
         {
@@ -20,11 +21,7 @@ namespace SharpbinV3.Server.Services.Verification.Providers
             if (string.IsNullOrEmpty(ctx.Token))
                 return false;
 
-            var parameters = new Dictionary<string, string>
-            {
-                { "secret", _authSettings.CF_Turnstile_SecretKey },
-                { "response", ctx.Token }
-            };
+            var parameters = new Dictionary<string, string> { { "secret", _authSettings.CF_Turnstile_SecretKey }, { "response", ctx.Token } };
 
             if (!string.IsNullOrEmpty(ctx.Ip))
                 parameters.Add("remoteip", ctx.Ip);

@@ -15,8 +15,14 @@ namespace SharpbinV3.Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class PasteController(PasteService pasteService, VerificationService verificationService, AuthService authService,
-        ReportService reportService, IOptions<PasteSettings> options, IOptions<AuthSettings> authSettings) : ControllerBase
+    public class PasteController(
+        PasteService pasteService,
+        VerificationService verificationService,
+        AuthService authService,
+        ReportService reportService,
+        IOptions<PasteSettings> options,
+        IOptions<AuthSettings> authSettings
+    ) : ControllerBase
     {
         private readonly PasteService _pasteService = pasteService;
         private readonly VerificationService _verificationService = verificationService;
@@ -29,7 +35,13 @@ namespace SharpbinV3.Server.Controllers
         [Route("create")]
         [Authorize(Policy = "NotBanned")]
         [EnableRateLimiting("Strict")]
-        public async Task<IActionResult> CreatePaste(string title = "", string syntax = "plaintext", int visibility = 0, long expiresAt = 0, string? token = null)
+        public async Task<IActionResult> CreatePaste(
+            string title = "",
+            string syntax = "plaintext",
+            int visibility = 0,
+            long expiresAt = 0,
+            string? token = null
+        )
         {
             if (!_pasteService.ValidateExpiresAt(expiresAt))
                 return BadRequest(new { success = false, message = "Invalid expiration time." });
@@ -44,27 +56,30 @@ namespace SharpbinV3.Server.Controllers
             if (content.Length == 0)
                 return BadRequest(new { success = false, message = "Paste content cannot be empty." });
             if (System.Text.Encoding.UTF8.GetByteCount(content) > _pasteSettings.MaxPasteSizeInBytes)
-                return BadRequest(new { success = false, message = $"Paste size exceeds the maximum allowed size of {_pasteSettings.MaxPasteSizeInBytes} bytes." });
+                return BadRequest(
+                    new { success = false, message = $"Paste size exceeds the maximum allowed size of {_pasteSettings.MaxPasteSizeInBytes} bytes." }
+                );
 
-            if (_pasteSettings.RequiresVerification && !await _verificationService.VerifyAsync(new VerificationContext
-            {
-                Token = token,
-                Ip = HttpContext.GetRequestIP()
-            }))
+            if (
+                _pasteSettings.RequiresVerification
+                && !await _verificationService.VerifyAsync(new VerificationContext { Token = token, Ip = HttpContext.GetRequestIP() })
+            )
                 return BadRequest(new { success = false, message = "Verification failed." });
 
             var user = await _authService.GetUserFromHttpContext(HttpContext);
             Paste paste = await _pasteService.Create(user, content, title, syntax, visibility, expiresAt, _pasteSettings.EnablePasteCompression);
-            return Ok(new PasteCreatedResponseDto
-            {
-                ID = paste.ID,
-                UUID = paste.UUID,
-                CreatedAt = paste.CreatedAt,
-                IsCompressed = paste.IsCompressed,
-                Size = paste.Size,
-                TrueSize = paste.TrueSize,
-                ExpiresAt = paste.ExpiresAt
-            });
+            return Ok(
+                new PasteCreatedResponseDto
+                {
+                    ID = paste.ID,
+                    UUID = paste.UUID,
+                    CreatedAt = paste.CreatedAt,
+                    IsCompressed = paste.IsCompressed,
+                    Size = paste.Size,
+                    TrueSize = paste.TrueSize,
+                    ExpiresAt = paste.ExpiresAt,
+                }
+            );
         }
 
         [HttpGet]
@@ -79,42 +94,44 @@ namespace SharpbinV3.Server.Controllers
             int? reportCount = null;
             if (jwtUser != null && jwtUser.Roles.Any(r => r == 1 || r == 255))
             {
-                var query = new ReportQuery
-                {
-                    PastePID = paste.PID
-                };
+                var query = new ReportQuery { PastePID = paste.PID };
                 reportCount = await _reportService.GetReportCount(query);
             }
 
-            return Ok(new
-            {
-                success = true,
-                paste = new PasteResponseDto
+            return Ok(
+                new
                 {
-                    ID = paste.ID,
-                    UUID = paste.UUID,
-                    CreatedAt = paste.CreatedAt,
-                    Title = paste.Title,
-                    Size = paste.Size,
-                    TrueSize = paste.TrueSize,
-                    IsCompressed = paste.IsCompressed,
-                    Views = paste.Views,
-                    Syntax = paste.Syntax,
-                    Visibility = paste.Visibility,
-                    ExpiresAt = paste.ExpiresAt,
-                    EditedAt = paste.EditedAt,
-                    ReportCount = reportCount,
-                    Author = paste.User != null && paste.User.Visibility == 0 ? new UserSimpleDto
+                    success = true,
+                    paste = new PasteResponseDto
                     {
-                        UID = paste.User.UID,
-                        UUID = paste.User.UUID,
-                        Username = paste.User.Username,
-                        DisplayName = paste.User.DisplayName,
-                        Visibility = paste.User.Visibility,
-                        Roles = paste.User.Roles
-                    } : null
+                        ID = paste.ID,
+                        UUID = paste.UUID,
+                        CreatedAt = paste.CreatedAt,
+                        Title = paste.Title,
+                        Size = paste.Size,
+                        TrueSize = paste.TrueSize,
+                        IsCompressed = paste.IsCompressed,
+                        Views = paste.Views,
+                        Syntax = paste.Syntax,
+                        Visibility = paste.Visibility,
+                        ExpiresAt = paste.ExpiresAt,
+                        EditedAt = paste.EditedAt,
+                        ReportCount = reportCount,
+                        Author =
+                            paste.User != null && paste.User.Visibility == 0
+                                ? new UserSimpleDto
+                                {
+                                    UID = paste.User.UID,
+                                    UUID = paste.User.UUID,
+                                    Username = paste.User.Username,
+                                    DisplayName = paste.User.DisplayName,
+                                    Visibility = paste.User.Visibility,
+                                    Roles = paste.User.Roles,
+                                }
+                                : null,
+                    },
                 }
-            });
+            );
         }
 
         [HttpGet]
@@ -122,7 +139,8 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> GetRawPasteByID(string id)
         {
             var paste = await _pasteService.Get(id);
-            if (paste == null) return NotFound();
+            if (paste == null)
+                return NotFound();
             if (paste.IsCompressed)
                 Response.Headers.Append("Content-Encoding", "gzip");
 
@@ -153,7 +171,8 @@ namespace SharpbinV3.Server.Controllers
                 return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
 
             bool result = await _pasteService.EditText(paste, content);
-            if (!result) return StatusCode(500, new { success = false, message = "An error occurred while editing the paste." });
+            if (!result)
+                return StatusCode(500, new { success = false, message = "An error occurred while editing the paste." });
             return Ok(new { message = "Paste edited successfully." });
         }
 
@@ -195,25 +214,27 @@ namespace SharpbinV3.Server.Controllers
                 return BadRequest(new { success = false, message = $"Invalid title. Must be less than {_pasteSettings.MaxTitleLength} characters." });
 
             var newPaste = await _pasteService.Edit(paste);
-            return Ok(new
-            {
-                success = true,
-                message = "Paste metadata updated successfully.",
-                paste = new PasteResponseDto
+            return Ok(
+                new
                 {
-                    ID = newPaste.ID,
-                    UUID = newPaste.UUID,
-                    CreatedAt = newPaste.CreatedAt,
-                    Title = newPaste.Title,
-                    Size = newPaste.Size,
-                    TrueSize = newPaste.TrueSize,
-                    IsCompressed = newPaste.IsCompressed,
-                    Views = newPaste.Views,
-                    Syntax = newPaste.Syntax,
-                    Visibility = newPaste.Visibility,
-                    ExpiresAt = newPaste.ExpiresAt
+                    success = true,
+                    message = "Paste metadata updated successfully.",
+                    paste = new PasteResponseDto
+                    {
+                        ID = newPaste.ID,
+                        UUID = newPaste.UUID,
+                        CreatedAt = newPaste.CreatedAt,
+                        Title = newPaste.Title,
+                        Size = newPaste.Size,
+                        TrueSize = newPaste.TrueSize,
+                        IsCompressed = newPaste.IsCompressed,
+                        Views = newPaste.Views,
+                        Syntax = newPaste.Syntax,
+                        Visibility = newPaste.Visibility,
+                        ExpiresAt = newPaste.ExpiresAt,
+                    },
                 }
-            });
+            );
         }
 
         [HttpDelete]
@@ -222,7 +243,8 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> DeletePaste(string id)
         {
             var paste = await _pasteService.Get(id);
-            if (paste == null) return NotFound(new { success = false, message = "Paste not found." });
+            if (paste == null)
+                return NotFound(new { success = false, message = "Paste not found." });
 
             var user = HttpContext.GetJwtUser();
             if (user == null)
@@ -235,7 +257,8 @@ namespace SharpbinV3.Server.Controllers
                 return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
 
             bool result = await _pasteService.Delete(paste);
-            if (!result) return StatusCode(500, new { success = false, message = "An error occurred while deleting the paste." });
+            if (!result)
+                return StatusCode(500, new { success = false, message = "An error occurred while deleting the paste." });
             return Ok(new { success = true, message = "Paste deleted successfully." });
         }
 
@@ -250,8 +273,10 @@ namespace SharpbinV3.Server.Controllers
 
             if (_pasteSettings.View_HMAC_Secret == null)
                 return StatusCode(500, new { success = false, message = "View recording is not configured properly." });
-            if (!string.IsNullOrWhiteSpace(_pasteSettings.View_Internal_API_Key)
-                && _pasteSettings.View_Internal_API_Key != Request.Headers["X-Internal-API-Key"])
+            if (
+                !string.IsNullOrWhiteSpace(_pasteSettings.View_Internal_API_Key)
+                && _pasteSettings.View_Internal_API_Key != Request.Headers["X-Internal-API-Key"]
+            )
                 return Unauthorized(new { success = false, message = "Invalid API key." });
 
             var result = await _pasteService.RecordView(paste, HttpContext);
@@ -281,35 +306,36 @@ namespace SharpbinV3.Server.Controllers
             if (!Enum.IsDefined(reportType))
                 return BadRequest(new { success = false, message = "Invalid report type." });
 
-            if (!await _verificationService.VerifyAsync(new VerificationContext
-            {
-                Token = request.VerificationToken,
-                Ip = HttpContext.GetRequestIP()
-            }))
+            if (
+                !await _verificationService.VerifyAsync(
+                    new VerificationContext { Token = request.VerificationToken, Ip = HttpContext.GetRequestIP() }
+                )
+            )
                 return BadRequest(new { success = false, message = "Verification failed." });
-
 
             Report report = await _reportService.CreateReport(user.UUID, ReportTargetType.Paste, paste.PID, reportType, request.Description);
             if (report == null)
                 return StatusCode(500, new { success = false, message = "An error occurred while reporting the paste." });
 
-            return Ok(new
-            {
-                success = true,
-                message = "Paste reported successfully.",
-                report = new ReportResponseDto
+            return Ok(
+                new
                 {
-                    ReportID = report.ReportID,
-                    Type = report.Type,
-                    Status = report.Status,
-                    Description = report.Description,
-                    CreatedAt = report.CreatedAt,
-                    UpdatedAt = report.UpdatedAt,
-                    ReporterUUID = report.ReporterUUID,
-                    TargetType = report.TargetType,
-                    UserUUID = report.UserUUID
+                    success = true,
+                    message = "Paste reported successfully.",
+                    report = new ReportResponseDto
+                    {
+                        ReportID = report.ReportID,
+                        Type = report.Type,
+                        Status = report.Status,
+                        Description = report.Description,
+                        CreatedAt = report.CreatedAt,
+                        UpdatedAt = report.UpdatedAt,
+                        ReporterUUID = report.ReporterUUID,
+                        TargetType = report.TargetType,
+                        UserUUID = report.UserUUID,
+                    },
                 }
-            });
+            );
         }
 
         [HttpPatch]
@@ -385,30 +411,35 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> GetRecentPastes()
         {
             var results = await _pasteService.GetList(0, 50, true);
-            return Ok(results.Select(p => new PasteResponseDto
-            {
-                ID = p.ID,
-                UUID = p.UUID,
-                CreatedAt = p.CreatedAt,
-                Title = p.Title,
-                Size = p.Size,
-                TrueSize = p.TrueSize,
-                IsCompressed = p.IsCompressed,
-                Views = p.Views,
-                Syntax = p.Syntax,
-                Visibility = p.Visibility,
-                ExpiresAt = p.ExpiresAt,
-                EditedAt = p.EditedAt,
-                Author = p.User != null && p.User.Visibility == 0 ? new UserSimpleDto
+            return Ok(
+                results.Select(p => new PasteResponseDto
                 {
-                    UID = p.User.UID,
-                    UUID = p.User.UUID,
-                    Username = p.User.Username,
-                    DisplayName = p.User.DisplayName,
-                    Visibility = p.User.Visibility,
-                    Roles = p.User.Roles
-                } : null
-            }));
+                    ID = p.ID,
+                    UUID = p.UUID,
+                    CreatedAt = p.CreatedAt,
+                    Title = p.Title,
+                    Size = p.Size,
+                    TrueSize = p.TrueSize,
+                    IsCompressed = p.IsCompressed,
+                    Views = p.Views,
+                    Syntax = p.Syntax,
+                    Visibility = p.Visibility,
+                    ExpiresAt = p.ExpiresAt,
+                    EditedAt = p.EditedAt,
+                    Author =
+                        p.User != null && p.User.Visibility == 0
+                            ? new UserSimpleDto
+                            {
+                                UID = p.User.UID,
+                                UUID = p.User.UUID,
+                                Username = p.User.Username,
+                                DisplayName = p.User.DisplayName,
+                                Visibility = p.User.Visibility,
+                                Roles = p.User.Roles,
+                            }
+                            : null,
+                })
+            );
         }
 
         [HttpGet]
@@ -416,19 +447,21 @@ namespace SharpbinV3.Server.Controllers
         [Route("info")]
         public IActionResult GetCreatePasteOptions()
         {
-            return Ok(new PasteOptionsDto
-            {
-                Syntaxes = [.. _pasteSettings.ValidSyntaxLanguages],
-                Visibilities =
-                [
-                    new() { Value = 0, DisplayName = "Public" },
-                    new() { Value = 1, DisplayName = "Unlisted" },
-                    new() { Value = 2, DisplayName = "Private" }
-                ],
-                MaxTitleLength = _pasteSettings.MaxTitleLength,
-                MaxPasteSize = _pasteSettings.MaxPasteSizeInBytes,
-                RequiresVerification = _pasteSettings.RequiresVerification
-            });
+            return Ok(
+                new PasteOptionsDto
+                {
+                    Syntaxes = [.. _pasteSettings.ValidSyntaxLanguages],
+                    Visibilities =
+                    [
+                        new() { Value = 0, DisplayName = "Public" },
+                        new() { Value = 1, DisplayName = "Unlisted" },
+                        new() { Value = 2, DisplayName = "Private" },
+                    ],
+                    MaxTitleLength = _pasteSettings.MaxTitleLength,
+                    MaxPasteSize = _pasteSettings.MaxPasteSizeInBytes,
+                    RequiresVerification = _pasteSettings.RequiresVerification,
+                }
+            );
         }
     }
 }
