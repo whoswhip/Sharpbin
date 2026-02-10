@@ -72,7 +72,12 @@
 				</div>
 				<div>
 					<p class="text-sm text-neutral-400">Total Storage Used</p>
-					<p class="text-2xl font-bold" use:tooltip={[formatBytes(stats.pastes.trueTotalSizeInBytes), true]}>{formatBytes(stats.pastes.totalSizeInBytes)}</p>
+					<p
+						class="text-2xl font-bold"
+						use:tooltip={[formatBytes(stats.pastes.trueTotalSizeInBytes), true]}
+					>
+						{formatBytes(stats.pastes.totalSizeInBytes)}
+					</p>
 				</div>
 			</div>
 			<div class="flex items-center space-x-4 rounded-lg bg-neutral-800 p-4">
