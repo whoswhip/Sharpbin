@@ -15,7 +15,9 @@
 		Clock,
 		Hash,
 		Flag,
-		LoaderCircle
+		LoaderCircle,
+		Check,
+		X
 	} from '@lucide/svelte';
 	import {
 		extractDateFromUUIDv7,
@@ -48,13 +50,17 @@
 	let totpEnabled = false;
 	let now = new Date();
 	let interval: ReturnType<typeof setInterval> | null = null;
+	let isEditingDisplayName = false;
+	let editDisplayNameValue = '';
 
 	$: isOwner = data.user && $user ? data.user?.uuid === $user.uuid : false;
 	$: totpEnabled = Boolean($user?.totpEnabled);
 	$: reportsSubmitted = data.reportsSubmitted;
 	$: reportsTarget = data.reportsTarget;
 
-	let activeTab: 'pastes' | 'reportsSubmitted' | 'reportsTarget' = 'pastes';
+	let activeTab: 'pastes' | 'reportsSubmitted' | 'reportsTarget' | 'settings' = isOwner
+		? 'settings'
+		: 'pastes';
 
 	function updateTab(tab: typeof activeTab) {
 		activeTab = tab;
@@ -62,15 +68,24 @@
 		url.searchParams.set('tab', tab);
 		goto(url, { replaceState: true, noScroll: true, keepFocus: true });
 	}
-	
+
 	$: {
 		const tab = page.url.searchParams.get('tab');
-		if (tab === 'reportsSubmitted' && reportsSubmitted) {
-			activeTab = 'reportsSubmitted';
-		} else if (tab === 'reportsTarget' && reportsTarget) {
-			activeTab = 'reportsTarget';
-		} else {
-			activeTab = 'pastes';
+		switch (tab) {
+			case 'reportsSubmitted':
+				if (reportsSubmitted) activeTab = 'reportsSubmitted';
+				else activeTab = 'pastes';
+				break;
+			case 'reportsTarget':
+				if (reportsTarget) activeTab = 'reportsTarget';
+				else activeTab = 'pastes';
+				break;
+			case 'settings':
+				if (isOwner || $user?.roles?.some((r) => r === 255 || r === 1)) activeTab = 'settings';
+				else activeTab = 'pastes';
+				break;
+			default:
+				activeTab = 'pastes';
 		}
 	}
 
@@ -206,19 +221,21 @@
 		modalError = '';
 	}
 
-	async function openEditDisplayName() {
-		const value = String(
-			await openModal<string>({
-				mode: 'prompt',
-				title: 'Edit Display Name',
-				maxInputLength: 26,
-				placeholder: 'New Display Name',
-				error: modalError,
-				cancelValue: ''
-			})
-		).trim();
+	async function saveDisplayName() {
+		const value = editDisplayNameValue.trim();
 		if (!value) return;
 		await handleUserUpdate(value);
+		isEditingDisplayName = false;
+	}
+
+	function startEditDisplayName() {
+		editDisplayNameValue = data.user?.displayName || data.user?.username || '';
+		isEditingDisplayName = true;
+	}
+
+	function cancelEditDisplayName() {
+		isEditingDisplayName = false;
+		editDisplayNameValue = '';
 	}
 
 	async function openEditRoles() {
@@ -376,45 +393,18 @@
 				<Flag class="m-4 h-6 w-6 cursor-pointer text-neutral-400 hover:text-amber-400" />
 			</div>
 		{/if}
-		{#if isOwner || $user?.roles?.some((r) => r === 255 || r === 1)}
-			<div class="mt-4 flex flex-wrap justify-center gap-2">
-				<button
-					on:click={openEditDisplayName}
-					class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
-				>
-					<Pencil class="h-4 w-4" />
-					Edit Display Name
-				</button>
-				{#if isOwner}
-					<button
-						on:click={openTotpSetup}
-						class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
-					>
-						<ShieldUser class="h-4 w-4" />
-						{totpEnabled ? 'Manage 2FA' : 'Enable 2FA'}
-					</button>
-				{/if}
-				{#if $user?.roles?.some((r) => r === 255)}
-					<button
-						on:click={openEditRoles}
-						class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
-					>
-						<ShieldUser class="h-4 w-4" />
-						Edit Roles
-					</button>
-				{/if}
-				{#if isOwner || $user?.roles?.some((r) => r === 255)}
-					<button
-						on:click={openDeleteAccount}
-						class="flex items-center gap-2 rounded bg-red-900 px-4 py-2 text-sm font-medium transition-colors hover:bg-red-800"
-					>
-						<Trash2 class="h-4 w-4" />
-						Delete Account
-					</button>
-				{/if}
-			</div>
-		{/if}
 		<div class="mt-8 flex w-full border-b border-neutral-800">
+			{#if isOwner || $user?.roles?.some((r) => r === 255 || r === 1)}
+				<button
+					class="border-b-2 px-4 py-2 font-medium transition-colors hover:text-white {activeTab ===
+					'settings'
+						? 'border-neutral-200 text-white'
+						: 'border-transparent text-neutral-400'}"
+					on:click={() => updateTab('settings')}
+				>
+					Settings
+				</button>
+			{/if}
 			<button
 				class="border-b-2 px-4 py-2 font-medium transition-colors hover:text-white {activeTab ===
 				'pastes'
@@ -466,7 +456,158 @@
 				</div>
 			{/if}
 
-			{#if activeTab === 'pastes'}
+			{#if activeTab === 'settings'}
+				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+					<div class="col-span-2">
+						<div class="rounded border border-neutral-800 bg-neutral-900/50 p-6">
+							<div class="mb-6 flex items-start">
+								<div>
+									<h2 class="text-xl font-semibold text-neutral-100">Display Name</h2>
+									<p class="mt-1 text-sm text-neutral-400">
+										{isOwner
+											? 'Your display name is shown publicly on your profile and pastes.'
+											: "This user's display name is shown publicly on their profile and pastes."}
+									</p>
+								</div>
+							</div>
+							<div class="flex items-center justify-between rounded bg-neutral-800/50 p-3">
+								{#if isEditingDisplayName}
+									<div class="flex w-full items-center gap-2">
+										<input
+											type="text"
+											bind:value={editDisplayNameValue}
+											class="w-full bg-transparent px-2 py-1 outline-none font-mono text-neutral-300 border-b border-neutral-600 focus:border-neutral-400"
+											maxlength="26"
+											on:keydown={(e) => {
+												if (e.key === 'Enter') saveDisplayName();
+												else if (e.key === 'Escape') cancelEditDisplayName();
+											}}
+										/>
+										<button
+											on:click={saveDisplayName}
+											class="flex items-center gap-1 rounded bg-green-900/50 px-3 py-2 text-xs font-medium text-green-400 transition-colors hover:bg-green-900"
+										>
+											<Check class="h-4 w-4" />
+											Save
+										</button>
+										<button
+											on:click={cancelEditDisplayName}
+											class="flex items-center gap-1 rounded bg-neutral-700 px-3 py-2 text-xs font-medium text-neutral-300 transition-colors hover:bg-neutral-600"
+										>
+											<X class="h-4 w-4" />
+											Cancel
+										</button>
+									</div>
+								{:else}
+									<span class="font-mono text-neutral-300"
+										>{data.user?.displayName || data.user?.username}</span
+									>
+									<button
+										on:click={startEditDisplayName}
+										class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
+									>
+										<Pencil class="h-4 w-4" />
+										Edit
+									</button>
+								{/if}
+							</div>
+						</div>
+					</div>
+
+					{#if isOwner}
+						<div class="col-span-1">
+							<div class="h-full rounded border border-neutral-800 bg-neutral-900/50 p-6">
+								<div class="mb-6 flex items-start">
+									<div>
+										<h2 class="text-xl font-semibold text-neutral-100">Security</h2>
+										<p class="mt-1 text-sm text-neutral-400">
+											Manage your account security settings.
+										</p>
+									</div>
+								</div>
+
+								<div class="space-y-4">
+									<div class="flex items-center justify-between rounded bg-neutral-800/50 p-3">
+										<div class="flex flex-col">
+											<span class="text-sm font-medium text-neutral-200"
+												>Two-Factor Authentication</span
+											>
+											<span class="text-xs text-neutral-500"
+												>{totpEnabled ? 'Enabled' : 'Disabled'}</span
+											>
+										</div>
+										<button
+											on:click={openTotpSetup}
+											class="rounded bg-neutral-700 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-neutral-600"
+										>
+											{totpEnabled ? 'Manage' : 'Enable'}
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					{/if}
+
+					{#if $user?.roles?.some((r) => r === 255)}
+						<div class={isOwner ? 'col-span-1' : 'col-span-2'}>
+							<div class="h-full rounded border border-neutral-800 bg-neutral-900/50 p-6">
+								<div class="mb-6 flex items-start">
+									<div>
+										<h2 class="text-xl font-semibold text-neutral-100">Administration</h2>
+										<p class="mt-1 text-sm text-neutral-400">Manage user roles and permissions.</p>
+									</div>
+								</div>
+								<div class="space-y-4">
+									<div class="flex items-center justify-between rounded bg-neutral-800/50 p-3">
+										<div class="flex flex-col">
+											<span class="text-sm font-medium text-neutral-200">User Roles</span>
+											<span class="text-xs text-neutral-500"
+												>{data.user?.roles?.length ?? 0} roles assigned</span
+											>
+										</div>
+										<button
+											on:click={openEditRoles}
+											class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
+										>
+											Edit
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					{/if}
+
+					{#if isOwner || $user?.roles?.some((r) => r === 255)}
+						<div class="col-span-2">
+							<div class="rounded border border-red-900/30 bg-red-900/10 p-6">
+								<div class="flex items-start">
+									<div>
+										<h2 class="text-xl font-semibold text-red-400">Danger Zone</h2>
+										<p class="mt-1 text-sm text-red-200/70">
+											Irreversible actions related to this account.
+										</p>
+									</div>
+								</div>
+
+								<div class="mt-6 flex items-center justify-between rounded bg-red-900/20 p-4">
+									<div>
+										<h3 class="font-medium text-red-200">Delete Account</h3>
+										<p class="pr-0.5 text-sm text-red-200/60">
+											Permanently delete this account and all associated data.
+										</p>
+									</div>
+									<button
+										on:click={openDeleteAccount}
+										class="rounded border border-red-500/50 bg-red-500/10 px-4 py-2 text-sm font-medium whitespace-nowrap text-red-400 transition-colors hover:bg-red-500 hover:text-white"
+									>
+										Delete Account
+									</button>
+								</div>
+							</div>
+						</div>
+					{/if}
+				</div>
+			{:else if activeTab === 'pastes'}
 				<div class="mt-6 max-h-[60vh] space-y-4 overflow-y-auto">
 					{#if pastes && pastes.length > 0}
 						{#each pastes
