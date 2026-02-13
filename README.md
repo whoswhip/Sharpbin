@@ -50,16 +50,16 @@ You can configure Sharpbin using environment variables or `appsettings.json`. Wh
 - `JwtSettings__Secret`: A secure string used for signing JWT tokens.
 - `AuthSettings__CF_Turnstile_SecretKey`: Your Cloudflare Turnstile secret key.
 - `AuthSettings__CF_Turnstile_SiteKey`: Your Cloudflare Turnstile site key.
-- `AuthSettings__Registration_Enabled`: Set to `true` by default, enables/disables registration.
+- `AuthSettings__Registration_Enabled`:**true**: Enables/disables registration.
 - `AuthSettings__First_User_Admin`: Gives the first user the admin role, it is recommended to disable this after use.
 - `AuthSettings__Admins_Require_2FA`: Enforces Admins to have 2FA when trying to do certain actions.
+- `AuthSettings__API_Key_HMAC_Secret`: Recommended to securely hash API keys, but is not required.
 - `PasteSettings__MaxTitleLength`: Max title length in characters.
-- `PasteSettings__MaxPasteSizeInBytes`: Max Paste Size set in bytes, the default is `1_048_576` (1MB)
-- `PasteSettings__EnablePasteCompression`: Enables/Disables server-side paste compression, `true` by default.
-- `PasteSettings__RequiresVerification`: Enables/Disables CAPTCHA verification when creating pastes, `true` by default.
+- `PasteSettings__MaxPasteSizeInBytes`:**1_048_576** (1MB): Max Paste Size set in bytes.
+- `PasteSettings__EnablePasteCompression`:**true**: Enables/Disables server-side paste compression.
+- `PasteSettings__RequiresVerification`:**true**: Enables/Disables CAPTCHA verification when creating pastes.
 - `PasteSettings__View_HMAC_Secret`: Required to securely hash viewer identifiers
 - `PasteSettings__View_Internal_API_Key`: Enforces views to be counted/recorded only by the frontend, if set it needs to be the same for both backend and frontend.
-- `ASPNETCORE_ENVIRONMENT`: Set to `Production` or `Development`.
 
 #### Frontend (SharpbinV3.Client)
 
