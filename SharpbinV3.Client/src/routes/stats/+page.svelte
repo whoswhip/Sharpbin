@@ -74,7 +74,10 @@
 					<p class="text-sm text-neutral-400">Total Storage Used</p>
 					<p
 						class="text-2xl font-bold"
-						use:tooltip={[formatBytes(stats.pastes.trueTotalSizeInBytes), true]}
+						use:tooltip={[
+							`${stats.pastes.trueTotalSizeInBytes != stats.pastes.totalSizeInBytes ? `Uncompressed Size: ${formatBytes(stats.pastes.trueTotalSizeInBytes)}` : ''}`,
+							true
+						]}
 					>
 						{formatBytes(stats.pastes.totalSizeInBytes)}
 					</p>
