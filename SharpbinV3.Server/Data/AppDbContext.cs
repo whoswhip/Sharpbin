@@ -11,6 +11,7 @@ namespace SharpbinV3.Server.Data
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<UserTotp> UserTotps => Set<UserTotp>();
         public DbSet<Report> Reports => Set<Report>();
+        public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -56,6 +57,12 @@ namespace SharpbinV3.Server.Data
                 .WithMany(u => u.Reports)
                 .HasForeignKey(r => r.UserUUID)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<ApiKey>()
+                .HasOne(a => a.User)
+                .WithMany(u => u.ApiKeys)
+                .HasForeignKey(a => a.UserUUID)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

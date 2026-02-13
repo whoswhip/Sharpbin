@@ -1,5 +1,6 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using SharpbinV3.Server.Data.Entities;
 using SharpbinV3.Server.Services;
 
 namespace SharpbinV3.Server.Extensions
@@ -15,6 +16,38 @@ namespace SharpbinV3.Server.Extensions
             "X-Cluster-Client-IP",
             "X-ProxyUser-IP",
         ];
+
+        private const string ApiKeyContextKey = "ApiKey";
+
+        public static string? GetApiKey(this HttpContext context)
+        {
+            var apiKeyHeader = context.Request.Headers["X-API-Key"].FirstOrDefault();
+            if (string.IsNullOrEmpty(apiKeyHeader))
+                return null;
+
+            if (apiKeyHeader.Length != ApiKeyService.KeyLength)
+                return null;
+
+            return apiKeyHeader;
+        }
+
+        public static ApiKey? GetApiKeyFromContext(this HttpContext context)
+        {
+            if (context.Items.TryGetValue(ApiKeyContextKey, out var apiKey))
+                return apiKey as ApiKey;
+
+            return null;
+        }
+
+        public static void SetApiKeyContext(this HttpContext context, ApiKey apiKey)
+        {
+            context.Items[ApiKeyContextKey] = apiKey;
+        }
+
+        public static bool IsApiKeyAuthenticated(this HttpContext context)
+        {
+            return context.GetApiKeyFromContext() != null;
+        }
 
         public static JwtUser? GetJwtUser(this HttpContext context)
         {

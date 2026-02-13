@@ -40,7 +40,7 @@ namespace SharpbinV3.Server.Controllers
             string syntax = "plaintext",
             int visibility = 0,
             long expiresAt = 0,
-            string? token = null
+            string? verificationToken = null
         )
         {
             if (!_pasteService.ValidateExpiresAt(expiresAt))
@@ -60,11 +60,18 @@ namespace SharpbinV3.Server.Controllers
                     new { success = false, message = $"Paste size exceeds the maximum allowed size of {_pasteSettings.MaxPasteSizeInBytes} bytes." }
                 );
 
-            if (
-                _pasteSettings.RequiresVerification
-                && !await _verificationService.VerifyAsync(new VerificationContext { Token = token, Ip = HttpContext.GetRequestIP() })
-            )
-                return BadRequest(new { success = false, message = "Verification failed." });
+            if (_pasteSettings.RequiresVerification && !HttpContext.IsApiKeyAuthenticated())
+            {
+                var providedApiKey = HttpContext.GetApiKey();
+                if (providedApiKey != null)
+                    return BadRequest(new { success = false, message = "Invalid API key." });
+
+                var verifyResult = await _verificationService.VerifyAsync(
+                    new VerificationContext { Token = verificationToken, Ip = HttpContext.GetRequestIP() }
+                );
+                if (!verifyResult)
+                    return BadRequest(new { success = false, message = "Verification failed." });
+            }
 
             var user = await _authService.GetUserFromHttpContext(HttpContext);
             Paste paste = await _pasteService.Create(user, content, title, syntax, visibility, expiresAt, _pasteSettings.EnablePasteCompression);

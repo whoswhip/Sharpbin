@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Data.Entities;
 using SharpbinV3.Server.DTOs;
+using SharpbinV3.Server.DTOs.ApiKey;
 using SharpbinV3.Server.DTOs.Auth;
 using SharpbinV3.Server.DTOs.User;
 using SharpbinV3.Server.Extensions;
@@ -22,6 +23,7 @@ namespace SharpbinV3.Server.Controllers
     public class AuthController(
         UserService userService,
         AuthService authService,
+        ApiKeyService apiKeyService,
         IOptions<AuthSettings> options,
         VerificationService verification,
         TotpVerificationProvider totp,
@@ -30,6 +32,7 @@ namespace SharpbinV3.Server.Controllers
     {
         private readonly AuthService _authService = authService;
         private readonly UserService _userService = userService;
+        private readonly ApiKeyService _apiKeyService = apiKeyService;
         private readonly VerificationService _verification = verification;
         private readonly TotpVerificationProvider _totp = totp;
         private readonly AppDbContext _db = db;
@@ -239,6 +242,89 @@ namespace SharpbinV3.Server.Controllers
             _db.UserTotps.Remove(existing);
             await _db.SaveChangesAsync();
             return Ok(new { success = true, message = "TOTP disabled." });
+        }
+
+        [HttpPost]
+        [Authorize]
+        [Route("apikey/create")]
+        [EnableRateLimiting("Strict")]
+        public async Task<IActionResult> CreateApiKey([FromBody] CreateApiKeyRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Name))
+                return BadRequest(new { success = false, message = "API key name is required." });
+            if (request.Name.Length > 26)
+                return BadRequest(new { success = false, message = "API key name must not exceed 26 characters." });
+
+            var user = await _authService.GetUserFromHttpContext(HttpContext);
+            if (user == null)
+                return BadRequest(new { success = false, message = "User not found." });
+
+            var existingKeys = await _apiKeyService.GetUserKeysAsync(user.UUID);
+            if (existingKeys.Count >= 10)
+                return BadRequest(new { success = false, message = "API key limit reached. Please delete existing keys before creating new ones." });
+
+            var (apiKey, key) = await _apiKeyService.CreateAsync(user.UUID, request.Name);
+
+            return Ok(
+                new
+                {
+                    success = true,
+                    message = "API key created. Save it now as you won't be able to see it again.",
+                    apiKey = new ApiKeyResponseDto
+                    {
+                        UUID = apiKey.UUID,
+                        Key = key,
+                        Name = apiKey.Name,
+                        CreatedAt = apiKey.CreatedAt,
+                    },
+                }
+            );
+        }
+
+        [HttpGet]
+        [Authorize]
+        [Route("apikey/list")]
+        public async Task<IActionResult> ListApiKeys()
+        {
+            var user = await _authService.GetUserFromHttpContext(HttpContext);
+            if (user == null)
+                return BadRequest(new { success = false, message = "User not found." });
+
+            var apiKeys = await _apiKeyService.GetUserKeysAsync(user.UUID);
+            return Ok(
+                new
+                {
+                    success = true,
+                    apiKeys = apiKeys
+                        .Select(k => new ApiKeyListItemDto
+                        {
+                            UUID = k.UUID,
+                            Name = k.Name,
+                            CreatedAt = k.CreatedAt,
+                            LastUsedAt = k.LastUsedAt,
+                        })
+                        .ToList(),
+                }
+            );
+        }
+
+        [HttpDelete]
+        [Authorize]
+        [Route("apikey/{uuid}")]
+        public async Task<IActionResult> DeleteApiKey(string uuid)
+        {
+            if (!Guid.TryParse(uuid, out var keyUUID))
+                return BadRequest(new { success = false, message = "Invalid API key UUID." });
+
+            var user = await _authService.GetUserFromHttpContext(HttpContext);
+            if (user == null)
+                return BadRequest(new { success = false, message = "User not found." });
+
+            var deleted = await _apiKeyService.DeleteAsync(user.UUID, keyUUID);
+            if (!deleted)
+                return NotFound(new { success = false, message = "API key not found." });
+
+            return Ok(new { success = true, message = "API key deleted." });
         }
     }
 }

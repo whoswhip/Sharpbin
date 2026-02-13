@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Data.Entities;
 using SharpbinV3.Server.DTOs.Auth;
+using SharpbinV3.Server.Extensions;
 using SharpbinV3.Server.Settings;
 using Bcrypt = BCrypt.Net.BCrypt;
 
@@ -201,6 +202,10 @@ namespace SharpbinV3.Server.Services
 
         public async Task<User?> GetUserFromHttpContext(HttpContext context)
         {
+            var apiKey = context.GetApiKeyFromContext();
+            if (apiKey != null)
+                return await _db.Users.FirstOrDefaultAsync(u => u.UUID == apiKey.UserUUID);
+
             var uuidClaim = context.User.Claims.FirstOrDefault(c => c.Type == "uuid")?.Value;
             if (uuidClaim == null)
                 return null;

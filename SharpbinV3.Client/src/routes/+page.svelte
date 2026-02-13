@@ -132,9 +132,9 @@
 			data.auth?.cf_turnstile_site_key &&
 			window.turnstile
 		) {
-			const token = window.turnstile.getResponse();
-			if (token) {
-				params.append('token', token);
+			const verificationToken = window.turnstile.getResponse();
+			if (verificationToken) {
+				params.append('verificationToken', verificationToken);
 			}
 		}
 

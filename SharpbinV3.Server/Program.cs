@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using SharpbinV3.Server.Authorization;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Extensions;
@@ -38,7 +39,21 @@ namespace SharpbinV3.Server
                 options.AddDocumentTransformer(
                     (document, context, cancellationToken) =>
                     {
+                        document?.Components ??= new();
                         document?.Servers?.Clear();
+                        document?.Components?.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+
+                        document
+                            ?.Components
+                            ?.SecuritySchemes
+                            ?["ApiKey"] = new OpenApiSecurityScheme
+                            {
+                                Type = SecuritySchemeType.ApiKey,
+                                Name = "X-API-Key",
+                                In = ParameterLocation.Header,
+                                Description = "Bypass authentication and captcha by providing a valid API key.",
+                            };
+
                         return Task.CompletedTask;
                     }
                 );
@@ -54,6 +69,7 @@ namespace SharpbinV3.Server
             builder.Services.AddScoped<UserService>();
             builder.Services.AddScoped<AuthService>();
             builder.Services.AddScoped<PasteService>();
+            builder.Services.AddScoped<ApiKeyService>();
             builder.Services.AddScoped<VerificationService>();
             builder.Services.AddScoped<TotpVerificationProvider>();
             builder.Services.AddHttpClient<IVerificationProvider, TurnstileVerificationProvider>();
@@ -219,6 +235,8 @@ namespace SharpbinV3.Server
 
             app.UseHttpsRedirection();
             app.UseCors();
+
+            app.UseMiddleware<Middleware.ApiKeyAuthenticationMiddleware>();
 
             app.UseAuthentication();
             app.UseAuthorization();

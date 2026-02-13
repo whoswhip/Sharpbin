@@ -23,6 +23,7 @@ namespace SharpbinV3.Server.Data.Entities
         public List<Paste> Pastes { get; set; } = [];
         public List<RefreshToken> RefreshTokens { get; set; } = [];
         public List<Report> Reports { get; set; } = [];
+        public List<ApiKey> ApiKeys { get; set; } = [];
         public UserTotp? Totp { get; set; }
     }
 }
