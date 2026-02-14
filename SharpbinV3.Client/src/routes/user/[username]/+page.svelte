@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { goto } from '$app/navigation';
+	import { goto, afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import type { PageData } from './$types';
 	import type { Pagination } from '$lib/types/pagination';
@@ -80,7 +80,14 @@
 		const url = new URL(page.url);
 		url.searchParams.set('tab', newPageTab);
 
-		await goto(url, { replaceState: true, noScroll: true, keepFocus: true, invalidateAll: false });
+		// @ts-expect-error
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		await goto(resolve(url.pathname) + url.search, {
+			replaceState: true,
+			noScroll: true,
+			keepFocus: true,
+			invalidateAll: false
+		});
 
 		if (newPageTab === 'settings' && isOwner && apiKeys.length === 0) {
 			await fetchApiKeys();
@@ -104,13 +111,11 @@
 			case 'settings':
 				if (isOwner || $user?.roles?.some((r) => r === 255 || r === 1)) {
 					activeTab = 'settings';
-					if (isOwner && apiKeys.length === 0) fetchApiKeys();
 				} else activeTab = 'pastes';
 				break;
 			default:
 				if (isOwner) {
 					activeTab = 'settings';
-					if (apiKeys.length === 0) fetchApiKeys();
 				} else {
 					activeTab = 'pastes';
 				}
@@ -399,13 +404,20 @@
 		}, 1000);
 
 		const tab = page.url.searchParams.get('tab');
-		if (tab === 'settings' && isOwner) {
+		if ((tab === 'settings' || !tab) && isOwner) {
 			fetchApiKeys();
 		}
 
 		return () => {
 			if (interval) clearInterval(interval);
 		};
+	});
+
+	afterNavigate(() => {
+		const tab = page.url.searchParams.get('tab');
+		if ((tab === 'settings' || !tab) && isOwner && apiKeys.length === 0) {
+			fetchApiKeys();
+		}
 	});
 
 	$: reportSiteKey =
