@@ -707,7 +707,7 @@
 							<div class="rounded border border-neutral-800 bg-neutral-900/50 p-6">
 								<div class="mb-6 flex items-start justify-between">
 									<div>
-										<h2 class="text-xl font-semibold text-neutral-100">API Keys</h2>
+										<h2 class="text-xl font-semibold text-neutral-100">API Keys ({apiKeys.length}/10)</h2>
 										<p class="mt-1 text-sm text-neutral-400">
 											Manage API keys for accessing Sharpbin programmatically.
 										</p>
@@ -813,9 +813,7 @@
 								{/if}
 
 								<div class="space-y-2">
-									{#if apiKeys.length === 0}
-										<p class="py-4 text-center text-sm text-neutral-500">No API keys found.</p>
-									{:else}
+									{#if apiKeys.length !== 0}
 										{#each apiKeys as key (key.uuid)}
 											<div class="flex items-center justify-between rounded bg-neutral-800/50 p-3">
 												<div class="flex flex-col gap-1">
