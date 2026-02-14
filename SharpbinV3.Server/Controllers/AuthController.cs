@@ -167,7 +167,7 @@ namespace SharpbinV3.Server.Controllers
         }
 
         [HttpGet]
-        [Authorize]
+        [Authorize(Policy = "JwtOnly")]
         [Route("totp/enroll")]
         public async Task<IActionResult> StartTotpEnrollment()
         {
@@ -190,16 +190,12 @@ namespace SharpbinV3.Server.Controllers
         }
 
         [HttpPost]
-        [Authorize]
+        [Authorize(Policy = "JwtOnly")]
         [Route("totp/enable")]
         [EnableRateLimiting("Sensitive")]
         public async Task<IActionResult> EnableTotp([FromBody] EnableTotpDto request)
         {
-            var uuidClaim = User.Claims.FirstOrDefault(c => c.Type == "UUID")?.Value;
-            if (string.IsNullOrEmpty(uuidClaim))
-                return Unauthorized(new { success = false, message = "Invalid token." });
-
-            var uuid = Guid.Parse(uuidClaim);
+            var uuid = Guid.Parse(User.FindFirst("uuid")!.Value);
             if (string.IsNullOrWhiteSpace(request.Secret) || string.IsNullOrWhiteSpace(request.Code))
                 return BadRequest(new { success = false, message = "Secret and code are required." });
 
@@ -224,7 +220,7 @@ namespace SharpbinV3.Server.Controllers
         }
 
         [HttpPost]
-        [Authorize]
+        [Authorize(Policy = "JwtOnly")]
         [Route("totp/disable")]
         public async Task<IActionResult> DisableTotp([FromBody] DisableTotpDto dto)
         {
@@ -245,7 +241,7 @@ namespace SharpbinV3.Server.Controllers
         }
 
         [HttpPost]
-        [Authorize]
+        [Authorize(Policy = "JwtOnly")]
         [Route("apikey/create")]
         [EnableRateLimiting("Strict")]
         public async Task<IActionResult> CreateApiKey([FromBody] CreateApiKeyRequest request)
@@ -309,7 +305,7 @@ namespace SharpbinV3.Server.Controllers
         }
 
         [HttpDelete]
-        [Authorize]
+        [Authorize(Policy = "JwtOnly")]
         [Route("apikey/{uuid}")]
         public async Task<IActionResult> DeleteApiKey(string uuid)
         {

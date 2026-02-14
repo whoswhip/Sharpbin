@@ -156,7 +156,7 @@ namespace SharpbinV3.Server.Controllers
 
         [HttpPut]
         [Route("{id}")]
-        [Authorize(Policy = "AuthAndNotBanned")]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
         public async Task<IActionResult> EditPaste(string id)
         {
             string content = await new StreamReader(Request.Body).ReadToEndAsync();
@@ -167,9 +167,7 @@ namespace SharpbinV3.Server.Controllers
             if (paste == null)
                 return StatusCode(404, new { success = false, message = "Paste not found." });
 
-            var user = HttpContext.GetJwtUser();
-            if (user == null)
-                return Unauthorized(new { success = false, message = "Invalid token." });
+            var user = HttpContext.GetJwtUser()!;
 
             var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
             if (paste.AuthorUUID != user.UUID && !hasPrivilegedRole)
@@ -185,16 +183,14 @@ namespace SharpbinV3.Server.Controllers
 
         [HttpPatch]
         [Route("{id}")]
-        [Authorize(Policy = "AuthAndNotBanned")]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
         public async Task<IActionResult> ModifyPasteMetadata(string id, [FromBody] UpdatePasteDto request)
         {
             var paste = await _pasteService.Get(id);
             if (paste == null)
                 return NotFound(new { success = false, message = "Paste not found." });
 
-            var user = HttpContext.GetJwtUser();
-            if (user == null)
-                return Unauthorized(new { success = false, message = "Invalid token." });
+            var user = HttpContext.GetJwtUser()!;
 
             var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
 
@@ -246,16 +242,14 @@ namespace SharpbinV3.Server.Controllers
 
         [HttpDelete]
         [Route("{id}")]
-        [Authorize(Policy = "AuthAndNotBanned")]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
         public async Task<IActionResult> DeletePaste(string id)
         {
             var paste = await _pasteService.Get(id);
             if (paste == null)
                 return NotFound(new { success = false, message = "Paste not found." });
 
-            var user = HttpContext.GetJwtUser();
-            if (user == null)
-                return Unauthorized(new { success = false, message = "Invalid token." });
+            var user = HttpContext.GetJwtUser()!;
 
             var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
             if (paste.AuthorUUID != user.UUID && !hasPrivilegedRole)
@@ -298,16 +292,14 @@ namespace SharpbinV3.Server.Controllers
 
         [HttpPost]
         [Route("{id}/report")]
-        [Authorize(Policy = "AuthAndNotBanned")]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
         [EnableRateLimiting("Sensitive")]
         public async Task<IActionResult> ReportPaste(string id, [FromBody] ReportDto request)
         {
             var paste = await _pasteService.Get(id);
             if (paste == null)
                 return NotFound(new { success = false, message = "Paste not found." });
-            var user = HttpContext.GetJwtUser();
-            if (user == null)
-                return Unauthorized(new { success = false, message = "Invalid token." });
+            var user = HttpContext.GetJwtUser()!;
 
             Enum.TryParse<ReportType>(request.ReportType, true, out var reportType);
             if (!Enum.IsDefined(reportType))
@@ -347,7 +339,7 @@ namespace SharpbinV3.Server.Controllers
 
         [HttpPatch]
         [Route("{id}/report/{reportId}")]
-        [Authorize(Policy = "AuthAndNotBanned")]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
         [EnableRateLimiting("Sensitive")]
         public async Task<IActionResult> ModifyPasteReport(string id, int reportId, [FromBody] ReportDto request)
         {
@@ -359,9 +351,7 @@ namespace SharpbinV3.Server.Controllers
             if (report == null || report.TargetType != ReportTargetType.Paste || report.PastePID != paste.PID)
                 return NotFound(new { success = false, message = "Report not found." });
 
-            var user = HttpContext.GetJwtUser();
-            if (user == null)
-                return Unauthorized(new { success = false, message = "Invalid token." });
+            var user = HttpContext.GetJwtUser()!;
 
             var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
             if (report.ReporterUUID != user.UUID && !hasPrivilegedRole)
@@ -383,7 +373,7 @@ namespace SharpbinV3.Server.Controllers
 
         [HttpDelete]
         [Route("{id}/report/{reportId}")]
-        [Authorize(Policy = "AuthAndNotBanned")]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
         [EnableRateLimiting("Sensitive")]
         public async Task<IActionResult> DeletePasteReport(string id, int reportId)
         {
@@ -395,9 +385,7 @@ namespace SharpbinV3.Server.Controllers
             if (report == null || report.TargetType != ReportTargetType.Paste || report.PastePID != paste.PID)
                 return NotFound(new { success = false, message = "Report not found." });
 
-            var user = HttpContext.GetJwtUser();
-            if (user == null)
-                return Unauthorized(new { success = false, message = "Invalid token." });
+            var user = HttpContext.GetJwtUser()!;
 
             var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
             if (report.ReporterUUID != user.UUID && !hasPrivilegedRole)

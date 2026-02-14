@@ -53,16 +53,13 @@ namespace SharpbinV3.Server.Controllers
         [Authorize]
         public async Task<IActionResult> GetMe([FromQuery] int page = 1)
         {
-            var userUUID = HttpContext.User?.FindFirst("uuid")?.Value;
-            if (userUUID is null)
-                return Unauthorized(new { success = false, message = "Invalid token." });
-
+            var userUUID = HttpContext.User.FindFirst("uuid")!.Value;
             var user = await _userService.GetByUUID(Guid.Parse(userUUID), withPastes: true);
             return user == null ? NotFound(new { success = false, message = "User not found." }) : await BuildUserResponse(user, page);
         }
 
         [HttpPatch("uuid/{uuid}")]
-        [Authorize]
+        [Authorize(Policy = "JwtOnly")]
         [EnableRateLimiting("Strict")]
         public async Task<IActionResult> UpdateByUUID(Guid uuid, [FromBody] UpdateUserDto updatedUser)
         {
@@ -70,9 +67,7 @@ namespace SharpbinV3.Server.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var jwtUser = HttpContext.GetJwtUser();
-            if (jwtUser == null)
-                return Unauthorized(new { success = false, message = "Invalid token." });
+            var jwtUser = HttpContext.GetJwtUser()!;
 
             var user = await _userService.GetByUUID(uuid);
             if (user == null)
@@ -113,13 +108,11 @@ namespace SharpbinV3.Server.Controllers
         }
 
         [HttpDelete("uuid/{uuid}")]
-        [Authorize(Policy = "AuthAndNotBanned")]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
         [EnableRateLimiting("Sensitive")]
         public async Task<IActionResult> DeleteByUUID(Guid uuid, [FromBody] DeleteUserDto dto)
         {
-            var jwtUser = HttpContext.GetJwtUser();
-            if (jwtUser == null)
-                return Unauthorized(new { success = false, message = "Invalid token." });
+            var jwtUser = HttpContext.GetJwtUser()!;
 
             var user = await _userService.GetByUUID(uuid);
             if (user == null)
@@ -159,12 +152,10 @@ namespace SharpbinV3.Server.Controllers
         [HttpPost]
         [Route("{uuid}/report")]
         [EnableRateLimiting("Sensitive")]
-        [Authorize(Policy = "AuthAndNotBanned")]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
         public async Task<IActionResult> ReportUser(Guid uuid, [FromBody] ReportDto request)
         {
-            var reporter = HttpContext.GetJwtUser();
-            if (reporter == null)
-                return Unauthorized(new { success = false, message = "Invalid token." });
+            var reporter = HttpContext.GetJwtUser()!;
 
             var reportedUser = await _userService.GetByUUID(uuid);
             if (reportedUser == null)
@@ -210,12 +201,10 @@ namespace SharpbinV3.Server.Controllers
         [HttpPatch]
         [Route("{uuid}/report/{reportId}")]
         [EnableRateLimiting("Sensitive")]
-        [Authorize(Policy = "AuthAndNotBanned")]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
         public async Task<IActionResult> UpdateUserReport(Guid uuid, int reportId, [FromBody] ReportDto request)
         {
-            var jwtUser = HttpContext.GetJwtUser();
-            if (jwtUser == null)
-                return Unauthorized(new { success = false, message = "Invalid token." });
+            var jwtUser = HttpContext.GetJwtUser()!;
 
             var user = await _userService.GetByUUID(uuid);
             if (user == null)
@@ -239,12 +228,10 @@ namespace SharpbinV3.Server.Controllers
         [HttpDelete]
         [Route("{uuid}/report/{reportId}")]
         [EnableRateLimiting("Sensitive")]
-        [Authorize(Policy = "AuthAndNotBanned")]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
         public async Task<IActionResult> DeleteUserReport(Guid uuid, int reportId)
         {
-            var jwtUser = HttpContext.GetJwtUser();
-            if (jwtUser == null)
-                return Unauthorized(new { success = false, message = "Invalid token." });
+            var jwtUser = HttpContext.GetJwtUser()!;
 
             var user = await _userService.GetByUUID(uuid);
             if (user == null)
@@ -262,13 +249,11 @@ namespace SharpbinV3.Server.Controllers
         }
 
         [HttpGet]
-        [Authorize]
+        [Authorize(Policy = "JwtOnly")]
         [Route("{uuid}/reports")]
         public async Task<IActionResult> GetUserReports(Guid uuid, [FromQuery] ReportQuery request)
         {
-            var jwtUser = HttpContext.GetJwtUser();
-            if (jwtUser == null)
-                return Unauthorized(new { success = false, message = "Invalid token." });
+            var jwtUser = HttpContext.GetJwtUser()!;
 
             var user = await _userService.GetByUUID(uuid);
             if (user == null)
@@ -297,13 +282,11 @@ namespace SharpbinV3.Server.Controllers
         }
 
         [HttpGet]
-        [Authorize]
+        [Authorize(Policy = "JwtOnly")]
         [Route("{uuid}/reports/submitted")]
         public async Task<IActionResult> GetUserSubmittedReports(Guid uuid, [FromQuery] ReportQuery request)
         {
-            var jwtUser = HttpContext.GetJwtUser();
-            if (jwtUser == null)
-                return Unauthorized(new { success = false, message = "Invalid token." });
+            var jwtUser = HttpContext.GetJwtUser()!;
 
             var user = await _userService.GetByUUID(uuid);
             if (user == null)

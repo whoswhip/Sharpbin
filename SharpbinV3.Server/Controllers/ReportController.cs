@@ -15,12 +15,10 @@ namespace SharpbinV3.Server.Controllers
         [Route("{reportId:int}")]
         [HttpGet]
         [EnableRateLimiting("Sliding")]
-        [Authorize(Policy = "AuthAndNotBanned")]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
         public async Task<IActionResult> GetReportById(int reportId)
         {
-            var user = HttpContext.GetJwtUser();
-            if (user is null)
-                return Unauthorized(new { success = false, message = "You must be logged in to view reports." });
+            var user = HttpContext.GetJwtUser()!;
 
             var report = await reportService.GetReportByID(reportId);
             if (report is null)
@@ -57,12 +55,10 @@ namespace SharpbinV3.Server.Controllers
         [Route("{reportId:int}")]
         [HttpPatch]
         [EnableRateLimiting("Sensitive")]
-        [Authorize(Policy = "AuthAndNotBanned")]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
         public async Task<IActionResult> UpdateReport(int reportId, [FromBody] ReportUpdateDto request)
         {
-            var user = HttpContext.GetJwtUser();
-            if (user is null)
-                return Unauthorized(new { success = false, message = "You must be logged in to update reports." });
+            var user = HttpContext.GetJwtUser()!;
             if (!user.Roles.Contains(1) && !user.Roles.Contains(255))
                 return StatusCode(403, new { success = false, message = "You do not have permission to update reports." });
 
@@ -127,12 +123,10 @@ namespace SharpbinV3.Server.Controllers
         [Route("pastes")]
         [HttpGet]
         [EnableRateLimiting("Sliding")]
-        [Authorize(Policy = "AuthAndNotBanned")]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
         public async Task<IActionResult> GetReportsForPastes([FromQuery] ReportQuery request)
         {
-            var user = HttpContext.GetJwtUser();
-            if (user is null)
-                return Unauthorized(new { success = false, message = "You must be logged in to view reports." });
+            var user = HttpContext.GetJwtUser()!;
             if (!user.Roles.Contains(1) && !user.Roles.Contains(255))
                 return StatusCode(403, new { success = false, message = "You do not have permission to view pastes." });
 
@@ -159,12 +153,10 @@ namespace SharpbinV3.Server.Controllers
         [Route("users")]
         [HttpGet]
         [EnableRateLimiting("Sliding")]
-        [Authorize(Policy = "AuthAndNotBanned")]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
         public async Task<IActionResult> GetReportsForUsers([FromQuery] ReportQuery request)
         {
-            var user = HttpContext.GetJwtUser();
-            if (user is null)
-                return Unauthorized(new { success = false, message = "You must be logged in to view reports." });
+            var user = HttpContext.GetJwtUser()!;
             if (!user.Roles.Contains(1) && !user.Roles.Contains(255))
                 return StatusCode(403, new { success = false, message = "You do not have permission to view users." });
 
@@ -197,7 +189,7 @@ namespace SharpbinV3.Server.Controllers
         [Route("all")]
         [HttpGet]
         [EnableRateLimiting("Sliding")]
-        [Authorize(Policy = "AuthAndNotBanned")]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
         public async Task<IActionResult> GetAllReports(
             [FromQuery] Guid? reporterUuid,
             [FromQuery] ReportTargetType? targetType,
@@ -207,9 +199,7 @@ namespace SharpbinV3.Server.Controllers
             [FromQuery] int pageSize = 20
         )
         {
-            var user = HttpContext.GetJwtUser();
-            if (user is null)
-                return Unauthorized(new { success = false, message = "You must be logged in to view reports." });
+            var user = HttpContext.GetJwtUser()!;
             if (!user.Roles.Contains(1) && !user.Roles.Contains(255))
                 return StatusCode(403, new { success = false, message = "You do not have permission to view reports." });
 

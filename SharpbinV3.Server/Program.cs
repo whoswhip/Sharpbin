@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
@@ -8,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using SharpbinV3.Server.Authentication;
 using SharpbinV3.Server.Authorization;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Extensions;
@@ -91,7 +93,34 @@ namespace SharpbinV3.Server
                 .ValidateOnStart();
             builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection("AuthSettings"));
 
-            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+            builder
+                .Services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = AuthSchemes.Combined;
+                    options.DefaultScheme = AuthSchemes.Combined;
+                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                })
+                .AddPolicyScheme(
+                    AuthSchemes.Combined,
+                    AuthSchemes.Combined,
+                    options =>
+                    {
+                        options.ForwardDefaultSelector = context =>
+                        {
+                            var apiKeyHeader = context.Request.Headers["X-API-Key"].ToString();
+                            if (!string.IsNullOrEmpty(apiKeyHeader))
+                                return AuthSchemes.ApiKey;
+
+                            var authHeader = context.Request.Headers.Authorization.ToString();
+                            if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                                return JwtBearerDefaults.AuthenticationScheme;
+
+                            return JwtBearerDefaults.AuthenticationScheme;
+                        };
+                    }
+                )
+                .AddJwtBearer()
+                .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(AuthSchemes.ApiKey, _ => { });
 
             builder
                 .Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
@@ -125,6 +154,27 @@ namespace SharpbinV3.Server
 
             builder.Services.AddAuthorizationBuilder().AddPolicy("NotBanned", policy => policy.Requirements.Add(new NotBannedRequirement()));
             builder.Services.AddAuthorizationBuilder().AddPolicy("AuthAndNotBanned", policy => policy.Requirements.Add(new NotBannedRequirement()));
+            builder
+                .Services.AddAuthorizationBuilder()
+                .AddPolicy(
+                    "JwtOnly",
+                    policy =>
+                    {
+                        policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme);
+                        policy.RequireAuthenticatedUser();
+                    }
+                );
+            builder
+                .Services.AddAuthorizationBuilder()
+                .AddPolicy(
+                    "JwtOnlyAndNotBanned",
+                    policy =>
+                    {
+                        policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme);
+                        policy.RequireAuthenticatedUser();
+                        policy.Requirements.Add(new NotBannedRequirement());
+                    }
+                );
             builder.Services.AddSingleton<IAuthorizationHandler>(new NotBannedHandler(false));
             builder.Services.AddSingleton<IAuthorizationHandler>(new NotBannedHandler(true));
 
@@ -235,8 +285,6 @@ namespace SharpbinV3.Server
 
             app.UseHttpsRedirection();
             app.UseCors();
-
-            app.UseMiddleware<Middleware.ApiKeyAuthenticationMiddleware>();
 
             app.UseAuthentication();
             app.UseAuthorization();
