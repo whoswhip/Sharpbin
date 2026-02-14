@@ -35,7 +35,7 @@ namespace SharpbinV3.Server.Services
             var paste = new Paste
             {
                 UUID = Guid.CreateVersion7(),
-                ID = Utilities.GenerateRandomString(8),
+                ID = Utilities.GenerateSecureRandomString(8),
                 Title = title,
                 AuthorUUID = author?.UUID,
                 User = author,

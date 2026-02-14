@@ -92,7 +92,7 @@ namespace SharpbinV3.Server.Services
             var jwtToken = jwtHandler.WriteToken(token);
             var jti = claims.First(c => c.Type == JwtRegisteredClaimNames.Jti).Value;
 
-            var rawRefreshToken = Utilities.GenerateRandomString(36) + Guid.NewGuid();
+            var rawRefreshToken = Utilities.GenerateSecureRandomString(36) + Guid.NewGuid();
             var refreshToken = new RefreshToken
             {
                 Id = Guid.NewGuid(),

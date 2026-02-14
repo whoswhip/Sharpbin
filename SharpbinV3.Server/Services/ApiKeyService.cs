@@ -29,7 +29,7 @@ namespace SharpbinV3.Server.Services
 
         public async Task<(ApiKey apiKey, string key)> CreateAsync(Guid userUUID, string name)
         {
-            var key = Utilities.GenerateRandomString(KeyLength);
+            var key = Utilities.GenerateSecureRandomString(KeyLength);
             var keyHash = ComputeHash(key);
 
             var apiKey = new ApiKey
