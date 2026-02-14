@@ -193,7 +193,7 @@ export const syntaxes: Record<string, Syntax> = {
 
 export const expiresOptions = [
 	{ value: 0, label: 'Never Expire' },
-	{ value: 30000, label: 'Expire in 5 Minutes' },
+	{ value: 300000, label: 'Expire in 5 Minutes' },
 	{ value: 600000, label: 'Expire in 10 Minutes' },
 	{ value: 1800000, label: 'Expire in 30 Minutes' },
 	{ value: 3600000, label: 'Expire in 1 Hour' },
