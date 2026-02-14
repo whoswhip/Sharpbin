@@ -1,3 +1,28 @@
+## [3.0.4](https://github.com/whoswhip/Sharpbin/compare/v3.0.3...v3.0.4) (2026-02-14)
+
+
+### Bug Fixes
+
+* **backend:** use GenerateSecureRandomString for api-keys, paste ids, and refresh tokens ([5017e73](https://github.com/whoswhip/Sharpbin/commit/5017e73bb54e626d4dc060fd553c972663eec45f))
+* **frontend:api-keys:** add flag to track successful API key fetch ([78f4ae1](https://github.com/whoswhip/Sharpbin/commit/78f4ae181eb18a98ed9964d8e651d84319fa8d2c))
+* **frontend:user:** resolve lint errors ([7d09870](https://github.com/whoswhip/Sharpbin/commit/7d09870ad25472ff17a1acc22d5724e199f2c931))
+
+
+### Features
+
+* add dotnet-ef tool configuration to dotnet-tools.json ([db363f0](https://github.com/whoswhip/Sharpbin/commit/db363f0211972a06b622770ca522d3ef0bba12c8))
+* **backend:authentication:** implement API key authentication scheme and update authorization policies ([3374ead](https://github.com/whoswhip/Sharpbin/commit/3374eadb5654fa349a636c4a41a53df1ddf2edfe))
+* **backend:utilities:** implement  GenerateSecureRandomString function that uses RandomNumberGenerator ([809b513](https://github.com/whoswhip/Sharpbin/commit/809b513e7a3f5a4f7faf64b02d9ed83e81c540b8))
+* **backend:** implement api keys; rename token -> verificationToken in paste creation api ([53d0f33](https://github.com/whoswhip/Sharpbin/commit/53d0f33ff026d6e5a188d80585e6a3bb633d9fa8))
+* **frontend:api-keys:** display the count of API keys in the header and adjust empty state condition ([3dc8070](https://github.com/whoswhip/Sharpbin/commit/3dc8070efeb19538c4ff120d2a681c4167c716f3))
+* **frontend:api-keys:** implement API key management features including creation, deletion, and fetching ([ee45deb](https://github.com/whoswhip/Sharpbin/commit/ee45deb43937cbf3996c3c379461110a484bd086))
+* **frontend:modal:** decrease modal background opacity and blur ([3b2801a](https://github.com/whoswhip/Sharpbin/commit/3b2801a65509d3a894c701f03028b2cd4599b456))
+* **frontend:stats:** enhance tooltip for total storage used to show uncompressed size ([cac3442](https://github.com/whoswhip/Sharpbin/commit/cac34423d99d1228f426be903da53bafca5f50e7))
+* **frontend:user:** improve UX; move user settings to settings tab ([5052bbd](https://github.com/whoswhip/Sharpbin/commit/5052bbdb135dc2df08db94874de5bf2bf738364c))
+* **frontend:** improve user page UX ([ff706d8](https://github.com/whoswhip/Sharpbin/commit/ff706d877742317cb8f4ccf72ba5f0791a6d2b88))
+
+
+
 ## [3.0.3](https://github.com/whoswhip/Sharpbin/compare/v3.0.2...v3.0.3) (2026-02-10)
 
 
