@@ -41,6 +41,7 @@ export const syntaxes: Record<string, Syntax> = {
 	crystal: { name: 'Crystal', extension: 'cr' },
 	csp: { name: 'CSP', extension: 'csp' },
 	css: { name: 'CSS', extension: 'css' },
+	csv: { name: 'CSV', extension: 'csv' },
 	d: { name: 'D', extension: 'd' },
 	dart: { name: 'Dart', extension: 'dart' },
 	deplhi: { name: 'Delphi', extension: 'pas' },
