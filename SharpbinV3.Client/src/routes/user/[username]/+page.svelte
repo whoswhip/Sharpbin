@@ -57,6 +57,7 @@
 	let editDisplayNameValue = '';
 
 	let apiKeys: { uuid: string; name: string; createdAt: string; lastUsedAt: string | null }[] = [];
+	let successfullyFetchedApiKeys = false;
 	let newApiKeyName = '';
 	let newApiKeyValue = '';
 	let isCreatingApiKey = false;
@@ -269,6 +270,7 @@
 		const token = getToken();
 		if (!token) return;
 		if (apiKeys.length > 0) return;
+		if (successfullyFetchedApiKeys) return;
 		loading = true;
 		try {
 			const res = await fetch('/api/auth/apikey/list', {
@@ -277,6 +279,7 @@
 			if (res.ok) {
 				const json = await res.json();
 				apiKeys = Array.isArray(json.apiKeys) ? json.apiKeys : [];
+				successfullyFetchedApiKeys = json.successfullyFetchedApiKeys ?? true;
 			}
 		} catch (e) {
 			console.error('Failed to fetch API keys', e);
