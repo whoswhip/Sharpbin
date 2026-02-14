@@ -707,7 +707,9 @@
 							<div class="rounded border border-neutral-800 bg-neutral-900/50 p-6">
 								<div class="mb-6 flex items-start justify-between">
 									<div>
-										<h2 class="text-xl font-semibold text-neutral-100">API Keys ({apiKeys.length}/10)</h2>
+										<h2 class="text-xl font-semibold text-neutral-100">
+											API Keys ({apiKeys.length}/10)
+										</h2>
 										<p class="mt-1 text-sm text-neutral-400">
 											Manage API keys for accessing Sharpbin programmatically.
 										</p>

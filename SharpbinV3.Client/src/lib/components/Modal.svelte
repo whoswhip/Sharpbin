@@ -405,7 +405,7 @@
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-xs">
 		<form
 			on:submit|preventDefault={handleSubmit}
-			class="w-full max-w-md rounded bg-neutral-900 border border-neutral-800 p-6"
+			class="w-full max-w-md rounded border border-neutral-800 bg-neutral-900 p-6"
 		>
 			<h2 class="mb-4 text-xl font-semibold text-white">
 				{displayTitle}
