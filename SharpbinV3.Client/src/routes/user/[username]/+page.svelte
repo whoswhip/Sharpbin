@@ -17,7 +17,9 @@
 		Flag,
 		LoaderCircle,
 		Check,
-		X
+		X,
+		Plus,
+		Copy
 	} from '@lucide/svelte';
 	import {
 		extractDateFromUUIDv7,
@@ -33,6 +35,7 @@
 	import { onMount } from 'svelte';
 	import Paste from '$lib/components/Paste.svelte';
 	import { reportStatusLabels, reportTargetLabels, reportTypeLabels } from '$lib/types/report';
+	import { fade } from 'svelte/transition';
 
 	export let data: PageData;
 
@@ -53,6 +56,13 @@
 	let isEditingDisplayName = false;
 	let editDisplayNameValue = '';
 
+	let apiKeys: { uuid: string; name: string; createdAt: string; lastUsedAt: string | null }[] = [];
+	let newApiKeyName = '';
+	let newApiKeyValue = '';
+	let isCreatingApiKey = false;
+	let apiKeyError = '';
+	let copiedApiKey = false;
+
 	$: isOwner = data.user && $user ? data.user?.uuid === $user.uuid : false;
 	$: totpEnabled = Boolean($user?.totpEnabled);
 	$: reportsSubmitted = data.reportsSubmitted;
@@ -62,16 +72,26 @@
 		? 'settings'
 		: 'pastes';
 
-	function updateTab(tab: typeof activeTab) {
-		activeTab = tab;
+	async function updateTab(newPageTab: typeof activeTab) {
+		if (activeTab === newPageTab) return;
+		activeTab = newPageTab;
+
 		const url = new URL(page.url);
-		url.searchParams.set('tab', tab);
-		goto(url, { replaceState: true, noScroll: true, keepFocus: true });
+		url.searchParams.set('tab', newPageTab);
+
+		await goto(url, { replaceState: true, noScroll: true, keepFocus: true, invalidateAll: false });
+
+		if (newPageTab === 'settings' && isOwner && apiKeys.length === 0) {
+			await fetchApiKeys();
+		}
 	}
 
 	$: {
 		const tab = page.url.searchParams.get('tab');
 		switch (tab) {
+			case 'pastes':
+				activeTab = 'pastes';
+				break;
 			case 'reportsSubmitted':
 				if (reportsSubmitted) activeTab = 'reportsSubmitted';
 				else activeTab = 'pastes';
@@ -81,11 +101,18 @@
 				else activeTab = 'pastes';
 				break;
 			case 'settings':
-				if (isOwner || $user?.roles?.some((r) => r === 255 || r === 1)) activeTab = 'settings';
-				else activeTab = 'pastes';
+				if (isOwner || $user?.roles?.some((r) => r === 255 || r === 1)) {
+					activeTab = 'settings';
+					if (isOwner && apiKeys.length === 0) fetchApiKeys();
+				} else activeTab = 'pastes';
 				break;
 			default:
-				activeTab = 'pastes';
+				if (isOwner) {
+					activeTab = 'settings';
+					if (apiKeys.length === 0) fetchApiKeys();
+				} else {
+					activeTab = 'pastes';
+				}
 		}
 	}
 
@@ -238,6 +265,95 @@
 		editDisplayNameValue = '';
 	}
 
+	async function fetchApiKeys() {
+		const token = getToken();
+		if (!token) return;
+		if (apiKeys.length > 0) return;
+		loading = true;
+		try {
+			const res = await fetch('/api/auth/apikey/list', {
+				headers: { Authorization: `Bearer ${token}` }
+			});
+			if (res.ok) {
+				const json = await res.json();
+				apiKeys = Array.isArray(json.apiKeys) ? json.apiKeys : [];
+			}
+		} catch (e) {
+			console.error('Failed to fetch API keys', e);
+		} finally {
+			loading = false;
+		}
+	}
+
+	async function createApiKey() {
+		if (!newApiKeyName.trim()) return;
+		loading = true;
+		apiKeyError = '';
+		const token = getToken();
+		try {
+			const res = await fetch('/api/auth/apikey/create', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				body: JSON.stringify({ name: newApiKeyName.trim() })
+			});
+			const json = await res.json();
+			if (res.ok) {
+				newApiKeyValue = json.apiKey.key;
+				apiKeys = [
+					...apiKeys,
+					{
+						uuid: json.apiKey.uuid,
+						name: json.apiKey.name,
+						createdAt: json.apiKey.createdAt,
+						lastUsedAt: null
+					}
+				];
+				newApiKeyName = '';
+				isCreatingApiKey = false;
+			} else {
+				apiKeyError = json.message || 'Failed to create API key';
+			}
+		} catch {
+			apiKeyError = 'Network error';
+		} finally {
+			loading = false;
+		}
+	}
+
+	async function deleteApiKey(uuid: string) {
+		const ok = await openModal<boolean>({
+			mode: 'confirm',
+			title: 'Delete API Key',
+			message: 'Are you sure you want to delete this API key? This action cannot be undone.',
+			confirmButtonText: 'Delete',
+			cancelValue: false
+		});
+		if (!ok) return;
+
+		loading = true;
+		apiKeyError = '';
+		const token = getToken();
+		try {
+			const res = await fetch(`/api/auth/apikey/${uuid}`, {
+				method: 'DELETE',
+				headers: { Authorization: `Bearer ${token}` }
+			});
+			if (res.ok) {
+				apiKeys = apiKeys.filter((k) => k.uuid !== uuid);
+			} else {
+				const json = await res.json();
+				apiKeyError = json.message || 'Failed to delete API key';
+			}
+		} catch {
+			apiKeyError = 'Network error';
+		} finally {
+			loading = false;
+		}
+	}
+
 	async function openEditRoles() {
 		const value = await openModal({
 			mode: 'multiselect',
@@ -278,6 +394,12 @@
 		interval = setInterval(() => {
 			now = new Date();
 		}, 1000);
+
+		const tab = page.url.searchParams.get('tab');
+		if (tab === 'settings' && isOwner) {
+			fetchApiKeys();
+		}
+
 		return () => {
 			if (interval) clearInterval(interval);
 		};
@@ -476,7 +598,7 @@
 										<input
 											type="text"
 											bind:value={editDisplayNameValue}
-											class="w-full bg-transparent px-2 py-1 outline-none font-mono text-neutral-300 border-b border-neutral-600 focus:border-neutral-400"
+											class="w-full border-b border-neutral-600 bg-transparent px-2 py-1 font-mono text-neutral-300 outline-none focus:border-neutral-400"
 											maxlength="26"
 											on:keydown={(e) => {
 												if (e.key === 'Enter') saveDisplayName();
@@ -515,7 +637,7 @@
 					</div>
 
 					{#if isOwner}
-						<div class="col-span-1">
+						<div class="col-span-2 md:col-span-1">
 							<div class="h-full rounded border border-neutral-800 bg-neutral-900/50 p-6">
 								<div class="mb-6 flex items-start">
 									<div>
@@ -549,7 +671,7 @@
 					{/if}
 
 					{#if $user?.roles?.some((r) => r === 255)}
-						<div class={isOwner ? 'col-span-1' : 'col-span-2'}>
+						<div class="col-span-2 {isOwner ? 'md:col-span-1' : ''}">
 							<div class="h-full rounded border border-neutral-800 bg-neutral-900/50 p-6">
 								<div class="mb-6 flex items-start">
 									<div>
@@ -572,6 +694,149 @@
 											Edit
 										</button>
 									</div>
+								</div>
+							</div>
+						</div>
+					{/if}
+
+					{#if isOwner}
+						<div class="col-span-2">
+							<div class="rounded border border-neutral-800 bg-neutral-900/50 p-6">
+								<div class="mb-6 flex items-start justify-between">
+									<div>
+										<h2 class="text-xl font-semibold text-neutral-100">API Keys</h2>
+										<p class="mt-1 text-sm text-neutral-400">
+											Manage API keys for accessing Sharpbin programmatically.
+										</p>
+									</div>
+								</div>
+
+								{#if apiKeyError}
+									<div
+										class="mb-4 rounded border border-red-900/50 bg-red-900/10 p-3 text-sm text-red-200"
+									>
+										{apiKeyError}
+									</div>
+								{/if}
+
+								<div class="mb-6">
+									{#if isCreatingApiKey}
+										<div class="flex items-center gap-2">
+											<input
+												type="text"
+												placeholder="Key Name"
+												bind:value={newApiKeyName}
+												class="flex-1 border-b border-neutral-600 bg-transparent px-3 py-2 font-mono text-neutral-300 outline-none focus:border-neutral-400"
+												maxlength="26"
+											/>
+											<button
+												on:click={createApiKey}
+												disabled={loading || !newApiKeyName}
+												class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600 disabled:opacity-50"
+											>
+												{#if loading}
+													<LoaderCircle class="h-4 w-4 animate-spin" />
+												{:else}
+													<Plus class="h-4 w-4" />
+												{/if}
+												Create
+											</button>
+											<button
+												on:click={() => {
+													isCreatingApiKey = false;
+													newApiKeyName = '';
+												}}
+												class="flex items-center gap-2 rounded bg-neutral-800 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-700"
+											>
+												Cancel
+											</button>
+										</div>
+									{:else}
+										<button
+											on:click={() => (isCreatingApiKey = true)}
+											class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
+										>
+											<Plus class="h-4 w-4" />
+											Create New Key
+										</button>
+									{/if}
+								</div>
+
+								{#if newApiKeyValue}
+									<div class="mb-6 rounded border border-green-900/50 bg-green-900/10 p-4">
+										<div class="mb-2 flex items-center justify-between">
+											<span class="text-sm font-medium text-green-400">API Key Created</span>
+											<button
+												on:click={() => (newApiKeyValue = '')}
+												class="text-green-400/70 hover:text-green-400"
+											>
+												<X class="h-4 w-4" />
+											</button>
+										</div>
+										<p class="mb-3 text-xs text-green-200/70">
+											Please copy your API key now. You won't be able to see it again.
+										</p>
+										<div class="flex items-center gap-2 rounded bg-neutral-900/50 p-2">
+											<code class="flex-1 font-mono text-sm break-all text-green-300"
+												>{newApiKeyValue}</code
+											>
+											<button
+												class="p-1 text-neutral-400 hover:text-white"
+												on:click={() => {
+													navigator.clipboard.writeText(newApiKeyValue);
+													copiedApiKey = true;
+													setTimeout(() => (copiedApiKey = false), 1000);
+												}}
+												use:tooltip={'Copy to clipboard'}
+											>
+												<div class="relative mr-1 h-5 w-5">
+													{#if copiedApiKey}
+														<span
+															transition:fade={{ duration: 200 }}
+															class="absolute inset-0 flex items-center justify-center"
+															><Check class="h-4 w-4 text-green-400" /></span
+														>
+													{:else}
+														<span
+															transition:fade={{ duration: 200 }}
+															class="absolute inset-0 flex items-center justify-center"
+															><Copy class="h-4 w-4 text-neutral-400" /></span
+														>
+													{/if}
+												</div>
+											</button>
+										</div>
+									</div>
+								{/if}
+
+								<div class="space-y-2">
+									{#if apiKeys.length === 0}
+										<p class="py-4 text-center text-sm text-neutral-500">No API keys found.</p>
+									{:else}
+										{#each apiKeys as key (key.uuid)}
+											<div class="flex items-center justify-between rounded bg-neutral-800/50 p-3">
+												<div class="flex flex-col gap-1">
+													<span class="font-medium text-neutral-200">{key.name}</span>
+													<div class="flex gap-3 text-xs text-neutral-500">
+														<span>Created: {new Date(key.createdAt).toLocaleDateString()}</span>
+														<span
+															>Last used: {key.lastUsedAt
+																? dateToRelativeString(new Date(key.lastUsedAt), true, false, now)
+																: 'Never'}</span
+														>
+													</div>
+												</div>
+												<button
+													on:click={() => deleteApiKey(key.uuid)}
+													disabled={loading}
+													class="p-2 text-neutral-500 transition-colors hover:text-red-400"
+													title="Revoke Key"
+												>
+													<Trash2 class="h-4 w-4" />
+												</button>
+											</div>
+										{/each}
+									{/if}
 								</div>
 							</div>
 						</div>
