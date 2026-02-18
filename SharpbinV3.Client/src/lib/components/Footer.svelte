@@ -19,4 +19,13 @@
 	>
 	<span class="mx-1">•</span>
 	v{__APP_VERSION__}
+	<a
+		href="https://github.com/whoswhip/Sharpbin/commit/{COMMIT_HASH}"
+		target="_blank"
+		rel="noopener noreferrer"
+		class="text-neutral-400 underline hover:text-neutral-200"
+		>{(COMMIT_HASH?.length ?? 0) >= 7 && COMMIT_HASH !== 'unknown'
+			? `(${COMMIT_HASH.slice(0, 7)})`
+			: ''}</a
+	>
 </div>

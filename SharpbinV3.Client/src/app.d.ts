@@ -27,6 +27,7 @@ declare global {
 		| undefined;
 	var turnstileLoaded: (() => void) | undefined;
 	declare const __APP_VERSION__: string;
+	declare const COMMIT_HASH: string;
 }
 
 export {};

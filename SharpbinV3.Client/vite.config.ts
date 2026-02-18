@@ -16,7 +16,8 @@ const allowedHosts = process.env.VITE_ALLOWED_HOSTS
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 	define: {
-		__APP_VERSION__: JSON.stringify(pkg.version)
+		__APP_VERSION__: JSON.stringify(pkg.version),
+		COMMIT_HASH: JSON.stringify(process.env.GIT_COMMIT_HASH || 'unknown')
 	},
 	server: {
 		host: true,

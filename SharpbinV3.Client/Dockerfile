@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1
 FROM node:20-alpine as build
+ARG GIT_COMMIT_HASH
+ENV GIT_COMMIT_HASH=${GIT_COMMIT_HASH}
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
