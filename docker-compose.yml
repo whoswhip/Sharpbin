@@ -10,7 +10,7 @@ services:
       ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection:-Data Source=/app/data/sharpbin.db}
       DATA_PROTECTION_KEY_PATH: ${DATA_PROTECTION_KEY_PATH:-/app/data/keys}
       JwtSettings__Secret: ${JwtSettings__Secret}
-      AuthSettings__First_User_Admin: ${AuthSettings__First_User_Admin}
+      AuthSettings__First_User_Admin: ${AuthSettings__First_User_Admin:-true}
       AuthSettings__CF_Turnstile_SecretKey: ${AuthSettings__CF_Turnstile_SecretKey}
       AuthSettings__CF_Turnstile_SiteKey: ${AuthSettings__CF_Turnstile_SiteKey}
       PasteSettings__View_Internal_API_Key: ${PasteSettings__View_Internal_API_Key}
@@ -33,6 +33,8 @@ services:
     build:
       context: ./SharpbinV3.Client
       dockerfile: Dockerfile
+      args:
+        GIT_COMMIT_HASH: ${GIT_COMMIT_HASH}
     image: sharpbin-frontend
     container_name: sharpbin-frontend
     environment:

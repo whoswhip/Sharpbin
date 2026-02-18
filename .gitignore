@@ -324,3 +324,5 @@ FodyWeavers.xsd
 Data
 !SharpbinV3.Server/Data
 .idea
+
+**/.env
