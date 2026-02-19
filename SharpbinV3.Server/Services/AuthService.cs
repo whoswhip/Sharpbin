@@ -142,9 +142,9 @@ namespace SharpbinV3.Server.Services
                 );
 
                 var jti = principal.Claims.First(c => c.Type == JwtRegisteredClaimNames.Jti).Value;
+                var userUUID = principal.Claims.First(c => c.Type == "uuid").Value;
 
                 var tokenHash = Utilities.ComputeSha256(refreshToken);
-
                 var storedToken = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash);
 
                 if (
@@ -153,23 +153,25 @@ namespace SharpbinV3.Server.Services
                     || storedToken.Revoked
                     || storedToken.ExpiresAt < DateTimeOffset.UtcNow
                     || storedToken.JwtId != jti
+                    || storedToken.UserUUID != Guid.Parse(userUUID)
                 )
                 {
                     return new CreateJWT { Success = false, Errors = ["Invalid or expired refresh token."] };
                 }
 
-                storedToken.Used = true;
-                storedToken.Revoked = true;
-
-                await _db.SaveChangesAsync();
-
-                var userUUID = principal.Claims.First(c => c.Type == "uuid").Value;
                 var user = await _db.Users.FirstOrDefaultAsync(u => u.UUID == Guid.Parse(userUUID));
-
-                if (user == null || storedToken.UserUUID != Guid.Parse(userUUID))
+                if (user == null)
                     return new CreateJWT { Success = false, Errors = ["Invalid token."] };
 
-                return await GenerateJWTToken(user);
+                var newTokenResult = await GenerateJWTToken(user);
+                if (!newTokenResult.Success)
+                    return newTokenResult;
+
+                storedToken.Used = true;
+                storedToken.Revoked = true;
+                await _db.SaveChangesAsync();
+
+                return newTokenResult;
             }
             catch (Exception ex)
             {

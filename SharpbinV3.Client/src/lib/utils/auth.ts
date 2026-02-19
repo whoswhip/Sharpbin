@@ -5,6 +5,10 @@ import { user } from '$lib/stores/user';
 const TOKEN_KEY = 'token';
 const REFRESH_TOKEN_KEY = 'refreshToken';
 
+let refreshPromise: Promise<void> | null = null;
+let lastRefreshAttempt = 0;
+let refreshFailureCount = 0;
+
 export function getToken() {
 	if (!browser) return null;
 	return (
@@ -27,17 +31,23 @@ export function getRefreshToken() {
 
 export function setTokens(token: string, refreshToken: string) {
 	if (!browser) return;
-	console.log('Setting tokens');
 	document.cookie = `${TOKEN_KEY}=${token}; path=/; secure; samesite=strict`;
 	document.cookie = `${REFRESH_TOKEN_KEY}=${refreshToken}; path=/; secure; samesite=strict`;
+	refreshFailureCount = 0;
 }
 
 export function clearTokens() {
 	if (!browser) return;
-	console.log('Clearing tokens');
 	document.cookie = `${TOKEN_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 	document.cookie = `${REFRESH_TOKEN_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 	user.set(null);
+}
+
+function getBackoffDelay(attempt: number): number {
+	const baseDelay = 1000;
+	const maxDelay = 30000;
+	const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+	return delay + Math.random() * 1000;
 }
 
 export async function refreshTokenIfNeeded() {
@@ -49,28 +59,55 @@ export async function refreshTokenIfNeeded() {
 	const exp = payload.exp * 1000;
 	const now = Date.now();
 
-	if (exp - now < 2 * 60 * 1000) {
-		console.log('Refreshing token...');
+	if (exp - now >= 2 * 60 * 1000) return;
+
+	if (refreshPromise) {
+		await refreshPromise;
+		return;
+	}
+
+	const timeSinceLastAttempt = now - lastRefreshAttempt;
+	const minDelay = getBackoffDelay(refreshFailureCount);
+	if (timeSinceLastAttempt < minDelay) return;
+
+	refreshPromise = performRefresh(token, refreshToken);
+	try {
+		await refreshPromise;
+	} finally {
+		refreshPromise = null;
+	}
+}
+
+async function performRefresh(token: string, refreshToken: string) {
+	lastRefreshAttempt = Date.now();
+
+	try {
 		const res = await fetch('/api/auth/refresh', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ token, refreshToken })
 		});
-		if (res.ok) {
-			const data = await res.json();
-			if (data.success && data.token?.token && data.token?.refreshToken) {
-				console.log('Token refreshed successfully');
-				setTokens(data.token.token, data.token.refreshToken);
-			} else {
-				console.log('Invalid tokens received during refresh');
+
+		if (!res.ok) {
+			refreshFailureCount++;
+			if (res.status === 400 || res.status === 401 || res.status === 403) {
 				clearTokens();
 			}
-		} else {
-			console.log('Failed to refresh token');
-			clearTokens();
+			return;
 		}
+
+		const data = await res.json();
+		if (data.success && data.token?.token && data.token?.refreshToken) {
+			setTokens(data.token.token, data.token.refreshToken);
+		} else {
+			refreshFailureCount++;
+			if (!data.success) {
+				clearTokens();
+			}
+		}
+	} catch {
+		refreshFailureCount++;
 	}
-	console.log('Token is still valid, no refresh needed');
 }
 
 export function startTokenRefreshInterval() {
