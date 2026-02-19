@@ -80,7 +80,7 @@
 		const url = new URL(page.url);
 		url.searchParams.set('tab', newPageTab);
 
-		// @ts-expect-error
+		// @ts-expect-error - resolve still works even though it's flagged as an error
 		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		await goto(resolve(url.pathname) + url.search, {
 			replaceState: true,
