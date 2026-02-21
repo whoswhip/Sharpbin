@@ -14,27 +14,7 @@ namespace SharpbinV3.Server
         public static string GenerateSecureRandomString(int length)
         {
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-            Span<byte> buffer = stackalloc byte[128];
-
-            var result = new char[length];
-            int pos = 0;
-
-            while (pos < length)
-            {
-                RandomNumberGenerator.Fill(buffer);
-
-                foreach (byte b in buffer)
-                {
-                    if (b >= 248)
-                        continue; // 248 is the largest multiple of 62 < 256
-
-                    result[pos++] = chars[b % chars.Length];
-                    if (pos == length)
-                        break;
-                }
-            }
-
-            return new string(result);
+            return RandomNumberGenerator.GetString(chars, length);
         }
 
         public static string ComputeSha256(string input)
