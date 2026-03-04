@@ -24,6 +24,7 @@ namespace SharpbinV3.Server
     {
         public static void Main(string[] args)
         {
+            DotEnv.Load(".env");
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
