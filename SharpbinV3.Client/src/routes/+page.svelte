@@ -439,7 +439,7 @@
 							crypto.getRandomValues(bytes);
 							password = Array.from(bytes, (b) => chars[b % chars.length]).join('');
 						}}
-						use:tooltip={'Generate Random Password'}
+						use:tooltip={['Generate Random Password', true]}
 					>
 						<Dices class="h-5 w-5" />
 					</button>
