@@ -20,8 +20,8 @@ function fromBase64(data: string): Uint8Array {
 
 export async function encryptAES(content: string, password: string): Promise<string> {
 	const enc = new TextEncoder();
-	const salt = window.crypto.getRandomValues(new Uint8Array(32));
-	const memorySize = 65536;
+	const salt = window.crypto.getRandomValues(new Uint8Array(16));
+	const memorySize = 262144;
 	const iterations = 3;
 	const parallelism = 1;
 
@@ -37,8 +37,8 @@ export async function encryptAES(content: string, password: string): Promise<str
 
 	const key = await window.crypto.subtle.importKey(
 		'raw',
-		keyMaterial as unknown as BufferSource,
-		{ name: 'AES-GCM' },
+		new Uint8Array(keyMaterial),
+		{ name: 'AES-GCM', length: 256 },
 		false,
 		['encrypt']
 	);
@@ -47,7 +47,8 @@ export async function encryptAES(content: string, password: string): Promise<str
 	const encryptedContent = await window.crypto.subtle.encrypt(
 		{
 			name: 'AES-GCM',
-			iv
+			iv,
+			additionalData: enc.encode('enc-v4')
 		},
 		key,
 		enc.encode(content)
@@ -127,8 +128,8 @@ export async function decryptAES(result: string, password: string): Promise<stri
 
 		const key = await window.crypto.subtle.importKey(
 			'raw',
-			keyMaterial as unknown as BufferSource,
-			{ name: 'AES-GCM' },
+			new Uint8Array(keyMaterial),
+			{ name: 'AES-GCM', length: 256 },
 			false,
 			['decrypt']
 		);
@@ -136,7 +137,8 @@ export async function decryptAES(result: string, password: string): Promise<stri
 		const decryptedContent = await window.crypto.subtle.decrypt(
 			{
 				name: 'AES-GCM',
-				iv
+				iv,
+				additionalData: enc.encode('enc-v4')
 			},
 			key,
 			data
