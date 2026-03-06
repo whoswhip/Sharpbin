@@ -1,10 +1,21 @@
 import { argon2id } from 'hash-wasm';
 
+const BASE64_CHUNK_SIZE = 0x8000;
+const SALT_LENGTH = 16;
+const IV_LENGTH = 12;
+const ARGON2_MEMORY_SIZE = 262144;
+const ARGON2_ITERATIONS = 3;
+const ARGON2_PARALLELISM = 1;
+const ARGON2_HASH_LENGTH = 32;
+const AES_KEY_LENGTH = 256;
+const ENCRYPTION_AAD = 'enc-v4';
+const ENCRYPTED_DATA_OVERHEAD = 60;
+const ENCRYPTED_METADATA_OVERHEAD = 150;
+
 function toBase64(bytes: Uint8Array): string {
 	let binary = '';
-	const chunkSize = 0x8000;
-	for (let i = 0; i < bytes.length; i += chunkSize) {
-		binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+	for (let i = 0; i < bytes.length; i += BASE64_CHUNK_SIZE) {
+		binary += String.fromCharCode(...bytes.subarray(i, i + BASE64_CHUNK_SIZE));
 	}
 	return btoa(binary);
 }
@@ -20,35 +31,32 @@ function fromBase64(data: string): Uint8Array {
 
 export async function encryptAES(content: string, password: string): Promise<string> {
 	const enc = new TextEncoder();
-	const salt = window.crypto.getRandomValues(new Uint8Array(16));
-	const memorySize = 262144;
-	const iterations = 3;
-	const parallelism = 1;
+	const salt = window.crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
 
 	const keyMaterial = await argon2id({
 		password,
 		salt,
-		iterations,
-		memorySize,
-		parallelism,
-		hashLength: 32,
+		iterations: ARGON2_ITERATIONS,
+		memorySize: ARGON2_MEMORY_SIZE,
+		parallelism: ARGON2_PARALLELISM,
+		hashLength: ARGON2_HASH_LENGTH,
 		outputType: 'binary'
 	});
 
 	const key = await window.crypto.subtle.importKey(
 		'raw',
 		new Uint8Array(keyMaterial),
-		{ name: 'AES-GCM', length: 256 },
+		{ name: 'AES-GCM', length: AES_KEY_LENGTH },
 		false,
 		['encrypt']
 	);
 
-	const iv = window.crypto.getRandomValues(new Uint8Array(12));
+	const iv = window.crypto.getRandomValues(new Uint8Array(IV_LENGTH));
 	const encryptedContent = await window.crypto.subtle.encrypt(
 		{
 			name: 'AES-GCM',
 			iv,
-			additionalData: enc.encode('enc-v4')
+			additionalData: enc.encode(ENCRYPTION_AAD)
 		},
 		key,
 		enc.encode(content)
@@ -62,9 +70,9 @@ export async function encryptAES(content: string, password: string): Promise<str
 	return JSON.stringify({
 		version: 4,
 		kdf: 'Argon2id',
-		memorySize,
-		iterations,
-		parallelism,
+		memorySize: ARGON2_MEMORY_SIZE,
+		iterations: ARGON2_ITERATIONS,
+		parallelism: ARGON2_PARALLELISM,
 		algorithm: 'AES-GCM',
 		saltLength: salt.byteLength,
 		ivLength: iv.byteLength,
@@ -74,9 +82,9 @@ export async function encryptAES(content: string, password: string): Promise<str
 
 export function estimateEncryptedSize(content: string): number {
 	const rawSize = new TextEncoder().encode(content).length;
-	const combinedSize = rawSize + 60;
+	const combinedSize = rawSize + ENCRYPTED_DATA_OVERHEAD;
 	const b64Size = Math.ceil(combinedSize / 3) * 4;
-	return b64Size + 150;
+	return b64Size + ENCRYPTED_METADATA_OVERHEAD;
 }
 
 export async function decryptAES(result: string, password: string): Promise<string | null> {
@@ -85,8 +93,8 @@ export async function decryptAES(result: string, password: string): Promise<stri
 		const parsed = JSON.parse(result);
 		const combined = fromBase64(parsed.data);
 
-		const saltLength = parsed.saltLength || 16;
-		const ivLength = parsed.ivLength || 12;
+		const saltLength = parsed.saltLength || SALT_LENGTH;
+		const ivLength = parsed.ivLength || IV_LENGTH;
 		const salt = combined.slice(0, saltLength);
 		const iv = combined.slice(saltLength, saltLength + ivLength);
 		const data = combined.slice(saltLength + ivLength);
@@ -100,7 +108,7 @@ export async function decryptAES(result: string, password: string): Promise<stri
 				iterations: parsed.iterations,
 				memorySize: parsed.memorySize,
 				parallelism: parsed.parallelism,
-				hashLength: 32,
+				hashLength: ARGON2_HASH_LENGTH,
 				outputType: 'binary'
 			});
 		} else {
@@ -119,7 +127,7 @@ export async function decryptAES(result: string, password: string): Promise<stri
 					hash: parsed.hash
 				},
 				baseKey,
-				{ name: 'AES-GCM', length: 256 },
+				{ name: 'AES-GCM', length: AES_KEY_LENGTH },
 				true,
 				['encrypt', 'decrypt']
 			);
@@ -129,7 +137,7 @@ export async function decryptAES(result: string, password: string): Promise<stri
 		const key = await window.crypto.subtle.importKey(
 			'raw',
 			new Uint8Array(keyMaterial),
-			{ name: 'AES-GCM', length: 256 },
+			{ name: 'AES-GCM', length: AES_KEY_LENGTH },
 			false,
 			['decrypt']
 		);
@@ -138,7 +146,7 @@ export async function decryptAES(result: string, password: string): Promise<stri
 			{
 				name: 'AES-GCM',
 				iv,
-				additionalData: enc.encode('enc-v4')
+				additionalData: enc.encode(ENCRYPTION_AAD)
 			},
 			key,
 			data
