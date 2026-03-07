@@ -1,5 +1,4 @@
-﻿using System.Data;
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +29,7 @@ namespace SharpbinV3.Server.Services
         IOptions<JWTSettings> jwtOptions,
         IOptions<AuthSettings> authOptions,
         IOptions<AppSettings> appSettings,
+        IOptions<EmailSettings> emailSettings,
         ILogger<AuthService> logger
     )
     {
@@ -38,6 +38,7 @@ namespace SharpbinV3.Server.Services
         private readonly JWTSettings _jwtSettings = jwtOptions.Value;
         private readonly AuthSettings _authSettings = authOptions.Value;
         private readonly AppSettings _appSettings = appSettings.Value;
+        private readonly EmailSettings _emailSettings = emailSettings.Value;
         private readonly ILogger _logger = logger;
         private const int EmailVerificationTokenLength = 64;
 
@@ -225,9 +226,14 @@ namespace SharpbinV3.Server.Services
         {
             if (string.IsNullOrWhiteSpace(user.Email))
                 return;
+            if (string.IsNullOrWhiteSpace(_emailSettings.Verification_HMAC_Secret))
+            {
+                _logger.LogWarning($"Email verification is not configured. Cannot send verification email to {user.Email}");
+                return;
+            }
 
             string token = Utilities.GenerateSecureRandomString(EmailVerificationTokenLength);
-            string tokenHash = Utilities.ComputeSha256(token);
+            string tokenHash = Utilities.ComputeHmacSha256(token, _emailSettings.Verification_HMAC_Secret);
 
             await _email.SendAsync(
                 user.Email,
@@ -250,8 +256,10 @@ namespace SharpbinV3.Server.Services
         {
             if (token.Length != EmailVerificationTokenLength)
                 return (false, "Invalid token.");
+            if (string.IsNullOrWhiteSpace(_emailSettings.Verification_HMAC_Secret))
+                return (false, "Email verification is not configured.");
 
-            string tokenHash = Utilities.ComputeSha256(token);
+            string tokenHash = Utilities.ComputeHmacSha256(token, _emailSettings.Verification_HMAC_Secret);
             var verificationToken = await _db.EmailVerificationTokens.Include(t => t.User).FirstOrDefaultAsync(t => t.TokenHash == tokenHash);
 
             if (

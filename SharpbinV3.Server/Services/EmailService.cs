@@ -16,6 +16,11 @@ namespace SharpbinV3.Server.Services
 
         public async Task SendAsync(string to, string subject, string body)
         {
+            if (string.IsNullOrWhiteSpace(settings.Host) || string.IsNullOrWhiteSpace(settings.User) || string.IsNullOrWhiteSpace(settings.Password))
+            {
+                logger.LogWarning($"Email settings are not fully configured. Skipping sending email to {to}");
+                return;
+            }
             var email = new QueuedEmail(to, subject, body);
 
             if (queue.Writer.TryWrite(email))
