@@ -1,11 +1,9 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
+import { apiUrl } from '$lib/server/api';
 import { getServerToken } from '$lib/utils/auth';
 import type { ReportListResponse } from '$lib/types/report';
 import { extractError } from '$lib/utils/misc';
-
-const API_URL = env.VITE_API_URL ?? 'http://localhost:5050';
 
 function decodeJwtRoles(token?: string | null): number[] {
 	try {
@@ -49,7 +47,7 @@ export const load: PageServerLoad = async ({ fetch, cookies, url }) => {
 	if ((target === 'pastes' || target === 'all') && pasteId) query.set('pasteId', pasteId);
 	if ((target === 'users' || target === 'all') && userUuid) query.set('userUUID', userUuid);
 
-	const reportsRes = await fetch(`${API_URL}/api/report/${target}?${query.toString()}`, {
+	const reportsRes = await fetch(`${apiUrl}/api/report/${target}?${query.toString()}`, {
 		headers: { Authorization: `Bearer ${token}` }
 	});
 
@@ -60,7 +58,7 @@ export const load: PageServerLoad = async ({ fetch, cookies, url }) => {
 
 	const reports = (await reportsRes.json()) as ReportListResponse;
 
-	const optionsRes = await fetch(`${API_URL}/api/report/options`);
+	const optionsRes = await fetch(`${apiUrl}/api/report/options`);
 	const options = optionsRes.ok ? await optionsRes.json() : { types: [], statuses: [] };
 
 	return {

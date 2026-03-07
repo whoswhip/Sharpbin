@@ -1,14 +1,8 @@
 import type { PageServerLoad } from './$types';
 import type { Paste } from '$lib/types/paste';
 import { getServerToken } from '$lib/utils/auth';
-import { env } from '$env/dynamic/private';
+import { apiUrl, viewInternalApiKey } from '$lib/server/api';
 import { error } from '@sveltejs/kit';
-
-const apiUrl = process.env.VITE_API_URL || 'http://localhost:5050';
-const apiKey =
-	env.NODE_ENV === 'development'
-		? 'cccdd42d9f2f648493e402f1da7c855ea798ad510e6bb9ea712dd7bed838e58'
-		: (env.VIEW_INTERNAL_API_KEY ?? env.View_HMAC_Internal_API_Key ?? '');
 
 export const load: PageServerLoad = async ({ params, fetch, url, cookies, parent }) => {
 	const { id } = params;
@@ -29,7 +23,7 @@ export const load: PageServerLoad = async ({ params, fetch, url, cookies, parent
 	const viewed = await fetch(`${apiUrl}/api/paste/${id}/view`, {
 		method: 'POST',
 		headers: {
-			'X-Internal-API-Key': apiKey,
+			'X-Internal-API-Key': viewInternalApiKey,
 			Authorization: token ? `Bearer ${token}` : ''
 		}
 	});
@@ -46,7 +40,7 @@ export const load: PageServerLoad = async ({ params, fetch, url, cookies, parent
 		console.error(
 			`Failed to increment view count for paste ${id}, status code ${viewed.status}: ${await viewed.text()}`
 		);
-		if (apiKey === '') {
+		if (viewInternalApiKey === '') {
 			console.error(
 				'The API key for internal requests is not set. Please configure it in the environment variables.'
 			);

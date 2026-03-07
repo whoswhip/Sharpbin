@@ -1,13 +1,11 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
+import { apiUrl } from '$lib/server/api';
 import { getServerToken } from '$lib/utils/auth';
 import type { User } from '$lib/types/user';
 import type { Paste } from '$lib/types/paste';
 import type { Pagination } from '$lib/types/pagination';
 import type { Report, ReportListResponse } from '$lib/types/report';
-
-const API_URL = env.VITE_API_URL ?? 'http://localhost:5050';
 
 function decodeJwtRoles(token?: string | null): number[] {
 	try {
@@ -40,7 +38,7 @@ export const load: PageServerLoad = async ({ params, fetch, cookies, url, parent
 	const { options } = await parent();
 	const jwtUuid = decodeJwtUuid(token);
 
-	const res = await fetch(`${API_URL}/api/user/${username}`, {
+	const res = await fetch(`${apiUrl}/api/user/${username}`, {
 		headers: token ? { Authorization: `Bearer ${token}` } : undefined
 	});
 
@@ -71,7 +69,7 @@ export const load: PageServerLoad = async ({ params, fetch, cookies, url, parent
 	}
 
 	if (token && canModerate && (!reportsSubmitted || !isOwner)) {
-		const submittedRes = await fetch(`${API_URL}/api/user/${user.uuid}/reports/submitted`, {
+		const submittedRes = await fetch(`${apiUrl}/api/user/${user.uuid}/reports/submitted`, {
 			headers: { Authorization: `Bearer ${token}` }
 		});
 		if (submittedRes.ok) reportsSubmitted = await submittedRes.json();
@@ -79,7 +77,7 @@ export const load: PageServerLoad = async ({ params, fetch, cookies, url, parent
 
 	if (token && !isOwner) {
 		if (canModerate) {
-			const r = await fetch(`${API_URL}/api/user/${user.uuid}/reports`, {
+			const r = await fetch(`${apiUrl}/api/user/${user.uuid}/reports`, {
 				headers: { Authorization: `Bearer ${token}` }
 			});
 			if (r.ok) reportsTarget = await r.json();

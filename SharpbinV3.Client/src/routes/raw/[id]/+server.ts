@@ -1,6 +1,5 @@
 import type { RequestHandler } from '@sveltejs/kit';
-
-const apiUrl = process.env.VITE_API_URL || 'http://localhost:5050';
+import { apiUrl } from '$lib/server/api';
 
 export const GET: RequestHandler = async ({ params }) => {
 	const { id } = params;

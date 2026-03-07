@@ -1,10 +1,8 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
+import { apiUrl } from '$lib/server/api';
 import { getServerToken } from '$lib/utils/auth';
 import type { Report } from '$lib/types/report';
-
-const API_URL = env.VITE_API_URL ?? 'http://localhost:5050';
 
 function decodeJwtRoles(token?: string | null): number[] {
 	try {
@@ -26,7 +24,7 @@ export const load: PageServerLoad = async ({ fetch, cookies, params, url }) => {
 	const roles = decodeJwtRoles(token);
 	const canEdit = roles.includes(1) || roles.includes(255);
 
-	const res = await fetch(`${API_URL}/api/report/${params.reportId}`, {
+	const res = await fetch(`${apiUrl}/api/report/${params.reportId}`, {
 		headers: { Authorization: `Bearer ${token}` }
 	});
 
@@ -36,7 +34,7 @@ export const load: PageServerLoad = async ({ fetch, cookies, params, url }) => {
 	}
 
 	const report = (await res.json()) as Report;
-	const optionsRes = await fetch(`${API_URL}/api/report/options`);
+	const optionsRes = await fetch(`${apiUrl}/api/report/options`);
 	const options = optionsRes.ok ? await optionsRes.json() : { types: [], statuses: [] };
 
 	return { report, url: url.href, canEdit, options };
