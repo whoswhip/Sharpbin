@@ -233,7 +233,7 @@ namespace SharpbinV3.Server.Services
             }
 
             string token = Utilities.GenerateSecureRandomString(EmailVerificationTokenLength);
-            string tokenHash = Utilities.ComputeHmacSha256(token, _emailSettings.Verification_HMAC_Secret);
+            string tokenHash = Utilities.ComputeSha256(token);
 
             await _email.SendAsync(
                 user.Email,
@@ -259,7 +259,7 @@ namespace SharpbinV3.Server.Services
             if (string.IsNullOrWhiteSpace(_emailSettings.Verification_HMAC_Secret))
                 return (false, "Email verification is not configured.");
 
-            string tokenHash = Utilities.ComputeHmacSha256(token, _emailSettings.Verification_HMAC_Secret);
+            string tokenHash = Utilities.ComputeSha256(token);
             var verificationToken = await _db.EmailVerificationTokens.Include(t => t.User).FirstOrDefaultAsync(t => t.TokenHash == tokenHash);
 
             if (
