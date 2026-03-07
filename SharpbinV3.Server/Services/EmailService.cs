@@ -1,9 +1,9 @@
+using System.Threading.Channels;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using SharpbinV3.Server.Settings;
-using System.Threading.Channels;
 
 namespace SharpbinV3.Server.Services
 {
@@ -11,11 +11,7 @@ namespace SharpbinV3.Server.Services
     {
         private readonly EmailSettings settings = emailSettings.Value;
         private readonly Channel<QueuedEmail> queue = Channel.CreateUnbounded<QueuedEmail>(
-            new UnboundedChannelOptions
-            {
-                SingleReader = true,
-                SingleWriter = false,
-            }
+            new UnboundedChannelOptions { SingleReader = true, SingleWriter = false }
         );
 
         public async Task SendAsync(string to, string subject, string body)
