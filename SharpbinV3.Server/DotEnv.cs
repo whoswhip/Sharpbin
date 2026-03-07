@@ -12,6 +12,8 @@ namespace SharpbinV3.Server
 
             foreach (var line in File.ReadAllLines(filePath))
             {
+                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
+                    continue;
                 var parts = line.Split('=', StringSplitOptions.RemoveEmptyEntries);
 
                 if (parts.Length != 2)
