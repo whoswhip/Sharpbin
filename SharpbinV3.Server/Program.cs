@@ -69,8 +69,9 @@ namespace SharpbinV3.Server
             builder.Services.AddSingleton<ICompressionService, CompressionService>();
             builder.Services.AddSingleton<IHostedService, PasteCleanUpService>();
             builder.Services.AddSingleton<IHostedService, PasteViewCleanUpService>();
+            builder.Services.AddSingleton<EmailService>();
+            builder.Services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<EmailService>());
             builder.Services.AddScoped<UserService>();
-            builder.Services.AddScoped<EmailService>();
             builder.Services.AddScoped<AuthService>();
             builder.Services.AddScoped<PasteService>();
             builder.Services.AddScoped<ApiKeyService>();
