@@ -17,7 +17,7 @@ namespace SharpbinV3.Server.Settings
         public string Password { get; set; } = string.Empty;
 
         [EmailAddress]
-        public string From { get; set; } = string.Empty;
+        public string? From { get; set; }
         public string Verification_HMAC_Secret { get; set; } = string.Empty;
     }
 }

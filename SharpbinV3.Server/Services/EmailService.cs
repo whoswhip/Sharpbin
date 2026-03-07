@@ -16,7 +16,12 @@ namespace SharpbinV3.Server.Services
 
         public async Task SendAsync(string to, string subject, string body)
         {
-            if (string.IsNullOrWhiteSpace(settings.Host) || string.IsNullOrWhiteSpace(settings.User) || string.IsNullOrWhiteSpace(settings.Password))
+            if (
+                string.IsNullOrWhiteSpace(settings.Host)
+                || string.IsNullOrWhiteSpace(settings.User)
+                || string.IsNullOrWhiteSpace(settings.Password)
+                || string.IsNullOrWhiteSpace(settings.From)
+            )
             {
                 logger.LogWarning($"Email settings are not fully configured. Skipping sending email to {to}");
                 return;
@@ -51,7 +56,7 @@ namespace SharpbinV3.Server.Services
         private async Task SendNowAsync(QueuedEmail email, CancellationToken cancellationToken)
         {
             var message = new MimeMessage();
-            message.From.Add(new MailboxAddress("Sharpbin", settings.From));
+            message.From.Add(new MailboxAddress("Sharpbin", settings.From!));
             message.To.Add(MailboxAddress.Parse(email.To));
             message.Subject = email.Subject;
 
