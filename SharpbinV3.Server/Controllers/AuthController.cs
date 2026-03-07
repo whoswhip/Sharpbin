@@ -27,7 +27,6 @@ namespace SharpbinV3.Server.Controllers
         IOptions<AuthSettings> options,
         VerificationService verification,
         TotpVerificationProvider totp,
-        EmailService email,
         AppDbContext db
     ) : ControllerBase
     {
@@ -36,7 +35,6 @@ namespace SharpbinV3.Server.Controllers
         private readonly ApiKeyService _apiKeyService = apiKeyService;
         private readonly VerificationService _verification = verification;
         private readonly TotpVerificationProvider _totp = totp;
-        private readonly EmailService _email = email;
         private readonly AppDbContext _db = db;
 
         [HttpPost]
