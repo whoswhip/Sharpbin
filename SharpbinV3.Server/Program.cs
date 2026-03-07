@@ -70,6 +70,7 @@ namespace SharpbinV3.Server
             builder.Services.AddSingleton<IHostedService, PasteCleanUpService>();
             builder.Services.AddSingleton<IHostedService, PasteViewCleanUpService>();
             builder.Services.AddScoped<UserService>();
+            builder.Services.AddScoped<EmailService>();
             builder.Services.AddScoped<AuthService>();
             builder.Services.AddScoped<PasteService>();
             builder.Services.AddScoped<ApiKeyService>();
@@ -92,7 +93,9 @@ namespace SharpbinV3.Server
                 .Bind(builder.Configuration.GetSection("JwtSettings"))
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
-            builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection("AuthSettings"));
+            builder.Services.AddOptions<AppSettings>().Bind(builder.Configuration).ValidateDataAnnotations().ValidateOnStart();
+            builder.Services.AddOptions<AuthSettings>().Bind(builder.Configuration.GetSection("AuthSettings")).ValidateDataAnnotations();
+            builder.Services.AddOptions<EmailSettings>().Bind(builder.Configuration.GetSection("EmailSettings")).ValidateDataAnnotations();
 
             builder
                 .Services.AddAuthentication(options =>

@@ -14,6 +14,7 @@ namespace SharpbinV3.Server.DTOs.User
     public class UserResponseDto : UserSimpleDto
     {
         public string? Email { get; set; }
+        public bool EmailVerified { get; set; } = false;
         public long? LastLogin { get; set; }
     }
 }

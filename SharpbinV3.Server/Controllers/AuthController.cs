@@ -27,6 +27,7 @@ namespace SharpbinV3.Server.Controllers
         IOptions<AuthSettings> options,
         VerificationService verification,
         TotpVerificationProvider totp,
+        EmailService email,
         AppDbContext db
     ) : ControllerBase
     {
@@ -35,6 +36,7 @@ namespace SharpbinV3.Server.Controllers
         private readonly ApiKeyService _apiKeyService = apiKeyService;
         private readonly VerificationService _verification = verification;
         private readonly TotpVerificationProvider _totp = totp;
+        private readonly EmailService _email = email;
         private readonly AppDbContext _db = db;
 
         [HttpPost]
@@ -62,6 +64,9 @@ namespace SharpbinV3.Server.Controllers
                 return BadRequest(new { success = false, message = "Display name should not exceed 26 characters." });
 
             var user = await _authService.CreateUser(request.Username, request.Password, request.Email, request.DisplayName);
+            if (!string.IsNullOrWhiteSpace(user.Email))
+                await _authService.SendEmailVerification(user);
+
             return Ok(
                 new
                 {
@@ -321,6 +326,17 @@ namespace SharpbinV3.Server.Controllers
                 return NotFound(new { success = false, message = "API key not found." });
 
             return Ok(new { success = true, message = "API key deleted." });
+        }
+
+        [HttpGet]
+        [Route("verify-email")]
+        public async Task<IActionResult> VerifyEmail(string token)
+        {
+            (bool verifiedEmail, string message) = await _authService.VerifyEmailVerificationToken(token);
+            if (verifiedEmail)
+                return Ok(new { success = true, message });
+            else
+                return BadRequest(new { success = false, message });
         }
     }
 }

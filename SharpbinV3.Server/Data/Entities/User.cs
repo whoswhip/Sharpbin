@@ -15,6 +15,8 @@ namespace SharpbinV3.Server.Data.Entities
         public required string PasswordHash { get; set; }
 
         public string? Email { get; set; }
+        public bool EmailVerified { get; set; } = false;
+
         public string? DisplayName { get; set; }
         public long? LastLogin { get; set; }
 
@@ -24,6 +26,7 @@ namespace SharpbinV3.Server.Data.Entities
         public List<RefreshToken> RefreshTokens { get; set; } = [];
         public List<Report> Reports { get; set; } = [];
         public List<ApiKey> ApiKeys { get; set; } = [];
+        public List<EmailVerificationToken> EmailVerificationTokens { get; set; } = [];
         public UserTotp? Totp { get; set; }
     }
 }

@@ -12,6 +12,7 @@ namespace SharpbinV3.Server.Data
         public DbSet<UserTotp> UserTotps => Set<UserTotp>();
         public DbSet<Report> Reports => Set<Report>();
         public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+        public DbSet<EmailVerificationToken> EmailVerificationTokens => Set<EmailVerificationToken>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -61,6 +62,12 @@ namespace SharpbinV3.Server.Data
             modelBuilder.Entity<ApiKey>()
                 .HasOne(a => a.User)
                 .WithMany(u => u.ApiKeys)
+                .HasForeignKey(a => a.UserUUID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<EmailVerificationToken>()
+                .HasOne(a => a.User)
+                .WithMany(u => u.EmailVerificationTokens)
                 .HasForeignKey(a => a.UserUUID)
                 .OnDelete(DeleteBehavior.Cascade);
         }

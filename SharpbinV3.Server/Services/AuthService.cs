@@ -1,4 +1,5 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+﻿using System.Data;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
@@ -25,15 +26,20 @@ namespace SharpbinV3.Server.Services
 
     public sealed class AuthService(
         AppDbContext db,
+        EmailService email,
         IOptions<JWTSettings> jwtOptions,
         IOptions<AuthSettings> authOptions,
+        IOptions<AppSettings> appSettings,
         ILogger<AuthService> logger
     )
     {
         private readonly AppDbContext _db = db;
+        private readonly EmailService _email = email;
         private readonly JWTSettings _jwtSettings = jwtOptions.Value;
         private readonly AuthSettings _authSettings = authOptions.Value;
+        private readonly AppSettings _appSettings = appSettings.Value;
         private readonly ILogger _logger = logger;
+        private const int EmailVerificationTokenLength = 64;
 
         public async Task<User> CreateUser(string username, string password, string? email, string? displayName)
         {
@@ -213,6 +219,58 @@ namespace SharpbinV3.Server.Services
                 return null;
             var userUUID = Guid.Parse(uuidClaim);
             return await _db.Users.FirstOrDefaultAsync(u => u.UUID == userUUID);
+        }
+
+        public async Task SendEmailVerification(User user)
+        {
+            if (string.IsNullOrWhiteSpace(user.Email))
+                return;
+
+            string token = Utilities.GenerateSecureRandomString(EmailVerificationTokenLength);
+            string tokenHash = Utilities.ComputeSha256(token);
+
+            await _email.SendAsync(
+                user.Email,
+                "Verify Your Email",
+                $"{(_appSettings.Https ? "https" : "http")}://{_appSettings.Domain}/verify-email?token={token}"
+            );
+            var verificationToken = new EmailVerificationToken
+            {
+                TokenHash = tokenHash,
+                UserUUID = user.UUID,
+                User = user,
+                ExpiresAt = DateTimeOffset.UtcNow.AddDays(1).ToUnixTimeMilliseconds(),
+                Type = EmailTokenType.VerifyEmail,
+            };
+            await _db.EmailVerificationTokens.AddAsync(verificationToken);
+            await _db.SaveChangesAsync();
+        }
+
+        public async Task<(bool success, string message)> VerifyEmailVerificationToken(string token)
+        {
+            if (token.Length != EmailVerificationTokenLength)
+                return (false, "Invalid token.");
+
+            string tokenHash = Utilities.ComputeSha256(token);
+            var verificationToken = await _db.EmailVerificationTokens.Include(t => t.User).FirstOrDefaultAsync(t => t.TokenHash == tokenHash);
+
+            if (
+                verificationToken == null
+                || verificationToken.User == null
+                || verificationToken.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                || verificationToken.Used
+            )
+                return (false, "Token is expired or already used.");
+
+            if (verificationToken != null && !verificationToken.Used)
+            {
+                verificationToken.Used = true;
+                verificationToken.User.EmailVerified = true;
+                await _db.SaveChangesAsync();
+            }
+
+            await _db.SaveChangesAsync();
+            return (true, "Email successfully verified.");
         }
     }
 }

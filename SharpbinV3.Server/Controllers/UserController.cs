@@ -63,7 +63,6 @@ namespace SharpbinV3.Server.Controllers
         [EnableRateLimiting("Strict")]
         public async Task<IActionResult> UpdateByUUID(Guid uuid, [FromBody] UpdateUserDto updatedUser)
         {
-            Console.WriteLine($"{ModelState.IsValid}");
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
@@ -389,6 +388,7 @@ namespace SharpbinV3.Server.Controllers
                             CreatedAt = user.CreatedAt,
                             DisplayName = user.DisplayName,
                             Email = user.Email,
+                            EmailVerified = user.EmailVerified,
                             LastLogin = user.LastLogin,
                             Roles = user.Roles,
                             Visibility = user.Visibility,
