@@ -5,6 +5,8 @@ services:
       dockerfile: SharpbinV3.Server/Dockerfile
     image: sharpbin-backend
     container_name: sharpbin-backend
+    env_file:
+      - "backend.env"
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection:-Data Source=/app/data/sharpbin.db}
@@ -37,6 +39,8 @@ services:
         GIT_COMMIT_HASH: ${GIT_COMMIT_HASH}
     image: sharpbin-frontend
     container_name: sharpbin-frontend
+    env_file:
+      - "frontend.env"
     environment:
       VITE_API_URL: http://backend:8080
       VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-"localhost"}
