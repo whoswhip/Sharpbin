@@ -46,6 +46,8 @@ You can configure Sharpbin using environment variables or `appsettings.json`. Wh
 
 #### Backend (SharpbinV3.Server)
 
+- `Domain`: The domain your instance of Sharpbin will be hosted at (e.g., example.com)
+- `Https`: Whether or not your instance is behind https. Used when sendings emails.
 - `ConnectionStrings__DefaultConnection`: SQLite connection string (e.g., `Data Source=/app/data/sharpbin.db`).
 - `JwtSettings__Secret`: A secure string used for signing JWT tokens.
 - `AuthSettings__CF_Turnstile_SecretKey`: Your Cloudflare Turnstile secret key.
