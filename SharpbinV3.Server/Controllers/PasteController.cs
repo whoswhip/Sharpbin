@@ -94,8 +94,9 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> GetPasteByID(string id)
         {
             var paste = await _pasteService.Get(id);
-            if (paste == null)
+            if (paste == null || (paste.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() && paste.Visibility != 0))
                 return NotFound(new { success = false, message = "Paste not found" });
+
             var jwtUser = HttpContext.GetJwtUser();
 
             int? reportCount = null;
@@ -146,7 +147,7 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> GetRawPasteByID(string id)
         {
             var paste = await _pasteService.Get(id);
-            if (paste == null)
+            if (paste == null || (paste.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() && paste.Visibility != 0))
                 return NotFound();
             if (paste.IsCompressed)
                 Response.Headers.Append("Content-Encoding", "gzip");
@@ -279,6 +280,11 @@ namespace SharpbinV3.Server.Controllers
                 && _pasteSettings.View_Internal_API_Key != Request.Headers["X-Internal-API-Key"]
             )
                 return Unauthorized(new { success = false, message = "Invalid API key." });
+
+            if (paste.AuthorUUID != HttpContext.GetJwtUser()?.UUID)
+                return Ok(new { success = true, message = "View not recorded for author's own paste." });
+            if (paste.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() && paste.Visibility != 0)
+                return Ok(new { success = true, message = "View not recorded for expired paste." });
 
             var result = await _pasteService.RecordView(paste, HttpContext);
 
