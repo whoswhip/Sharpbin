@@ -64,7 +64,7 @@ You can configure Sharpbin using environment variables or `appsettings.json`. Wh
 #### Frontend (SharpbinV3.Client)
 
 - `VITE_API_URL`: The URL of the backend API (e.g., `http://localhost:8080`).
-- `VITE_ALLOWED_HOSTS`: A comma separated list of allowed hosts (e.g., `localhost,sharpbin.whoswhip.dev`)
+- `VITE_ALLOWED_HOSTS`: A comma separated list of allowed hosts (e.g., `localhost,sharpbin.cc`)
 - `VIEW_INTERNAL_API_KEY`: Enforces views to be counted/recorded only by the frontend, if set it needs to be the same for both backend and frontend.
 
 The frontend will be accessible at http://localhost:5173.
