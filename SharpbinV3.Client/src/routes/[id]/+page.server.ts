@@ -33,7 +33,7 @@ export const load: PageServerLoad = async ({ params, fetch, url, cookies, parent
 
 	if (viewed.status === 200) {
 		const viewJson = await viewed.json();
-		if (viewJson.success === true && viewJson.message !== 'View already recorded.') {
+		if (viewJson.success === true && viewJson.message === 'Paste view recorded.') {
 			pasteData.views += 1;
 		}
 	} else {
