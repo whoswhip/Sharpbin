@@ -3,12 +3,26 @@ import createDOMPurify from 'dompurify';
 import type { WindowLike } from 'dompurify';
 import { trustedDomains } from '$lib/consts';
 
+export const externalMediaWarningStorageKey = 'sharpbin:ignore-external-media-warning';
+
 const tagMap: Record<string, string> = {
 	IMG: 'image',
 	VIDEO: 'video',
 	AUDIO: 'audio',
 	IFRAME: 'iframe'
 };
+
+export function getIgnoreExternalMediaWarning(): boolean {
+	if (typeof window === 'undefined') return false;
+
+	return window.localStorage.getItem(externalMediaWarningStorageKey) === 'true';
+}
+
+export function setIgnoreExternalMediaWarning(ignore: boolean) {
+	if (typeof window === 'undefined') return;
+
+	window.localStorage.setItem(externalMediaWarningStorageKey, ignore ? 'true' : 'false');
+}
 
 export async function parseMarkdown(
 	md: string,
@@ -80,6 +94,14 @@ export async function parseMarkdown(
 					'background-color: #404040; color: white; padding: 0.25rem 0.75rem; border-radius: 0.25rem; cursor: pointer; text-decoration: none;'
 				);
 
+				const ignoreButton = dom.document.createElement('button');
+				ignoreButton.textContent = "Don't warn again";
+				ignoreButton.className = 'ignore-media-warning-btn';
+				ignoreButton.setAttribute(
+					'style',
+					'background-color: transparent; color: #d4d4d8; padding: 0.25rem 0.75rem; border: 1px solid #525252; border-radius: 0.25rem; cursor: pointer; text-decoration: none;'
+				);
+
 				if (element.getAttribute('alt'))
 					button.setAttribute('data-alt', element.getAttribute('alt') || '');
 				if (element.getAttribute('title'))
@@ -89,9 +111,17 @@ export async function parseMarkdown(
 				if (element.getAttribute('height'))
 					button.setAttribute('data-height', element.getAttribute('height') || '');
 
+				const actions = dom.document.createElement('span');
+				actions.setAttribute(
+					'style',
+					'display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;'
+				);
+				actions.appendChild(button);
+				actions.appendChild(ignoreButton);
+
 				placeholder.appendChild(warning);
 				placeholder.appendChild(subWarning);
-				placeholder.appendChild(button);
+				placeholder.appendChild(actions);
 
 				const parent = element.parentNode;
 				if (parent && parent.nodeName === 'A') {

@@ -83,7 +83,8 @@ select {
 	color: #3b82f6;
 	text-decoration: underline;
 }
-.markdown .load-media-btn:hover {
+.markdown .load-media-btn:hover,
+.markdown .ignore-media-warning-btn:hover {
 	background-color: #525252 !important;
 }
 .markdown pre {

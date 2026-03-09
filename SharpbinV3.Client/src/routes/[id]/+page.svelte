@@ -33,7 +33,11 @@
 		tooltip,
 		isBinaryData
 	} from '$lib/utils/misc';
-	import { parseMarkdown } from '$lib/utils/markdown';
+	import {
+		getIgnoreExternalMediaWarning,
+		parseMarkdown,
+		setIgnoreExternalMediaWarning
+	} from '$lib/utils/markdown';
 	import { syntaxes, expiresOptions } from '$lib/consts';
 	import { resolve } from '$app/paths';
 	import { decryptAES, encryptAES } from '$lib/utils/encryption';
@@ -62,6 +66,7 @@
 	let copiedPaste = false;
 	let highlightWorker: Worker | null = null;
 	let highlightRequestId = 0;
+	let ignoreExternalMediaWarning = false;
 
 	let scrollY = 0;
 
@@ -132,7 +137,7 @@
 
 		switch (data.paste.syntax) {
 			case 'markdown':
-				pasteContent = await parseMarkdown(contentToRender);
+				pasteContent = await parseMarkdown(contentToRender, !ignoreExternalMediaWarning);
 				contentRendered = true;
 				decryptStatus = '';
 				break;
@@ -357,6 +362,13 @@
 			event.preventDefault();
 			event.stopPropagation();
 
+			if (target.classList.contains('ignore-media-warning-btn')) {
+				ignoreExternalMediaWarning = true;
+				setIgnoreExternalMediaWarning(true);
+				renderPaste();
+				return;
+			}
+
 			if (target.classList.contains('load-media-btn')) {
 				const src = target.getAttribute('data-src');
 				const tag = target.getAttribute('data-tag');
@@ -422,6 +434,8 @@
 
 	onMount(async () => {
 		try {
+			ignoreExternalMediaWarning = getIgnoreExternalMediaWarning();
+
 			if (data?.paste && data.paste.visibility === 2) {
 				contentRendered = false;
 				decryptStatus = 'Preparing decryption...';
