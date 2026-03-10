@@ -77,6 +77,7 @@ namespace SharpbinV3.Server.Controllers
                         DisplayName = user.DisplayName,
                         Email = user.Email,
                         Roles = user.Roles,
+                        IsBanned = user.IsBanned,
                         Visibility = user.Visibility,
                         LastLogin = user.LastLogin,
                     },

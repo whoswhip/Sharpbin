@@ -7,17 +7,19 @@ import type { Paste } from '$lib/types/paste';
 import type { Pagination } from '$lib/types/pagination';
 import type { Report, ReportListResponse } from '$lib/types/report';
 
-function decodeJwtRoles(token?: string | null): number[] {
+function decodeJwtRoles(token?: string | null): number {
 	try {
-		if (!token) return [];
+		if (!token) return 0;
 		const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
 		const roles = payload?.role;
-		if (Array.isArray(roles)) {
-			return roles.map((r: string) => parseInt(r, 10)).filter((r: number) => !isNaN(r));
+		if (typeof roles === 'number') return roles;
+		if (typeof roles === 'string') {
+			const parsed = parseInt(roles, 10);
+			return isNaN(parsed) ? 0 : parsed;
 		}
-		return [];
+		return 0;
 	} catch {
-		return [];
+		return 0;
 	}
 }
 
@@ -58,8 +60,8 @@ export const load: PageServerLoad = async ({ params, fetch, cookies, url, parent
 	const isOwner = jwtUuid ? user.uuid === jwtUuid : false;
 	let reportsTarget: ReportListResponse | null = null;
 	let reportsSubmitted: ReportListResponse | null = null;
-	const roles = token ? decodeJwtRoles(token) : [];
-	const canModerate = roles.includes(255) || roles.includes(1);
+	const roles = token ? decodeJwtRoles(token) : 0;
+	const canModerate = (roles & 4) !== 0 || (roles & 2) !== 0;
 
 	if (isOwner && reports && reportsPagination) {
 		reportsSubmitted = {

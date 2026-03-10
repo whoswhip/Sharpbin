@@ -19,7 +19,8 @@ namespace SharpbinV3.Server.Services
         public string Username { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
         public bool TotpEnabled { get; set; }
-        public int[] Roles { get; set; } = [];
+        public Role Roles { get; set; }
+        public bool IsBanned { get; set; }
         public DateTime Expires { get; set; }
     }
 
@@ -54,7 +55,7 @@ namespace SharpbinV3.Server.Services
             };
 
             if (_authSettings.First_User_Admin && !await _db.Users.AnyAsync())
-                user.Roles = [0, 1, 255];
+                user.Roles = Role.User | Role.Admin;
 
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
@@ -73,18 +74,10 @@ namespace SharpbinV3.Server.Services
                 new("username", user.Username),
                 new("displayname", user.DisplayName ?? ""),
                 new("totp_enabled", totpEnabled.ToString()),
+                new("roles", ((int)user.Roles).ToString()),
+                new("is_banned", user.IsBanned.ToString()),
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             };
-
-            if (user.Roles != null)
-            {
-                foreach (var role in user.Roles)
-                    claims.Add(new Claim(ClaimTypes.Role, role.ToString()));
-            }
-            else
-            {
-                claims.Add(new Claim(ClaimTypes.Role, "0"));
-            }
 
             var descriptor = new SecurityTokenDescriptor
             {

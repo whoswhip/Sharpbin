@@ -473,7 +473,7 @@
 			{/if}
 			<button
 				type="submit"
-				disabled={$user?.roles && $user.roles.includes(403)}
+				disabled={$user?.isBanned}
 				class="mb-2 w-full cursor-pointer rounded bg-neutral-700 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-neutral-800 active:bg-neutral-900 disabled:cursor-not-allowed disabled:bg-neutral-950/50 disabled:text-neutral-400"
 				>Create Paste</button
 			>
@@ -485,7 +485,7 @@
 					{error}
 				</div>
 			{/if}
-			{#if $user?.roles && $user.roles.includes(403)}
+			{#if $user?.isBanned}
 				<div
 					transition:fly={{ y: 40, duration: 300 }}
 					class="mb-2 rounded border border-red-900 bg-red-950 p-2 text-sm text-red-200"

@@ -27,7 +27,7 @@ namespace SharpbinV3.Server.Authorization
 
             var isBanned = context.User.Claims.Any(c => (c.Type == ClaimTypes.Role || c.Type == "role") && c.Value == "403");
 
-            if (httpContext?.GetApiKeyFromContext()?.User?.Roles?.Contains(403) == true)
+            if (httpContext?.GetApiKeyFromContext()?.User?.IsBanned == true)
                 isBanned = true;
 
             if (!isBanned)

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using SharpbinV3.Server.Data.Entities;
+using SharpbinV3.Server.Data.Enums;
 using SharpbinV3.Server.DTOs.Paste;
 using SharpbinV3.Server.DTOs.Report;
 using SharpbinV3.Server.DTOs.User;
@@ -38,7 +39,7 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> CreatePaste(
             string title = "",
             string syntax = "plaintext",
-            int visibility = 0,
+            Visibility visibility = Visibility.Public,
             long expiresAt = 0,
             string? verificationToken = null
         )
@@ -85,6 +86,7 @@ namespace SharpbinV3.Server.Controllers
                     Size = paste.Size,
                     TrueSize = paste.TrueSize,
                     ExpiresAt = paste.ExpiresAt,
+                    Visibility = paste.Visibility,
                 }
             );
         }
@@ -100,7 +102,7 @@ namespace SharpbinV3.Server.Controllers
             var jwtUser = HttpContext.GetJwtUser();
 
             int? reportCount = null;
-            if (jwtUser != null && jwtUser.Roles.Any(r => r == 1 || r == 255))
+            if (jwtUser != null && (jwtUser.Roles.HasFlag(Role.Admin) || jwtUser.Roles.HasFlag(Role.Moderator)))
             {
                 var query = new ReportQuery { PastePID = paste.PID };
                 reportCount = await _reportService.GetReportCount(query);
@@ -135,6 +137,7 @@ namespace SharpbinV3.Server.Controllers
                                     DisplayName = paste.User.DisplayName,
                                     Visibility = paste.User.Visibility,
                                     Roles = paste.User.Roles,
+                                    IsBanned = paste.User.IsBanned,
                                 }
                                 : null,
                     },
@@ -170,11 +173,9 @@ namespace SharpbinV3.Server.Controllers
 
             var user = HttpContext.GetJwtUser()!;
 
-            var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
+            var hasPrivilegedRole = user.Roles.HasFlag(Role.Admin) || user.Roles.HasFlag(Role.Moderator);
             if (paste.AuthorUUID != user.UUID && !hasPrivilegedRole)
                 return StatusCode(403, new { success = false, message = "You do not have permission to edit this paste." });
-            if (user.Roles.Contains(255) && !user.TotpEnabled && _authSettings.Admins_Require_2FA)
-                return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
 
             bool result = await _pasteService.EditText(paste, content);
             if (!result)
@@ -193,12 +194,11 @@ namespace SharpbinV3.Server.Controllers
 
             var user = HttpContext.GetJwtUser()!;
 
-            var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
+            var hasPrivilegedRole = user.Roles.HasFlag(Role.Admin) || user.Roles.HasFlag(Role.Moderator);
 
             if (paste.AuthorUUID != user.UUID && !hasPrivilegedRole)
                 return StatusCode(403, new { success = false, message = "You do not have permission to modify this paste." });
-            if (user.Roles.Contains(255) && !user.TotpEnabled && _authSettings.Admins_Require_2FA)
-                return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
+
             if (request.Title != null)
                 paste.Title = request.Title;
             if (request.Syntax != null)
@@ -252,11 +252,9 @@ namespace SharpbinV3.Server.Controllers
 
             var user = HttpContext.GetJwtUser()!;
 
-            var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
+            var hasPrivilegedRole = user.Roles.HasFlag(Role.Admin) || user.Roles.HasFlag(Role.Moderator);
             if (paste.AuthorUUID != user.UUID && !hasPrivilegedRole)
                 return StatusCode(403, new { success = false, message = "You do not have permission to delete this paste." });
-            if (user.Roles.Contains(255) && !user.TotpEnabled && _authSettings.Admins_Require_2FA)
-                return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
 
             bool result = await _pasteService.Delete(paste);
             if (!result)
@@ -359,7 +357,7 @@ namespace SharpbinV3.Server.Controllers
 
             var user = HttpContext.GetJwtUser()!;
 
-            var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
+            var hasPrivilegedRole = user.Roles.HasFlag(Role.Admin) || user.Roles.HasFlag(Role.Moderator);
             if (report.ReporterUUID != user.UUID && !hasPrivilegedRole)
                 return StatusCode(403, new { success = false, message = "You do not have permission to modify this report." });
 
@@ -393,12 +391,9 @@ namespace SharpbinV3.Server.Controllers
 
             var user = HttpContext.GetJwtUser()!;
 
-            var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
+            var hasPrivilegedRole = user.Roles.HasFlag(Role.Admin) || user.Roles.HasFlag(Role.Moderator);
             if (report.ReporterUUID != user.UUID && !hasPrivilegedRole)
                 return StatusCode(403, new { success = false, message = "You do not have permission to delete this report." });
-
-            if (user.Roles.Contains(255) && !user.TotpEnabled && _authSettings.Admins_Require_2FA)
-                return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
 
             bool result = await _reportService.DeleteReport(report);
             if (!result)
@@ -437,6 +432,7 @@ namespace SharpbinV3.Server.Controllers
                                 DisplayName = p.User.DisplayName,
                                 Visibility = p.User.Visibility,
                                 Roles = p.User.Roles,
+                                IsBanned = p.User.IsBanned,
                             }
                             : null,
                 })

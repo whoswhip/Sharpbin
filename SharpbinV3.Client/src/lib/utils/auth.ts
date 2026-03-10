@@ -2,6 +2,14 @@ import { browser } from '$app/environment';
 import type { Cookies } from '@sveltejs/kit';
 import { user } from '$lib/stores/user';
 
+export const roles = {
+	User: 1,
+	Moderator: 2,
+	Admin: 4
+} as const;
+
+export type Role = keyof typeof roles;
+
 const TOKEN_KEY = 'token';
 const REFRESH_TOKEN_KEY = 'refreshToken';
 
@@ -137,3 +145,8 @@ export function clearServerTokens(cookies: Cookies) {
 	cookies.delete('token', { path: '/' });
 	cookies.delete('refreshToken', { path: '/' });
 }
+
+export const hasRole = (userRoles: number, role: number) => (userRoles & role) !== 0;
+
+export const getUserRoles = (userRoles: number): Role[] =>
+	(Object.keys(roles) as Role[]).filter((role) => hasRole(userRoles, roles[role]));

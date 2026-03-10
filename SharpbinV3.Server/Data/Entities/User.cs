@@ -1,8 +1,18 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using SharpbinV3.Server.Data.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace SharpbinV3.Server.Data.Entities
 {
+
+    [Flags]
+    public enum Role
+    {
+        User = 1,
+        Moderator = 2,
+        Admin = 4
+    }
+
     [Index(nameof(UID))]
     [Index(nameof(UUID), IsUnique = true)]
     public sealed class User
@@ -20,8 +30,10 @@ namespace SharpbinV3.Server.Data.Entities
         public string? DisplayName { get; set; }
         public long? LastLogin { get; set; }
 
-        public int[] Roles { get; set; } = [0]; // 0 = regular user, 1 = moderator, 255 = admin
-        public int Visibility { get; set; } = 0; // 0 = public, 1 = unlisted, 2 = private
+        public Role Roles { get; set; } = Role.User;
+        public bool IsBanned { get; set; } = false;
+
+        public Visibility Visibility { get; set; } = Visibility.Public;
         public List<Paste> Pastes { get; set; } = [];
         public List<RefreshToken> RefreshTokens { get; set; } = [];
         public List<Report> Reports { get; set; } = [];

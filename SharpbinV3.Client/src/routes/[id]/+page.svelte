@@ -42,7 +42,7 @@
 	import { resolve } from '$app/paths';
 	import { decryptAES, encryptAES } from '$lib/utils/encryption';
 	import { fade } from 'svelte/transition';
-	import { getToken } from '$lib/utils/auth';
+	import { getToken, hasRole } from '$lib/utils/auth';
 	import { user } from '$lib/stores/user';
 	import Dropdown from '$lib/components/Dropdown.svelte';
 	import { openModal } from '$lib/stores/modal';
@@ -825,7 +825,7 @@
 							<span class="text-amber-300">Report</span>
 						</button>
 					{/if}
-					{#if $user && ($user.uuid === data.paste?.author?.uuid || $user.roles.some((r) => r === 1 || r === 255))}
+					{#if $user && ($user.uuid === data.paste?.author?.uuid || hasRole($user.roles, 2) || hasRole($user.roles, 4))}
 						{#if !editing}
 							{#if !isBinary}
 								<button

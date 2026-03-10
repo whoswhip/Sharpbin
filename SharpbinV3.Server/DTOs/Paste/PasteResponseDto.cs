@@ -1,3 +1,4 @@
+using SharpbinV3.Server.Data.Enums;
 using SharpbinV3.Server.DTOs.User;
 
 namespace SharpbinV3.Server.DTOs.Paste
@@ -13,7 +14,7 @@ namespace SharpbinV3.Server.DTOs.Paste
         public long TrueSize { get; set; }
         public bool IsCompressed { get; set; }
         public int Views { get; set; }
-        public int Visibility { get; set; }
+        public Visibility Visibility { get; set; }
         public long? EditedAt { get; set; }
         public long ExpiresAt { get; set; }
         public int? ReportCount { get; set; }
@@ -29,6 +30,7 @@ namespace SharpbinV3.Server.DTOs.Paste
         public long Size { get; set; }
         public long TrueSize { get; set; }
         public long ExpiresAt { get; set; }
+        public Visibility Visibility { get; set;}
     }
 
     public class PasteOptionsDto

@@ -63,8 +63,12 @@ namespace SharpbinV3.Server.Extensions
             var username = claims.FirstOrDefault(c => c.Type == "username")?.Value ?? "";
             var displayName = claims.FirstOrDefault(c => c.Type == "displayname")?.Value ?? "";
             var totpEnabled = claims.FirstOrDefault(c => c.Type == "totp_enabled")?.Value == "True";
-
-            var roles = claims.Where(c => c.Type == ClaimTypes.Role).Select(c => int.TryParse(c.Value, out var r) ? r : 0).ToArray();
+            var isBanned = claims.FirstOrDefault(c => c.Type == "is_banned")?.Value == "True";
+            Role roles = claims.FirstOrDefault(c => c.Type == "roles")?.Value switch
+            {
+                string r when int.TryParse(r, out var roleInt) => (Role)roleInt,
+                _ => Role.User,
+            };
 
             var expClaim = claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Exp)?.Value;
             var expires =
@@ -78,7 +82,8 @@ namespace SharpbinV3.Server.Extensions
                 Username = username,
                 DisplayName = displayName,
                 TotpEnabled = totpEnabled,
-                Roles = roles.Length > 0 ? roles : [0],
+                Roles = roles,
+                IsBanned = isBanned,
                 Expires = expires,
             };
         }

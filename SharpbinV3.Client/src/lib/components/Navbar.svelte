@@ -2,7 +2,7 @@
 	import { user } from '$lib/stores/user';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { clearTokens } from '$lib/utils/auth';
+	import { clearTokens, hasRole } from '$lib/utils/auth';
 	import logo from '$lib/assets/favicon.svg';
 	import type { PageData } from '../../routes/$types';
 	import { slide } from 'svelte/transition';
@@ -50,7 +50,7 @@
 		</div>
 		{#if $user}
 			<div class="ml-auto flex items-center space-x-4">
-				{#if $user.roles.includes(1) || $user.roles.includes(255)}
+				{#if hasRole($user.roles, 2) || hasRole($user.roles, 4)}
 					<a
 						href={resolve('/reports')}
 						class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800">Reports</a
@@ -116,7 +116,7 @@
 				on:click={() => (menuOpen = false)}>Recent Pastes</a
 			>
 			{#if $user}
-				{#if $user.roles.includes(1) || $user.roles.includes(255)}
+				{#if hasRole($user.roles, 2) || hasRole($user.roles, 4)}
 					<a
 						href={resolve('/reports')}
 						class="mt-1 block w-full rounded bg-neutral-800 px-3 py-2 text-center text-neutral-100 transition-colors hover:bg-neutral-700"

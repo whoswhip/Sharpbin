@@ -4,17 +4,19 @@ import { apiUrl } from '$lib/server/api';
 import { getServerToken } from '$lib/utils/auth';
 import type { Report } from '$lib/types/report';
 
-function decodeJwtRoles(token?: string | null): number[] {
+function decodeJwtRoles(token?: string | null): number {
 	try {
-		if (!token) return [];
+		if (!token) return 0;
 		const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
 		const roles = payload?.role;
-		if (Array.isArray(roles)) {
-			return roles.map((r: string) => parseInt(r, 10)).filter((r: number) => !isNaN(r));
+		if (typeof roles === 'number') return roles;
+		if (typeof roles === 'string') {
+			const parsed = parseInt(roles, 10);
+			return isNaN(parsed) ? 0 : parsed;
 		}
-		return [];
+		return 0;
 	} catch {
-		return [];
+		return 0;
 	}
 }
 
@@ -22,7 +24,7 @@ export const load: PageServerLoad = async ({ fetch, cookies, params, url }) => {
 	const token = getServerToken(cookies);
 	if (!token) throw error(401, 'Login required');
 	const roles = decodeJwtRoles(token);
-	const canEdit = roles.includes(1) || roles.includes(255);
+	const canEdit = (roles & 2) !== 0 || (roles & 4) !== 0;
 
 	const res = await fetch(`${apiUrl}/api/report/${params.reportId}`, {
 		headers: { Authorization: `Bearer ${token}` }

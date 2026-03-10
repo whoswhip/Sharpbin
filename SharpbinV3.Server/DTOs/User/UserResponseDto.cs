@@ -1,3 +1,6 @@
+using SharpbinV3.Server.Data.Entities;
+using SharpbinV3.Server.Data.Enums;
+
 namespace SharpbinV3.Server.DTOs.User
 {
     public class UserSimpleDto
@@ -7,8 +10,9 @@ namespace SharpbinV3.Server.DTOs.User
         public long CreatedAt { get; set; }
         public string Username { get; set; } = string.Empty;
         public string? DisplayName { get; set; }
-        public int[] Roles { get; set; } = [];
-        public int Visibility { get; set; }
+        public Role Roles { get; set; } = Role.User;
+        public bool IsBanned { get; set; } = false;
+        public Visibility Visibility { get; set; }
     }
 
     public class UserResponseDto : UserSimpleDto

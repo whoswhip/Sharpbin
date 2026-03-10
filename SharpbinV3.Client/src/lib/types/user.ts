@@ -8,7 +8,8 @@ export interface User {
 	displayName: string | null;
 	email: string | null;
 	lastLogin: number | null;
-	roles: number[];
+	roles: number; // bitfield; 5 = User | Admin
+	isBanned: boolean;
 	visibility: 0 | 1 | 2;
 	pastes: Paste[] | null;
 	pagination: Pagination | null;

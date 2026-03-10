@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Data.Entities;
+using SharpbinV3.Server.Data.Enums;
 using SharpbinV3.Server.DTOs;
 using SharpbinV3.Server.DTOs.Paste;
 using SharpbinV3.Server.DTOs.Report;
@@ -73,23 +74,23 @@ namespace SharpbinV3.Server.Controllers
                 return NotFound(new { success = false, message = "User not found." });
 
             if (
-                (user.Roles.Contains(255) && !jwtUser.Roles.Contains(255))
-                || (!jwtUser.Roles.Any(r => r == 1 || r == 255) && user.UUID != jwtUser.UUID)
+                (user.Roles.HasFlag(Role.Admin) && !jwtUser.Roles.HasFlag(Role.Admin))
+                || (!jwtUser.Roles.HasFlag(Role.Admin) && user.UUID != jwtUser.UUID)
             )
                 return StatusCode(403, new { success = false, message = "You do not have permission to modify this user." });
 
-            if (jwtUser.Roles.Contains(255) && !jwtUser.TotpEnabled && _authSettings.Admins_Require_2FA)
+            if (jwtUser.Roles.HasFlag(Role.Admin) && !jwtUser.TotpEnabled && _authSettings.Admins_Require_2FA)
                 return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
 
             user.DisplayName = updatedUser.DisplayName ?? user.DisplayName;
-            if (jwtUser.Roles.Any(r => r == 255) || user.UUID == jwtUser.UUID) // only admins or self
+            if (jwtUser.Roles.HasFlag(Role.Admin) || user.UUID == jwtUser.UUID) // only admins or self
             {
                 user.Email = updatedUser.Email ?? user.Email;
                 user.Visibility = updatedUser.Visibility ?? user.Visibility;
             }
-            if (jwtUser.Roles.Contains(255))
+            if (jwtUser.Roles.HasFlag(Role.Admin))
             {
-                if (updatedUser.Roles.Contains(255) && jwtUser.TotpEnabled)
+                if (jwtUser.TotpEnabled)
                 {
                     if (
                         string.IsNullOrEmpty(updatedUser.TotpCode)
@@ -99,7 +100,9 @@ namespace SharpbinV3.Server.Controllers
                         return Unauthorized(new { message = "Invalid TOTP code." });
                     }
                 }
+
                 user.Roles = updatedUser.Roles ?? user.Roles;
+                user.IsBanned = updatedUser.IsBanned ?? user.IsBanned;
             }
 
             await _db.SaveChangesAsync();
@@ -117,9 +120,9 @@ namespace SharpbinV3.Server.Controllers
             if (user == null)
                 return NotFound(new { success = false, message = "User not found." });
 
-            if (!jwtUser.Roles.Any(r => r == 255) && user.UUID != jwtUser.UUID)
+            if (!jwtUser.Roles.HasFlag(Role.Admin) && user.UUID != jwtUser.UUID)
                 return StatusCode(403, new { success = false, message = "You do not have permission to delete this user." });
-            if (jwtUser.Roles.Contains(255) && !jwtUser.TotpEnabled && _authSettings.Admins_Require_2FA)
+            if (jwtUser.Roles.HasFlag(Role.Admin) && !jwtUser.TotpEnabled && _authSettings.Admins_Require_2FA)
                 return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
 
             if (jwtUser.TotpEnabled)
@@ -258,7 +261,7 @@ namespace SharpbinV3.Server.Controllers
             if (user == null)
                 return NotFound(new { success = false, message = "User not found." });
 
-            if (!jwtUser.Roles.Any(r => r == 1 || r == 255))
+            if (!jwtUser.Roles.HasFlag(Role.Admin))
                 return StatusCode(403, new { success = false, message = "You do not have permission to view this user's reports." });
 
             var query = request with { UserUUID = user.UUID, Page = Math.Max(request.Page, 1), PageSize = Math.Clamp(request.PageSize, 1, 100) };
@@ -292,7 +295,7 @@ namespace SharpbinV3.Server.Controllers
                 return NotFound(new { success = false, message = "User not found." });
 
             var isOwner = user.UUID == jwtUser.UUID;
-            var hasPrivilegedRole = jwtUser.Roles.Any(r => r == 1 || r == 255);
+            var hasPrivilegedRole = jwtUser.Roles.HasFlag(Role.Admin) || jwtUser.Roles.HasFlag(Role.Moderator);
             if (!isOwner && !hasPrivilegedRole)
                 return StatusCode(403, new { success = false, message = "You do not have permission to view this user's submitted reports." });
 
@@ -323,10 +326,10 @@ namespace SharpbinV3.Server.Controllers
             var pasteQuery = _db.Pastes.AsNoTracking().Where(p => p.AuthorUUID == user.UUID);
             if (!isAuthenticatedUser)
             {
-                if (user.Visibility == 2)
+                if (user.Visibility == Visibility.Private && (!user.Roles.HasFlag(Role.Admin) || !user.Roles.HasFlag(Role.Moderator)))
                     return NotFound();
-                else if (user.Visibility != 1)
-                    pasteQuery = pasteQuery.Where(p => p.Visibility == 0);
+                else if (user.Visibility != Visibility.Unlisted)
+                    pasteQuery = pasteQuery.Where(p => p.Visibility == Visibility.Public);
             }
 
             if (page < 1)
@@ -391,6 +394,7 @@ namespace SharpbinV3.Server.Controllers
                             EmailVerified = user.EmailVerified,
                             LastLogin = user.LastLogin,
                             Roles = user.Roles,
+                            IsBanned = user.IsBanned,
                             Visibility = user.Visibility,
                         },
                         Pastes = pastes,
@@ -418,6 +422,7 @@ namespace SharpbinV3.Server.Controllers
                         CreatedAt = user.CreatedAt,
                         DisplayName = user.DisplayName,
                         Roles = user.Roles,
+                        IsBanned = user.IsBanned,
                         Visibility = user.Visibility,
                     },
                     Pastes = pastes,

@@ -32,10 +32,9 @@ namespace SharpbinV3.Server.Authentication
                 new("username", apiKey.User.Username ?? ""),
                 new("displayname", apiKey.User.DisplayName ?? ""),
                 new("totp_enabled", (apiKey.User.Totp != null).ToString()),
+                new("roles", ((int)apiKey.User.Roles).ToString()),
+                new("is_banned", apiKey.User.IsBanned.ToString()),
             };
-
-            if (apiKey.User.Roles != null)
-                claims.AddRange(apiKey.User.Roles.Select(r => new Claim(ClaimTypes.Role, r.ToString())));
 
             var identity = new ClaimsIdentity(claims, AuthSchemes.ApiKey);
             var principal = new ClaimsPrincipal(identity);

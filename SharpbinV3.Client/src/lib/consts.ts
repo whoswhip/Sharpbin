@@ -211,13 +211,6 @@ export const expiresOptions = [
 	{ value: 315360000000, label: 'Expire in 10 Years' }
 ];
 
-export const roles = {
-	0: 'User',
-	1: 'Moderator',
-	255: 'Administrator',
-	403: 'Banned'
-};
-
 export const trustedDomains = [
 	'img.youtube.com',
 	'i.ytimg.com',

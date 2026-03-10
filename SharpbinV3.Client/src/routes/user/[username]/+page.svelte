@@ -27,8 +27,7 @@
 		dateToRelativeString,
 		extractError
 	} from '$lib/utils/misc';
-	import { roles } from '$lib/consts';
-	import { getToken } from '$lib/utils/auth';
+	import { getToken, hasRole, roles } from '$lib/utils/auth';
 	import { needsAdminTotp } from '$lib/utils/totp';
 	import { openModal } from '$lib/stores/modal';
 	import { user } from '$lib/stores/user';
@@ -109,7 +108,7 @@
 				else activeTab = 'pastes';
 				break;
 			case 'settings':
-				if (isOwner || $user?.roles?.some((r) => r === 255 || r === 1)) {
+				if (isOwner || ($user?.roles && (hasRole($user.roles, 2) || hasRole($user.roles, 4)))) {
 					activeTab = 'settings';
 				} else activeTab = 'pastes';
 				break;
@@ -123,10 +122,9 @@
 	}
 
 	const roleOptions = [
-		{ label: 'Member', value: 0 },
-		{ label: 'Moderator', value: 1 },
-		{ label: 'Administrator', value: 255 },
-		{ label: 'Banned', value: 403 }
+		{ label: 'Member', value: 1 },
+		{ label: 'Moderator', value: 2 },
+		{ label: 'Administrator', value: 4 }
 	];
 
 	async function fetchPage(pageNum: number) {
@@ -147,11 +145,11 @@
 		loading = false;
 	}
 
-	async function handleUserUpdate(displayName?: string, selectedRoles?: number[]) {
+	async function handleUserUpdate(displayName?: string, selectedRoles?: number) {
 		loading = true;
 		modalError = '';
 		const token = getToken();
-		const currentRoles = data.user?.roles ?? [];
+		const currentRoles = data.user?.roles ?? 0;
 		const nextRoles = selectedRoles ?? currentRoles;
 		let totpcode = '';
 		if (needsAdminTotp(totpEnabled, currentRoles, nextRoles)) {
@@ -363,15 +361,22 @@
 	}
 
 	async function openEditRoles() {
+		const currentRoleBitfield = data.user?.roles ?? 0;
+		const selectedValues: number[] = [];
+		if (hasRole(currentRoleBitfield, roles.User)) selectedValues.push(roles.User);
+		if (hasRole(currentRoleBitfield, roles.Moderator)) selectedValues.push(roles.Moderator);
+		if (hasRole(currentRoleBitfield, roles.Admin)) selectedValues.push(roles.Admin);
+
 		const value = await openModal({
 			mode: 'multiselect',
 			title: 'Edit User Roles',
 			items: roleOptions,
-			initialValue: data.user?.roles,
+			initialValue: selectedValues,
 			cancelValue: null
 		});
 		if (!Array.isArray(value)) return;
-		await handleUserUpdate(undefined, value as number[]);
+		const bitfield = value.reduce((acc, val) => acc | val, 0);
+		await handleUserUpdate(undefined, bitfield);
 	}
 
 	async function openDeleteAccount() {
@@ -450,20 +455,24 @@
 >
 	<div class="relative w-[95%] max-w-5xl rounded border-2 border-neutral-800 bg-neutral-900 p-6">
 		<h1 class="flex flex-wrap items-center justify-center gap-4 text-center text-4xl font-bold">
-			{#if data.user?.roles?.includes(403)}
+			{#if data.user?.isBanned}
 				<span
 					class="relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-full"
-					use:tooltip={roles[403]}
+					use:tooltip={'Banned'}
 				>
 					<User class="h-8 w-8 text-neutral-500" />
 					<Ban class="absolute h-7 w-7 text-red-500" />
 				</span>
-			{:else if data.user?.roles?.includes(1) || data.user?.roles?.includes(255)}
-				{#if data.user?.roles?.length}
-					<span use:tooltip={roles[Math.max(...data.user.roles) as keyof typeof roles]}>
-						<ShieldUser class="h-8 w-8 text-neutral-400" />
-					</span>
-				{/if}
+			{:else if data.user?.roles && (hasRole(data.user.roles, roles.Admin) || hasRole(data.user.roles, roles.Moderator))}
+				<span
+					use:tooltip={hasRole(data.user.roles, roles.Admin)
+						? 'Admin'
+						: hasRole(data.user.roles, roles.Moderator)
+							? 'Moderator'
+							: 'User'}
+				>
+					<ShieldUser class="h-8 w-8 text-neutral-400" />
+				</span>
 			{:else}
 				<span use:tooltip={'User'}>
 					<User class="h-8 w-8 text-neutral-400" />
@@ -511,7 +520,7 @@
 				</div>
 			{/if}
 		</div>
-		{#if !isOwner && !$user?.roles?.some((r) => r === 403)}
+		{#if !isOwner && !$user?.isBanned}
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
@@ -531,7 +540,7 @@
 			</div>
 		{/if}
 		<div class="mt-8 flex w-full border-b border-neutral-800">
-			{#if isOwner || $user?.roles?.some((r) => r === 255 || r === 1)}
+			{#if isOwner || ($user?.roles && (hasRole($user.roles, roles.Admin) || hasRole($user.roles, roles.Moderator)))}
 				<button
 					class="border-b-2 px-4 py-2 font-medium transition-colors hover:text-white {activeTab ===
 					'settings'
@@ -685,7 +694,7 @@
 						</div>
 					{/if}
 
-					{#if $user?.roles?.some((r) => r === 255)}
+					{#if $user?.roles && hasRole($user.roles, roles.Admin)}
 						<div class="col-span-2 {isOwner ? 'md:col-span-1' : ''}">
 							<div class="h-full rounded border border-neutral-800 bg-neutral-900/50 p-6">
 								<div class="mb-6 flex items-start">
@@ -698,8 +707,15 @@
 									<div class="flex items-center justify-between rounded bg-neutral-800/50 p-3">
 										<div class="flex flex-col">
 											<span class="text-sm font-medium text-neutral-200">User Roles</span>
-											<span class="text-xs text-neutral-500"
-												>{data.user?.roles?.length ?? 0} roles assigned</span
+											<span class="text-xs text-neutral-500">{(() => {
+												let count = 0;
+												if (data.user?.roles) {
+													if (hasRole(data.user.roles, roles.User)) count++;
+													if (hasRole(data.user.roles, roles.Moderator)) count++;
+													if (hasRole(data.user.roles, roles.Admin)) count++;
+												}
+												return count;
+											})()} roles assigned</span
 											>
 										</div>
 										<button
@@ -857,7 +873,7 @@
 						</div>
 					{/if}
 
-					{#if isOwner || $user?.roles?.some((r) => r === 255)}
+					{#if isOwner || ($user?.roles && hasRole($user.roles, roles.Admin))}
 						<div class="col-span-2">
 							<div class="rounded border border-red-900/30 bg-red-900/10 p-6">
 								<div class="flex items-start">

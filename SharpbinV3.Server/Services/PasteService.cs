@@ -4,6 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Data.Entities;
+using SharpbinV3.Server.Data.Enums;
 using SharpbinV3.Server.Extensions;
 using SharpbinV3.Server.Settings;
 
@@ -23,7 +24,7 @@ namespace SharpbinV3.Server.Services
             string content,
             string title,
             string syntax,
-            int visibility,
+            Visibility visibility,
             long expiresAt,
             bool shouldCompress
         )
@@ -198,9 +199,9 @@ namespace SharpbinV3.Server.Services
             return title.Length <= _pasteSettings.MaxTitleLength;
         }
 
-        public bool ValidateVisibility(int visibility)
+        public bool ValidateVisibility(Visibility visibility)
         {
-            return visibility >= 0 && visibility <= 2;
+            return Enum.IsDefined(typeof(Visibility), visibility);
         }
 
         public bool ValidateExpiresAt(long expiresAt)

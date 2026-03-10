@@ -10,9 +10,9 @@ export function parseTotpEnabled(tokenValue: string | null) {
 	}
 }
 
-export function needsAdminTotp(totpEnabled: boolean, currentRoles: number[], nextRoles: number[]) {
+export function needsAdminTotp(totpEnabled: boolean, currentRoles: number, nextRoles: number) {
 	if (!totpEnabled) return false;
-	const nextHasAdmin = nextRoles.includes(255);
-	const alreadyAdmin = currentRoles.includes(255);
+	const nextHasAdmin = (nextRoles & 4) !== 0;
+	const alreadyAdmin = (currentRoles & 4) !== 0;
 	return nextHasAdmin && !alreadyAdmin;
 }

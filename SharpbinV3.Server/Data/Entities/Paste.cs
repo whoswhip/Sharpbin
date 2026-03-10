@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using SharpbinV3.Server.Data.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace SharpbinV3.Server.Data.Entities
@@ -33,7 +34,7 @@ namespace SharpbinV3.Server.Data.Entities
 
         public int Views { get; set; }
         public string? Syntax { get; set; }
-        public int Visibility { get; set; } = 0; // 0 = public, 1 = unlisted, 2 = private (encrypted pastes handled on frontend)
+        public Visibility Visibility { get; set; } = Visibility.Public;
 
         public long ExpiresAt { get; set; } // timestamp of when the paste expires, or 0 for never
 

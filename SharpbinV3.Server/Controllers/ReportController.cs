@@ -24,7 +24,7 @@ namespace SharpbinV3.Server.Controllers
             if (report is null)
                 return NotFound(new { success = false, message = "Report not found." });
 
-            var hasPrivilegedRole = user.Roles.Any(r => r == 1 || r == 255);
+            var hasPrivilegedRole = user.Roles.HasFlag(Role.Admin) || user.Roles.HasFlag(Role.Moderator);
             if (!hasPrivilegedRole && report.ReporterUUID != user.UUID)
                 return StatusCode(403, new { success = false, message = "You do not have permission to view this report." });
 
@@ -59,7 +59,7 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> UpdateReport(int reportId, [FromBody] ReportUpdateDto request)
         {
             var user = HttpContext.GetJwtUser()!;
-            if (!user.Roles.Contains(1) && !user.Roles.Contains(255))
+            if (!user.Roles.HasFlag(Role.Admin) && !user.Roles.HasFlag(Role.Moderator))
                 return StatusCode(403, new { success = false, message = "You do not have permission to update reports." });
 
             var report = await reportService.GetReportByID(reportId);
@@ -127,7 +127,7 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> GetReportsForPastes([FromQuery] ReportQuery request)
         {
             var user = HttpContext.GetJwtUser()!;
-            if (!user.Roles.Contains(1) && !user.Roles.Contains(255))
+            if (!user.Roles.HasFlag(Role.Admin) && !user.Roles.HasFlag(Role.Moderator))
                 return StatusCode(403, new { success = false, message = "You do not have permission to view pastes." });
 
             var query = request with { Page = Math.Max(request.Page, 1), PageSize = Math.Clamp(request.PageSize, 1, 100), UserUUID = null };
@@ -157,7 +157,7 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> GetReportsForUsers([FromQuery] ReportQuery request)
         {
             var user = HttpContext.GetJwtUser()!;
-            if (!user.Roles.Contains(1) && !user.Roles.Contains(255))
+            if (!user.Roles.HasFlag(Role.Admin) && !user.Roles.HasFlag(Role.Moderator))
                 return StatusCode(403, new { success = false, message = "You do not have permission to view users." });
 
             var query = request with
@@ -200,7 +200,7 @@ namespace SharpbinV3.Server.Controllers
         )
         {
             var user = HttpContext.GetJwtUser()!;
-            if (!user.Roles.Contains(1) && !user.Roles.Contains(255))
+            if (!user.Roles.HasFlag(Role.Admin) && !user.Roles.HasFlag(Role.Moderator))
                 return StatusCode(403, new { success = false, message = "You do not have permission to view reports." });
 
             var query = new ReportQuery
