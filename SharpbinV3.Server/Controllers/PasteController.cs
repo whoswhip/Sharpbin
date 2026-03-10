@@ -96,7 +96,7 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> GetPasteByID(string id)
         {
             var paste = await _pasteService.Get(id);
-            if (paste == null || (paste.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() && paste.Visibility != 0))
+            if (paste == null || paste.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
                 return NotFound(new { success = false, message = "Paste not found" });
 
             var jwtUser = HttpContext.GetJwtUser();
@@ -150,7 +150,7 @@ namespace SharpbinV3.Server.Controllers
         public async Task<IActionResult> GetRawPasteByID(string id)
         {
             var paste = await _pasteService.Get(id);
-            if (paste == null || (paste.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() && paste.Visibility != 0))
+            if (paste == null || paste.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
                 return NotFound();
             if (paste.IsCompressed)
                 Response.Headers.Append("Content-Encoding", "gzip");
