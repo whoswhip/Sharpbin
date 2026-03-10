@@ -8,7 +8,7 @@ services:
     env_file:
       - "backend.env"
     environment:
-      - DATA_PROTECTION_KEY_PATH: "/app/data/keys"
+      DATA_PROTECTION_KEY_PATH: /app/data/keys
     volumes:
       - sharpbin-data:/app/data
       - ./SharpbinV3.Server/appsettings.json:/app/appsettings.json
