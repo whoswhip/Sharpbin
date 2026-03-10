@@ -42,7 +42,8 @@ namespace SharpbinV3.Server.DTOs
             }
             if (Roles != null && Roles.HasValue)
             {
-                if (!Enum.IsDefined(typeof(Role), Roles.Value))
+                int validBits = Enum.GetValues(typeof(Role)).Cast<Role>().Aggregate(0, (acc, role) => acc | (int)role);
+                if ((((int)Roles.Value) & validBits) != (int)Roles.Value || Roles.Value == 0)
                     results.Add(new ValidationResult($"Invalid role: {Roles.Value}.", [nameof(Roles)]));
             }
             return results;

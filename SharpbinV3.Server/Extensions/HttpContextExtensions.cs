@@ -19,6 +19,18 @@ namespace SharpbinV3.Server.Extensions
 
         private const string ApiKeyContextKey = "ApiKey";
 
+        private static string? GetClaimValue(IEnumerable<Claim> claims, params string[] claimTypes)
+        {
+            foreach (var claimType in claimTypes)
+            {
+                var value = claims.FirstOrDefault(c => c.Type == claimType)?.Value;
+                if (!string.IsNullOrEmpty(value))
+                    return value;
+            }
+
+            return null;
+        }
+
         public static string? GetApiKey(this HttpContext context)
         {
             var apiKeyHeader = context.Request.Headers["X-API-Key"].FirstOrDefault();
@@ -54,23 +66,20 @@ namespace SharpbinV3.Server.Extensions
             if (context.User == null || !context.User.Identity?.IsAuthenticated == true)
                 return null;
 
-            var claims = context.User.Claims;
+            var claims = context.User.Claims.ToArray();
 
-            var uuidClaim = claims.FirstOrDefault(c => c.Type == "uuid")?.Value;
+            var uuidClaim = GetClaimValue(claims, "uuid");
             if (string.IsNullOrEmpty(uuidClaim) || !Guid.TryParse(uuidClaim, out var uuid))
                 return null;
 
-            var username = claims.FirstOrDefault(c => c.Type == "username")?.Value ?? "";
-            var displayName = claims.FirstOrDefault(c => c.Type == "displayname")?.Value ?? "";
-            var totpEnabled = claims.FirstOrDefault(c => c.Type == "totp_enabled")?.Value == "True";
-            var isBanned = claims.FirstOrDefault(c => c.Type == "is_banned")?.Value == "True";
-            Role roles = claims.FirstOrDefault(c => c.Type == "roles")?.Value switch
-            {
-                string r when int.TryParse(r, out var roleInt) => (Role)roleInt,
-                _ => Role.User,
-            };
+            var username = GetClaimValue(claims, "username") ?? "";
+            var displayName = GetClaimValue(claims, "displayname") ?? "";
+            var totpEnabled = bool.TryParse(GetClaimValue(claims, "totp_enabled"), out var parsedTotpEnabled) && parsedTotpEnabled;
+            var isBanned = bool.TryParse(GetClaimValue(claims, "is_banned"), out var parsedIsBanned) && parsedIsBanned;
+            var rolesClaim = GetClaimValue(claims, "roles", "role", ClaimTypes.Role);
+            var roles = int.TryParse(rolesClaim, out var roleInt) ? (Role)roleInt : Role.User;
 
-            var expClaim = claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Exp)?.Value;
+            var expClaim = GetClaimValue(claims, JwtRegisteredClaimNames.Exp, ClaimTypes.Expiration, "exp");
             var expires =
                 expClaim != null && long.TryParse(expClaim, out var expUnix)
                     ? DateTimeOffset.FromUnixTimeSeconds(expUnix).UtcDateTime
