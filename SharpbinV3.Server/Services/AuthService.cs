@@ -230,11 +230,10 @@ namespace SharpbinV3.Server.Services
             string token = Utilities.GenerateSecureRandomString(EmailVerificationTokenLength);
             string tokenHash = Utilities.ComputeSha256(token);
 
-            await _email.SendAsync(
-                user.Email,
-                "Verify Your Email",
-                $"{(_appSettings.Https ? "https" : "http")}://{_appSettings.Domain}/verify-email?token={token}"
-            );
+            string verificationUrl = $"{(_appSettings.Https ? "https" : "http")}://{_appSettings.Domain}/verify-email?token={token}";
+            string emailBody = EmailTemplates.VerifyEmail(verificationUrl, user.Username);
+
+            await _email.SendAsync(user.Email, "Verify Your Email - Sharpbin", emailBody);
             var verificationToken = new EmailVerificationToken
             {
                 TokenHash = tokenHash,
