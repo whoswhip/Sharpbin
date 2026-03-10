@@ -30,7 +30,7 @@ namespace SharpbinV3.Server.DTOs.Paste
         public long Size { get; set; }
         public long TrueSize { get; set; }
         public long ExpiresAt { get; set; }
-        public Visibility Visibility { get; set;}
+        public Visibility Visibility { get; set; }
     }
 
     public class PasteOptionsDto

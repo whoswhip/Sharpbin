@@ -25,8 +25,8 @@ namespace SharpbinV3.Server.Authorization
             if (_requireAuth && !isAuthenticated)
                 return Task.CompletedTask;
 
-            var isBanned = bool.TryParse(context.User.Claims.FirstOrDefault(c => c.Type == "is_banned")?.Value, out var parsedIsBanned)
-                && parsedIsBanned;
+            var isBanned =
+                bool.TryParse(context.User.Claims.FirstOrDefault(c => c.Type == "is_banned")?.Value, out var parsedIsBanned) && parsedIsBanned;
 
             if (!isBanned && httpContext?.GetJwtUser()?.IsBanned == true)
                 isBanned = true;

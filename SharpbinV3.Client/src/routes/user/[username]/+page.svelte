@@ -707,15 +707,16 @@
 									<div class="flex items-center justify-between rounded bg-neutral-800/50 p-3">
 										<div class="flex flex-col">
 											<span class="text-sm font-medium text-neutral-200">User Roles</span>
-											<span class="text-xs text-neutral-500">{(() => {
-												let count = 0;
-												if (data.user?.roles) {
-													if (hasRole(data.user.roles, roles.User)) count++;
-													if (hasRole(data.user.roles, roles.Moderator)) count++;
-													if (hasRole(data.user.roles, roles.Admin)) count++;
-												}
-												return count;
-											})()} roles assigned</span
+											<span class="text-xs text-neutral-500"
+												>{(() => {
+													let count = 0;
+													if (data.user?.roles) {
+														if (hasRole(data.user.roles, roles.User)) count++;
+														if (hasRole(data.user.roles, roles.Moderator)) count++;
+														if (hasRole(data.user.roles, roles.Admin)) count++;
+													}
+													return count;
+												})()} roles assigned</span
 											>
 										</div>
 										<button
