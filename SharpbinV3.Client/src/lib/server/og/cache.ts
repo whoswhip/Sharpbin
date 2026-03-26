@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import BetterSqlite3 from 'better-sqlite3';
+import type { Database } from 'better-sqlite3';
 
 const CACHE_DIR = '.cache/og-images';
 const CACHE_DB_PATH = join(CACHE_DIR, 'index.db');
@@ -33,15 +34,15 @@ export type StoreCachedOgImageInput = {
 	pasteExpiresAt?: number | null;
 };
 
-let database: DatabaseSync | null = null;
+let database: Database | null = null;
 let lastPurgeAt = 0;
 let purgeInFlight: Promise<void> | null = null;
 
-function getDatabase(): DatabaseSync {
+function getDatabase(): Database {
 	if (database) return database;
 
 	mkdirSync(CACHE_DIR, { recursive: true });
-	const nextDatabase = new DatabaseSync(CACHE_DB_PATH);
+	const nextDatabase = new BetterSqlite3(CACHE_DB_PATH);
 	nextDatabase.exec('PRAGMA journal_mode = WAL');
 	nextDatabase.exec('PRAGMA synchronous = NORMAL');
 	nextDatabase.exec(`
