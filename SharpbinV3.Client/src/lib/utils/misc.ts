@@ -1,5 +1,10 @@
 import { syntaxes } from '$lib/consts';
 
+/**
+ * @param bytes Bytes to format.
+ * @param decimals Number of decimal places to include for non-integer values. Defaults to 2.
+ * @returns A human readable string representing the byte size, e.g. "1.5 MB".
+ */
 export function formatBytes(bytes: number, decimals = 2): string {
 	if (bytes === 0) return '0 Bytes';
 
@@ -15,6 +20,10 @@ export function formatBytes(bytes: number, decimals = 2): string {
 	return `${formattedValue} ${unitLabel}`;
 }
 
+/**
+ * @param num The number to format with commas as thousand separators.
+ * @returns The formatted number as a string with commas. For example, 1234567 becomes "1,234,567".
+ */
 export function formatNumber(num: number): string {
 	return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
@@ -68,6 +77,14 @@ export function syntaxFromExtension(extension: string): string | null {
 	return null;
 }
 
+/**
+ * @param date The date to compare to the current time.
+ * @param useSuffix Whether to include "ago" or "from now" suffixes. Defaults to true.
+ * @param full Whether to return a full breakdown of all time units (e.g. "1 year, 2 months, 3 days ago") or just the largest unit (e.g. "1 year ago"). Defaults to false.
+ * @param nowArg Optional date to use as the current time for comparison, useful for testing. Defaults to the actual current time.
+ * @param accuracy The maximum number of time units to include in the output when full is true. For example, with an accuracy of 2, you might get "1 year, 2 months ago" but not "1 year, 2 months, 3 days ago". Defaults to 1.
+ * @returns A human readable relative time string.
+ */
 export function dateToRelativeString(
 	date: Date,
 	useSuffix = true,
@@ -96,7 +113,7 @@ export function dateToRelativeString(
 				return `${count} ${unit.name}${count > 1 ? 's' : ''} ${suffix}`.trim();
 			}
 		}
-		return `0 seconds ${suffix}`.trim();
+		return useSuffix ? 'just now' : '0 seconds';
 	}
 	const parts: string[] = [];
 	let acc = 0;
@@ -109,10 +126,18 @@ export function dateToRelativeString(
 			acc++;
 		}
 	}
-	if (parts.length === 0) parts.push('0 seconds');
+	if (parts.length === 0) return useSuffix ? 'just now' : '0 seconds';
 	return `${parts.join(', ')} ${suffix}`.trim();
 }
 
+/**
+ * @param node The HTML element to attach the tooltip to.
+ * @param params The tooltip text, or an array where the first element is the tooltip text and the second element is a boolean indicating whether to use a darker background for the tooltip.
+ * @returns An object with update and destroy methods to manage the tooltip lifecycle.
+ * @example
+ * <button use:tooltip="This is a tooltip">Hover me</button>
+ * <button use:tooltip={["This is a darker tooltip", true]}>Hover me</button>
+ */
 export function tooltip(node: HTMLElement, params: string | [string, boolean?]) {
 	let currentText = typeof params === 'string' ? params : (params[0] ?? '');
 	let darker = typeof params === 'string' ? false : (params[1] ?? false);
