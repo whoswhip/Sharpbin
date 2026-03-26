@@ -125,7 +125,11 @@ export async function getCachedOgImage(id: string): Promise<CachedOgImage | null
 		return null;
 	}
 
-	if (typeof row.pasteExpiresAt === 'number' && row.pasteExpiresAt <= Date.now()) {
+	if (
+		typeof row.pasteExpiresAt === 'number' &&
+		row.pasteExpiresAt > 0 &&
+		row.pasteExpiresAt <= Date.now()
+	) {
 		await deleteCacheEntry(id, row.relativePath);
 		return null;
 	}
@@ -175,7 +179,7 @@ async function purgeExpiredCache(limit: number = PURGE_BATCH_SIZE): Promise<void
 			`SELECT paste_id AS pasteId, relative_path AS relativePath
 			 FROM og_image_cache
 			 WHERE cache_expires_at <= ?
-				OR (paste_expires_at IS NOT NULL AND paste_expires_at <= ?)
+				OR (paste_expires_at IS NOT NULL AND paste_expires_at > 0 AND paste_expires_at <= ?)
 			 LIMIT ?`
 		)
 		.all(now, now, limit) as ExpiredCacheRow[];
