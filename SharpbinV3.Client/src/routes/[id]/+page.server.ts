@@ -37,9 +37,6 @@ export const load: PageServerLoad = async ({ params, fetch, url, cookies, parent
 			pasteData.views += 1;
 		}
 	} else {
-		console.error(
-			`Failed to increment view count for paste ${id}, status code ${viewed.status}: ${await viewed.text()}`
-		);
 		if (viewInternalApiKey === '') {
 			console.error(
 				'The API key for internal requests is not set. Please configure it in the environment variables.'

@@ -493,6 +493,8 @@
 	$: reportSiteKey =
 		(data as unknown as { authOptions?: { cf_turnstile_site_key?: string | null } }).authOptions
 			?.cf_turnstile_site_key ?? null;
+	$: pasteImageUrl =
+		data?.paste && data?.url ? `${new URL(data.url).origin}/${data.paste.id}.jpg` : null;
 </script>
 
 <svelte:window bind:scrollY />
@@ -516,6 +518,14 @@
 		<meta property="og:type" content="article" />
 		<meta property="og:url" content={data.url} />
 		<meta property="og:site_name" content="Sharpbin" />
+		{#if pasteImageUrl}
+			<meta property="og:image" content={pasteImageUrl} />
+			<meta property="og:image:type" content="image/jpeg" />
+			<meta property="og:image:width" content="1200" />
+			<meta property="og:image:height" content="630" />
+			<meta name="twitter:card" content="summary_large_image" />
+			<meta name="twitter:image" content={pasteImageUrl} />
+		{/if}
 		<meta
 			property="og:article:published_time"
 			content={extractDateFromUUIDv7(data.paste.uuid)?.toISOString() ?? ''}

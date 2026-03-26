@@ -2,7 +2,6 @@
 	import {
 		tooltip,
 		dateToRelativeString,
-		extractDateFromUUIDv7,
 		formatNumber,
 		formatBytes
 	} from '$lib/utils/misc';
@@ -27,7 +26,6 @@
 	export let showUser: boolean = true;
 	export let compact: boolean = false;
 
-	const createdAt = extractDateFromUUIDv7(paste.uuid);
 	const syntax = syntaxes[paste.syntax] ?? syntaxes['plaintext'];
 </script>
 
@@ -45,14 +43,14 @@
 			</span>
 			<div
 				class="flex items-center gap-2 text-sm text-neutral-400"
-				use:tooltip={`${createdAt?.toLocaleString()} • ${dateToRelativeString(createdAt ?? new Date(), true, false, now)}`}
+				use:tooltip={`${new Date(paste.createdAt).toLocaleString()} • ${dateToRelativeString(new Date(paste.createdAt), true, false, now)}`}
 			>
 				<Calendar class="h-4 w-4" />
-				{#if createdAt}
-					{#if createdAt.getTime() > Date.now() - 86_400_000}
-						Created {dateToRelativeString(createdAt, true, false, now)}
+				{#if paste.createdAt}
+					{#if paste.createdAt > Date.now() - 86_400_000}
+						Created {dateToRelativeString(new Date(paste.createdAt), true, false, now)}
 					{:else}
-						Created on {createdAt.toLocaleDateString()}
+						Created on {new Date(paste.createdAt).toLocaleDateString()}
 					{/if}
 				{:else}
 					Creation date unknown
@@ -117,15 +115,15 @@
 			<div>
 				<div
 					class="flex items-center gap-2 text-sm text-neutral-400"
-					use:tooltip={`${createdAt?.toLocaleString()} • ${dateToRelativeString(createdAt ?? new Date(), true, false, now)}`}
+					use:tooltip={`${new Date(paste.createdAt).toLocaleString()} • ${dateToRelativeString(new Date(paste.createdAt), true, false, now)}`}
 				>
 					<Calendar class="h-4 w-4" />
 					<span>
-						{#if createdAt}
-							{#if createdAt.getTime() > Date.now() - 86_400_000}
-								Created {dateToRelativeString(createdAt, true, false, now)}
+						{#if paste.createdAt}
+							{#if paste.createdAt > Date.now() - 86_400_000}
+								Created {dateToRelativeString(new Date(paste.createdAt), true, false, now)}
 							{:else}
-								Created on {createdAt.toLocaleDateString()}
+								Created on {new Date(paste.createdAt).toLocaleDateString()}
 							{/if}
 						{:else}
 							Creation date unknown
