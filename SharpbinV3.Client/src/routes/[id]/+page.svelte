@@ -539,8 +539,7 @@
 		{#if data.paste}
 			<div class="mb-4 w-full text-center">
 				<h1
-					class="mx-auto max-w-[90%] min-w-0 truncate text-3xl leading-tight font-bold sm:text-4xl"
-					use:tooltip={data.paste.title && data.paste.title.length > 40 ? data.paste.title : ''}
+					class="mx-auto max-w-[90%] wrap-break-word min-w-0 text-3xl leading-tight font-bold sm:text-4xl"
 				>
 					{#if !editing}
 						{data.paste.title || 'Untitled Paste'}
