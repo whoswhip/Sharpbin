@@ -118,7 +118,7 @@
 		const numbered = lines
 			.map(
 				(line, i) =>
-					`<div class="code-row"><span class="line-number" style="width:${digits}ch">${i + 1}</span><span class="code-line">${line}</span></div>`
+					`<div class="code-row"><span class="line-number" style="--digits:${digits}">${i + 1}</span><span class="code-line">${line}</span></div>`
 			)
 			.join('');
 		return html.replace(code, numbered);
@@ -550,7 +550,7 @@
 		{#if data.paste}
 			<div class="mb-4 w-full text-center">
 				<h1
-					class="mx-auto max-w-[90%] wrap-break-word min-w-0 text-3xl leading-tight font-bold sm:text-4xl"
+					class="mx-auto max-w-[90%] min-w-0 text-3xl leading-tight font-bold wrap-break-word sm:text-4xl"
 				>
 					{#if !editing}
 						{data.paste.title || 'Untitled Paste'}
@@ -709,7 +709,7 @@
 				</div>
 			</div>
 			<div
-				class="sticky top-0 z-10 flex flex-col items-center justify-between gap-2 rounded-t-md border-b border-neutral-700 bg-neutral-800 px-3 py-2 md:flex-row"
+				class="sticky top-15 z-10 flex flex-col items-center justify-between gap-2 rounded-t-md border-b border-neutral-700 bg-neutral-800 px-3 py-2 md:flex-row"
 			>
 				{#if !isBinary}
 					<div class="flex items-center gap-2 text-sm text-neutral-300">
@@ -968,6 +968,7 @@
 	<style>
 		.hljs {
 			background-color: var(--color-neutral-800) !important;
+			padding: 0 !important;
 		}
 
 		.codeblock-with-lines {
@@ -995,29 +996,42 @@
 			display: flex;
 			align-items: flex-start;
 			min-width: 0;
-			padding: 0.1em 0;
-			border-radius: 0.15em;
+			padding: 0;
 		}
 		.code-row:hover {
 			background-color: rgba(255, 255, 255, 0.05);
 		}
 		.line-number {
-			flex-shrink: 0;
+			display: inline-flex;
+			align-self: stretch;
+			align-items: flex-start;
+			justify-content: flex-end;
+			flex: 0 0 calc(var(--digits, 1) * 1ch + 1.3em);
+			width: calc(var(--digits, 1) * 1ch + 1.3em);
+			box-sizing: border-box;
 			text-align: right;
 			color: #888;
 			user-select: none;
-			margin-right: 1em;
+			margin-right: 0;
+			font-family:
+				ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+				monospace;
 			font-variant-numeric: tabular-nums;
+			padding-top: 0.1em;
+			padding-bottom: 0.1em;
 			padding-right: 0.5em;
-			padding-left: 0.25em;
+			padding-left: 0.9em;
 			background: none;
+			border-right: 1px solid var(--color-neutral-700);
 		}
 		.code-line {
 			display: block;
 			white-space: pre-wrap;
 			word-break: break-word;
 			overflow-wrap: anywhere;
-			padding-left: 0.25em;
+			padding-top: 0.1em;
+			padding-bottom: 0.1em;
+			padding-left: 0.9em;
 			min-width: 0;
 		}
 
