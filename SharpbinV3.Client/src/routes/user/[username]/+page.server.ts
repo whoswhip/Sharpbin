@@ -39,9 +39,10 @@ export const load: PageServerLoad = async ({ params, fetch, cookies, url, parent
 	const { username } = params;
 	const { options } = await parent();
 	const jwtUuid = decodeJwtUuid(token);
+	const asGuest = url.searchParams.get('guest') === '1';
 
 	const res = await fetch(`${apiUrl}/api/user/${username}`, {
-		headers: token ? { Authorization: `Bearer ${token}` } : undefined
+		headers: token && !asGuest ? { Authorization: `Bearer ${token}` } : undefined
 	});
 
 	if (!res.ok) {
@@ -70,14 +71,14 @@ export const load: PageServerLoad = async ({ params, fetch, cookies, url, parent
 		};
 	}
 
-	if (token && canModerate && (!reportsSubmitted || !isOwner)) {
+	if (token && !asGuest && canModerate && (!reportsSubmitted || !isOwner)) {
 		const submittedRes = await fetch(`${apiUrl}/api/user/${user.uuid}/reports/submitted`, {
 			headers: { Authorization: `Bearer ${token}` }
 		});
 		if (submittedRes.ok) reportsSubmitted = await submittedRes.json();
 	}
 
-	if (token && !isOwner) {
+	if (token && !asGuest && !isOwner) {
 		if (canModerate) {
 			const r = await fetch(`${apiUrl}/api/user/${user.uuid}/reports`, {
 				headers: { Authorization: `Bearer ${token}` }
