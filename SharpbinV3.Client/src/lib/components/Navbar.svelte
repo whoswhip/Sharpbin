@@ -41,7 +41,10 @@
 	});
 </script>
 
-<div class="sticky top-0 left-0 z-100 h-15 w-full border-b border-neutral-800 bg-neutral-900 shadow-md" id="navbar">
+<div
+	class="sticky top-0 left-0 z-100 h-15 w-full border-b border-neutral-800 bg-neutral-900 shadow-md"
+	id="navbar"
+>
 	<div class="mx-auto hidden h-15 w-[95%] max-w-7xl items-center py-2 md:flex">
 		<div class="flex items-center gap-6">
 			<a href={resolve('/')} class="group flex items-center gap-2">
@@ -52,7 +55,7 @@
 			<a
 				href={resolve('/recent')}
 				class="relative text-neutral-300 after:absolute after:-bottom-0.5 after:left-0 after:h-px after:w-0 after:bg-white after:transition-all hover:text-white hover:after:w-full"
-			>Recent Pastes</a
+				>Recent Pastes</a
 			>
 		</div>
 		{#if $user}
@@ -60,12 +63,14 @@
 				{#if hasRole($user.roles, 2) || hasRole($user.roles, 4)}
 					<a
 						href={resolve('/reports')}
-						class="rounded bg-neutral-700 px-3 py-1 text-white transition-colors hover:bg-neutral-600">Reports</a
+						class="rounded bg-neutral-700 px-3 py-1 text-white transition-colors hover:bg-neutral-600"
+						>Reports</a
 					>
 				{/if}
 				<a
 					href={resolve(`/user/${$user.username}`)}
-					class="rounded bg-neutral-700 px-3 py-1 text-white transition-colors hover:bg-neutral-600">Profile</a
+					class="rounded bg-neutral-700 px-3 py-1 text-white transition-colors hover:bg-neutral-600"
+					>Profile</a
 				>
 				<button
 					on:click={logout}
@@ -77,13 +82,14 @@
 			<div class="ml-auto flex items-center space-x-4">
 				<a
 					href={resolve(`/login${returnParam}`)}
-					class="rounded bg-neutral-700 px-3 py-1 text-white transition-colors hover:bg-neutral-600">Login</a
+					class="rounded bg-neutral-700 px-3 py-1 text-white transition-colors hover:bg-neutral-600"
+					>Login</a
 				>
 				<!-- eslint-disable svelte/no-navigation-without-resolve -->
 				<a
 					href={data.options?.registration_enabled ? resolve(`/register${returnParam}`) : '#'}
-					class="rounded bg-neutral-700 px-3 py-1 text-white transition-colors hover:bg-neutral-600 {data.options
-						?.registration_enabled
+					class="rounded bg-neutral-700 px-3 py-1 text-white transition-colors hover:bg-neutral-600 {data
+						.options?.registration_enabled
 						? ''
 						: 'cursor-not-allowed bg-neutral-800 text-neutral-500!'}">Register</a
 				>

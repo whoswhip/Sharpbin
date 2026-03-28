@@ -97,11 +97,14 @@ async function deleteCacheEntry(id: string, relativePath?: string): Promise<void
 	const db = getDatabase();
 	const resolvedPath =
 		relativePath ??
-		((db
-			.prepare('SELECT relative_path AS relativePath FROM og_image_cache WHERE paste_id = ?')
-			.get(id) as { relativePath: string } | undefined)?.relativePath ?? null);
+		(
+			db
+				.prepare('SELECT relative_path AS relativePath FROM og_image_cache WHERE paste_id = ?')
+				.get(id) as { relativePath: string } | undefined
+		)?.relativePath ??
+		null;
 
-		db.prepare('DELETE FROM og_image_cache WHERE paste_id = ?').run(id);
+	db.prepare('DELETE FROM og_image_cache WHERE paste_id = ?').run(id);
 	if (resolvedPath) {
 		await deleteCacheFile(resolvedPath);
 	}
