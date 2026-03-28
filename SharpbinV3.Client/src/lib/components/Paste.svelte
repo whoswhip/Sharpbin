@@ -7,8 +7,8 @@
 		Code,
 		User,
 		History,
-		Calendar,
-		Timer,
+		CalendarDays,
+		CalendarOff,
 		Lock,
 		EyeOff,
 		Globe,
@@ -41,7 +41,7 @@
 				class="flex items-center gap-2 text-sm text-neutral-400"
 				use:tooltip={`${new Date(paste.createdAt).toLocaleString()} • ${dateToRelativeString(new Date(paste.createdAt), true, false, now)}`}
 			>
-				<Calendar class="h-4 w-4" />
+				<CalendarDays class="h-4 w-4" />
 				{#if paste.createdAt}
 					{#if paste.createdAt > Date.now() - 86_400_000}
 						Created {dateToRelativeString(new Date(paste.createdAt), true, false, now)}
@@ -117,7 +117,7 @@
 					class="flex items-center gap-2 text-sm text-neutral-400"
 					use:tooltip={`${new Date(paste.createdAt).toLocaleString()} • ${dateToRelativeString(new Date(paste.createdAt), true, false, now)}`}
 				>
-					<Calendar class="h-4 w-4" />
+					<CalendarDays class="h-4 w-4" />
 					<span>
 						{#if paste.createdAt}
 							{#if paste.createdAt > Date.now() - 86_400_000}
@@ -144,7 +144,7 @@
 						class="mt-1 flex items-center gap-2 text-sm text-neutral-400"
 						use:tooltip={new Date(paste.expiresAt).toLocaleString()}
 					>
-						<Timer class="h-4 w-4" />
+						<CalendarOff class="h-4 w-4" />
 						<span>
 							{paste.expiresAt > 0 && paste.expiresAt < Date.now()
 								? `Expired ${dateToRelativeString(new Date(paste.expiresAt), true, false, now)}`
