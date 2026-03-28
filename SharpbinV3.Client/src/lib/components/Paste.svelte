@@ -1,10 +1,5 @@
 <script lang="ts">
-	import {
-		tooltip,
-		dateToRelativeString,
-		formatNumber,
-		formatBytes
-	} from '$lib/utils/misc';
+	import { tooltip, dateToRelativeString, formatNumber, formatBytes } from '$lib/utils/misc';
 	import { resolve } from '$app/paths';
 	import {
 		Eye,
@@ -16,7 +11,8 @@
 		Timer,
 		Lock,
 		EyeOff,
-		Globe
+		Globe,
+		HatGlasses
 	} from '@lucide/svelte';
 	import { syntaxes } from '$lib/consts';
 	import type { Paste } from '$lib/types/paste';
@@ -62,7 +58,11 @@
 			<div>
 				{#if showUser}
 					<div class="flex items-center gap-2">
-						<User class="h-4 w-4" />
+						{#if paste.author}
+							<User class="h-4 w-4" />
+						{:else}
+							<HatGlasses class="h-4 w-4" />
+						{/if}
 						{paste.author?.username ?? 'Anonymous'}
 					</div>
 				{:else}
@@ -154,7 +154,11 @@
 				{/if}
 				{#if showUser}
 					<div class="mt-1 flex items-center gap-2 text-sm text-neutral-400">
-						<User class="h-4 w-4" />
+						{#if paste.author}
+							<User class="h-4 w-4" />
+						{:else}
+							<HatGlasses class="h-4 w-4" />
+						{/if}
 						<span>{paste.author?.username ?? 'Anonymous'}</span>
 					</div>
 				{/if}

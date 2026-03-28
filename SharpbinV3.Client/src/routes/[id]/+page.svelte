@@ -23,7 +23,8 @@
 		Check,
 		CalendarCog,
 		Flag,
-		ArrowUp
+		ArrowUp,
+		HatGlasses
 	} from '@lucide/svelte/icons/index';
 	import {
 		formatBytes,
@@ -564,14 +565,15 @@
 					{/if}
 				</h1>
 				<div class="flex items-center justify-center gap-2 text-sm text-neutral-400">
-					<User class="inline-block h-4 w-4 text-neutral-400" />
 					{#if data.paste.author}
+						<User class="inline-block h-4 w-4 text-neutral-400" />
 						<a
 							href={resolve(`/user/${data.paste.author.username}`)}
 							class="text-neutral-400 transition-colors duration-300 hover:text-neutral-500"
 							>{data.paste.author.username}</a
 						>
 					{:else}
+						<HatGlasses class="inline-block h-4 w-4 text-neutral-400" />
 						<span class="text-neutral-400">Anonymous</span>
 					{/if}
 				</div>
