@@ -1,25 +1,15 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import { apiUrl } from '$lib/server/api';
-import { getServerToken } from '$lib/utils/auth';
+import {
+	getServerToken,
+	getUserFromToken,
+	clearServerTokens,
+	hasRole,
+	roles
+} from '$lib/utils/auth';
 import type { ReportListResponse } from '$lib/types/report';
 import { extractError } from '$lib/utils/misc';
-
-function decodeJwtRoles(token?: string | null): number {
-	try {
-		if (!token) return 0;
-		const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-		const roles = payload?.role;
-		if (typeof roles === 'number') return roles;
-		if (typeof roles === 'string') {
-			const parsed = parseInt(roles, 10);
-			return isNaN(parsed) ? 0 : parsed;
-		}
-		return 0;
-	} catch {
-		return 0;
-	}
-}
 
 function normalizeTarget(value: string | null): 'all' | 'pastes' | 'users' {
 	if (value === 'pastes' || value === 'users') return value;
@@ -30,8 +20,13 @@ export const load: PageServerLoad = async ({ fetch, cookies, url }) => {
 	const token = getServerToken(cookies);
 	if (!token) throw error(401, 'Login required');
 
-	const roles = decodeJwtRoles(token);
-	if ((roles & 2) === 0 && (roles & 4) === 0) {
+	const user = getUserFromToken(token);
+	if (!user) {
+		clearServerTokens(cookies);
+		throw error(401, 'Invalid token');
+	}
+
+	if (!hasRole(user.roles, roles.Admin) && !hasRole(user.roles, roles.Moderator)) {
 		throw error(403, 'You do not have permission to view reports.');
 	}
 
