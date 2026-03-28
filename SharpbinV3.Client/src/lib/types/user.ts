@@ -18,3 +18,12 @@ export interface User {
 export interface AuthUser extends User {
 	totpEnabled: boolean;
 }
+
+export interface JWTUser {
+	uuid: string;
+	username: string;
+	displayname: string;
+	totpEnabled: boolean;
+	roles: number;
+	isBanned: boolean;
+}

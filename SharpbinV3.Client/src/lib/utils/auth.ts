@@ -1,6 +1,7 @@
 import { browser } from '$app/environment';
 import type { Cookies } from '@sveltejs/kit';
 import { user } from '$lib/stores/user';
+import type { JWTUser } from '$lib/types/user';
 
 export const roles = {
 	User: 1,
@@ -144,6 +145,22 @@ export function setServerTokens(cookies: Cookies, token: string, refreshToken: s
 export function clearServerTokens(cookies: Cookies) {
 	cookies.delete('token', { path: '/' });
 	cookies.delete('refreshToken', { path: '/' });
+}
+
+export function getUserFromToken(token: string): JWTUser | null {
+	try {
+		const payload = JSON.parse(atob(token.split('.')[1]));
+		return {
+			uuid: payload.uuid,
+			username: payload.username,
+			displayname: payload.displayname,
+			totpEnabled: payload.totp_enabled === 'True',
+			roles: typeof payload.roles === 'string' ? parseInt(payload.roles, 10) : payload.roles,
+			isBanned: payload.is_banned === 'True'
+		};
+	} catch {
+		return null;
+	}
 }
 
 export const hasRole = (userRoles: number, role: number) => (userRoles & role) !== 0;
