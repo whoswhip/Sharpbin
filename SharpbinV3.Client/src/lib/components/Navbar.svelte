@@ -41,28 +41,35 @@
 	});
 </script>
 
-<div class="top-0 left-0 z-100 h-15 w-full bg-neutral-900" id="navbar">
+<div class="sticky top-0 left-0 z-100 h-15 w-full border-b border-neutral-800 bg-neutral-900 shadow-md" id="navbar">
 	<div class="mx-auto hidden h-15 w-[95%] max-w-7xl items-center py-2 md:flex">
-		<div>
-			<a href={resolve('/')} class="text-xl font-bold text-white hover:text-neutral-300">Sharpbin</a
+		<div class="flex items-center gap-6">
+			<a href={resolve('/')} class="group flex items-center gap-2">
+				<img src={logo} alt="Sharpbin Logo" class="h-7 w-7 group-hover:opacity-80" />
+				<span class="text-xl font-bold text-white group-hover:text-neutral-300">Sharpbin</span>
+			</a>
+			<div class="h-5 w-px bg-neutral-700"></div>
+			<a
+				href={resolve('/recent')}
+				class="relative text-neutral-300 after:absolute after:-bottom-0.5 after:left-0 after:h-px after:w-0 after:bg-white after:transition-all hover:text-white hover:after:w-full"
+			>Recent Pastes</a
 			>
-			<a href={resolve('/recent')} class="ml-6 text-white hover:text-neutral-300">Recent Pastes</a>
 		</div>
 		{#if $user}
 			<div class="ml-auto flex items-center space-x-4">
 				{#if hasRole($user.roles, 2) || hasRole($user.roles, 4)}
 					<a
 						href={resolve('/reports')}
-						class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800">Reports</a
+						class="rounded bg-neutral-700 px-3 py-1 text-white transition-colors hover:bg-neutral-600">Reports</a
 					>
 				{/if}
 				<a
 					href={resolve(`/user/${$user.username}`)}
-					class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800">Profile</a
+					class="rounded bg-neutral-700 px-3 py-1 text-white transition-colors hover:bg-neutral-600">Profile</a
 				>
 				<button
 					on:click={logout}
-					class="cursor-pointer rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800"
+					class="cursor-pointer rounded bg-neutral-700 px-3 py-1 text-white transition-colors hover:bg-neutral-600"
 					>Logout</button
 				>
 			</div>
@@ -70,12 +77,12 @@
 			<div class="ml-auto flex items-center space-x-4">
 				<a
 					href={resolve(`/login${returnParam}`)}
-					class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800">Login</a
+					class="rounded bg-neutral-700 px-3 py-1 text-white transition-colors hover:bg-neutral-600">Login</a
 				>
 				<!-- eslint-disable svelte/no-navigation-without-resolve -->
 				<a
 					href={data.options?.registration_enabled ? resolve(`/register${returnParam}`) : '#'}
-					class="rounded bg-neutral-700 px-3 py-1 text-white hover:bg-neutral-800 {data.options
+					class="rounded bg-neutral-700 px-3 py-1 text-white transition-colors hover:bg-neutral-600 {data.options
 						?.registration_enabled
 						? ''
 						: 'cursor-not-allowed bg-neutral-800 text-neutral-500!'}">Register</a
