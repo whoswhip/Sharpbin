@@ -4,11 +4,11 @@ import { getServerToken } from '$lib/utils/auth';
 import { apiUrl, viewInternalApiKey } from '$lib/server/api';
 import { error } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ params, fetch, url, cookies, parent }) => {
+export const load: PageServerLoad = async ({ params, fetch, url, cookies, parent, request }) => {
 	const { id } = params;
 	const parentData = await parent().catch(() => null);
-
 	const token = getServerToken(cookies);
+	const userAgent = request.headers.get('user-agent') ?? 'Sharpbin Client';
 
 	const pasteRes = await fetch(`${apiUrl}/api/paste/${id}`, {
 		headers: {
@@ -24,7 +24,8 @@ export const load: PageServerLoad = async ({ params, fetch, url, cookies, parent
 		method: 'POST',
 		headers: {
 			'X-Internal-API-Key': viewInternalApiKey,
-			Authorization: token ? `Bearer ${token}` : ''
+			Authorization: token ? `Bearer ${token}` : '',
+			'User-Agent': userAgent
 		}
 	});
 
@@ -32,16 +33,15 @@ export const load: PageServerLoad = async ({ params, fetch, url, cookies, parent
 	const paste = pasteData.paste as Paste;
 
 	if (viewed.status === 200) {
+		
 		const viewJson = await viewed.json();
 		if (viewJson.success === true && viewJson.message === 'Paste view recorded.') {
 			pasteData.views += 1;
 		}
-	} else {
-		if (viewInternalApiKey === '') {
-			console.error(
-				'The API key for internal requests is not set. Please configure it in the environment variables.'
-			);
-		}
+	} else if (viewInternalApiKey === '') {
+		console.error(
+			'The API key for internal requests is not set. Please configure it in the environment variables.'
+		);
 	}
 
 	const pasteContent = await fetch(`/api/paste/${id}/raw`);
