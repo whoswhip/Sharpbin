@@ -70,7 +70,7 @@ export function extractError(resData: unknown): string | null {
 export function syntaxFromExtension(extension: string): string | null {
 	const ext = extension.startsWith('.') ? extension.slice(1) : extension;
 	for (const [key, value] of Object.entries(syntaxes)) {
-		if (value.extension === `.${ext}`) {
+		if (value.extension.toLowerCase() === ext.toLowerCase()) {
 			return key;
 		}
 	}
