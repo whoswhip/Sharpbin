@@ -92,6 +92,7 @@ namespace SharpbinV3.Server.Controllers
         }
 
         [HttpGet]
+        [EnableRateLimiting("NoLimit")]
         [Route("{id}")]
         public async Task<IActionResult> GetPasteByID(string id)
         {
@@ -146,6 +147,7 @@ namespace SharpbinV3.Server.Controllers
         }
 
         [HttpGet]
+        [EnableRateLimiting("NoLimit")]
         [Route("{id}/raw")]
         public async Task<IActionResult> GetRawPasteByID(string id)
         {
