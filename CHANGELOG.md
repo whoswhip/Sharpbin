@@ -1,3 +1,55 @@
+## [3.0.5](https://github.com/whoswhip/Sharpbin/compare/v3.0.4...v3.0.5) (2026-03-31)
+
+
+### Bug Fixes
+
+* add back CSV syntax support in consts and appsettings ([3ba63f6](https://github.com/whoswhip/Sharpbin/commit/3ba63f692c25e016f226fccc9120a3649c7150d9))
+* **auth:** replace HMAC token generation with SHA256 for email verification ([49e73cd](https://github.com/whoswhip/Sharpbin/commit/49e73cde9c856bee9f36e2cedb9742bd6a3e9942))
+* **backend:paste:** check expiration before returning paste data or recording views; prevent paste authors from adding views to their own paste ([ec0635d](https://github.com/whoswhip/Sharpbin/commit/ec0635dd3b6401679e1a4a923302de5dcdbecda8))
+* **cache:** ensure pasteExpiresAt is valid before cache deletion ([c98aca9](https://github.com/whoswhip/Sharpbin/commit/c98aca92b68a761056b5610d893c7be17da06d96))
+* **controller:** only return paste not found if null or expired ([f70328c](https://github.com/whoswhip/Sharpbin/commit/f70328c93d8b008f6015ec239cc984bbcc0b57e3))
+* **controller:** update paste expiration check to handle zero expiration case ([797747f](https://github.com/whoswhip/Sharpbin/commit/797747f718913f1b52d0d17caf7fc1f720bde59b))
+* correct expiration time for 'Expire in 5 Minutes' option ([f786117](https://github.com/whoswhip/Sharpbin/commit/f786117cad468d0c0cacae10bbfe82c8d647353b))
+* **docker-compose:** add back VITE_API_URL environment variable to frontend ([d4e2cf2](https://github.com/whoswhip/Sharpbin/commit/d4e2cf25d3c4eb4c414b59ce6b5655cd9a3ba8a7))
+* **docker-compose:** add env_file entries for backend and frontend services ([c986a73](https://github.com/whoswhip/Sharpbin/commit/c986a73ef44df90c2e47f3a2dc60900b2271d230))
+* **docker:** correct environment variable syntax for backend service ([e0c9f1b](https://github.com/whoswhip/Sharpbin/commit/e0c9f1bbc1fc150d139043bbfb84ff16a86b20be))
+* **dotenv:** skip empty lines and comments when loading environment variables ([2302ebd](https://github.com/whoswhip/Sharpbin/commit/2302ebdffc74dbd5023803919730ac5bb8243abf))
+* **email:** ensure all email settings are validated before sending; allow nullable From property ([b9cff6a](https://github.com/whoswhip/Sharpbin/commit/b9cff6a0bd5899e3aaa3775981ae0782d621fa97))
+* **email:** validate settings before sending; use hmac for tokens ([2b66cb2](https://github.com/whoswhip/Sharpbin/commit/2b66cb27629726480c00ffae4775810a35ee4fcf))
+* **encryption:** improve encryption security: adjust salt size and memory parameters for AES encryption ([b54c12b](https://github.com/whoswhip/Sharpbin/commit/b54c12ba10c3f6607a6345caaa4d528e90f1ce0a))
+* forward headers during requests where needed ([3b53cfb](https://github.com/whoswhip/Sharpbin/commit/3b53cfbddf0397c8b040641d784dce8b070c9753))
+* forward the request header when viewing on the /[id] server route ([62d8059](https://github.com/whoswhip/Sharpbin/commit/62d80597dc51428fc3be810fb268b4bfd4cd6098))
+* **frontend:paste:** increase paste views only if api returns 'Paste view recorded.' ([4c071fc](https://github.com/whoswhip/Sharpbin/commit/4c071fcc3965f1164d95d0c2dfd729059ee7cfad))
+* **frontend:user:** resolve lint error ([2c3f8c9](https://github.com/whoswhip/Sharpbin/commit/2c3f8c95ac55a891caeaebacadad808bfc7180d2))
+* **frontend:** use darker version of tooltip on generate random password ([eef9803](https://github.com/whoswhip/Sharpbin/commit/eef98030d6daf6c223d5e12e7ad024211e411d13))
+* improve header handling and error checking in paste loading ([6d99a06](https://github.com/whoswhip/Sharpbin/commit/6d99a06c17b7365c26d4dd48405f2963f5826f1f))
+* improve icon consistency ([e102c91](https://github.com/whoswhip/Sharpbin/commit/e102c91d79618b87b71653e23df7a6511a6c09ba))
+* make syntax extension comparison case insensitive and remove '.' ([801426f](https://github.com/whoswhip/Sharpbin/commit/801426f93e08fdce0d548f8c539c5f7dc06fea93))
+* remove rate limiting on {id}/raw and {id} ([094c8e5](https://github.com/whoswhip/Sharpbin/commit/094c8e5e08dcbef33d4f0e4d965ac467d8d4d6d4))
+* **routes:** /raw/{pasteId} no longer returns a body on error ([38c8af1](https://github.com/whoswhip/Sharpbin/commit/38c8af1c5713defe06077842bacbf69ef47eff00))
+* set default value for AuthSettings__First_User_Admin and pass GIT_COMMIT_HASH as build argument ([f645846](https://github.com/whoswhip/Sharpbin/commit/f64584602eb7b29a7854923420c25811a2a64946))
+* switch to better sqlite-3 instead of experimental node api ([5296efa](https://github.com/whoswhip/Sharpbin/commit/5296efa9dbf4bfd6f6613cdee4806d170de9ba6d))
+* **types:** add missing createdAt field to Paste interface ([6047d48](https://github.com/whoswhip/Sharpbin/commit/6047d48da2d5920e9e79b4e12b48a142ec9e2646))
+
+
+### Features
+
+* /user/{uuid} redirects to /user/{username} based off uuid ([059d32e](https://github.com/whoswhip/Sharpbin/commit/059d32e42c93fa0113e0bf253ab8bb432b3fa0b2))
+* add GIT_COMMIT_HASH support for versioning in Dockerfile and footer ([5eebea3](https://github.com/whoswhip/Sharpbin/commit/5eebea314e6c475e012d0378aa4d6147485210f4))
+* add HatGlasses icon for anonymous users in Paste component ([b7ce54d](https://github.com/whoswhip/Sharpbin/commit/b7ce54d5a0e00ee27e53e492b71a973d63e94bef))
+* **auth:** add JWT user parsing from token ([d78baae](https://github.com/whoswhip/Sharpbin/commit/d78baae19e2508cac2205fcc9b3b09ee600d95fe))
+* **auth:** improve token refreshing ([75ecfbe](https://github.com/whoswhip/Sharpbin/commit/75ecfbe7e7724addf71f2a9d1de41f28132602a1))
+* **backend:** add DotEnv class for loading environment variables from .env file ([0023328](https://github.com/whoswhip/Sharpbin/commit/00233280d45a2fa87c4c01b9086620606be210e1))
+* email verification via smtp ([95da3f9](https://github.com/whoswhip/Sharpbin/commit/95da3f95435709692de347272fae01dff13ddf7c))
+* **email:** add email verification html templates ([0564d55](https://github.com/whoswhip/Sharpbin/commit/0564d55396da1f811aa7fa624a8f42392aeb49b9))
+* **email:** implement email queue management ([5420d94](https://github.com/whoswhip/Sharpbin/commit/5420d94595bba2731409677631551b7bc265ad3c))
+* guest param in user page ([8eede40](https://github.com/whoswhip/Sharpbin/commit/8eede40000f6a541188c95370073e76113d152d8))
+* **markdown:** add dont warn again feature ([e7cd372](https://github.com/whoswhip/Sharpbin/commit/e7cd3723a7c60e3f058de990e1b7ac2efb414683))
+* open graph embed image generation ([9486840](https://github.com/whoswhip/Sharpbin/commit/9486840f05fadac604f1ccd3a838f3f0d1a71f51))
+* **roles, visibility:** refactor user roles to use flags and introduce visibility enum ([44d7ae8](https://github.com/whoswhip/Sharpbin/commit/44d7ae8cd3ead498f7975a20b5269ee311553d23))
+
+
+
 ## [3.0.4](https://github.com/whoswhip/Sharpbin/compare/v3.0.3...v3.0.4) (2026-02-14)
 
 
