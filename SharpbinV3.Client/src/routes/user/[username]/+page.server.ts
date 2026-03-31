@@ -34,15 +34,19 @@ function decodeJwtUuid(token?: string | null): string | null {
 	}
 }
 
-export const load: PageServerLoad = async ({ params, fetch, cookies, url, parent }) => {
+export const load: PageServerLoad = async ({ params, fetch, cookies, url, parent, request }) => {
 	const token = getServerToken(cookies);
 	const { username } = params;
 	const { options } = await parent();
 	const jwtUuid = decodeJwtUuid(token);
 	const asGuest = url.searchParams.get('guest') === '1';
+	const headers = new Headers(request.headers);
+	if (token && !asGuest) {
+		headers.set('Authorization', `Bearer ${token}`);
+	}
 
 	const res = await fetch(`${apiUrl}/api/user/${username}`, {
-		headers: token && !asGuest ? { Authorization: `Bearer ${token}` } : undefined
+		headers: headers
 	});
 
 	if (!res.ok) {
@@ -72,19 +76,19 @@ export const load: PageServerLoad = async ({ params, fetch, cookies, url, parent
 	}
 
 	if (token && !asGuest && canModerate && (!reportsSubmitted || !isOwner)) {
+		headers.set('Authorization', `Bearer ${token}`);
 		const submittedRes = await fetch(`${apiUrl}/api/user/${user.uuid}/reports/submitted`, {
-			headers: { Authorization: `Bearer ${token}` }
+			headers: headers
 		});
 		if (submittedRes.ok) reportsSubmitted = await submittedRes.json();
 	}
 
-	if (token && !asGuest && !isOwner) {
-		if (canModerate) {
-			const r = await fetch(`${apiUrl}/api/user/${user.uuid}/reports`, {
-				headers: { Authorization: `Bearer ${token}` }
-			});
-			if (r.ok) reportsTarget = await r.json();
-		}
+	if (token && !asGuest && !isOwner && canModerate) {
+		headers.set('Authorization', `Bearer ${token}`);
+		const r = await fetch(`${apiUrl}/api/user/${user.uuid}/reports`, {
+			headers: headers
+		});
+		if (r.ok) reportsTarget = await r.json();
 	}
 
 	return {

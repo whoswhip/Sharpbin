@@ -1,10 +1,13 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { apiUrl } from '$lib/server/api';
 
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ params, request }) => {
 	const { id } = params;
+	const headers = new Headers(request.headers);
 
-	const res = await fetch(`${apiUrl}/api/paste/${id}/raw`);
+	const res = await fetch(`${apiUrl}/api/paste/${id}/raw`, {
+		headers: headers
+	});
 
 	if (res.status === 404) {
 		return new Response(null, {

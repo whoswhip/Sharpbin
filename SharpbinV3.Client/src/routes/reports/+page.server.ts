@@ -16,7 +16,7 @@ function normalizeTarget(value: string | null): 'all' | 'pastes' | 'users' {
 	return 'all';
 }
 
-export const load: PageServerLoad = async ({ fetch, cookies, url }) => {
+export const load: PageServerLoad = async ({ fetch, cookies, url, request }) => {
 	const token = getServerToken(cookies);
 	if (!token) throw error(401, 'Login required');
 
@@ -44,8 +44,11 @@ export const load: PageServerLoad = async ({ fetch, cookies, url }) => {
 	if ((target === 'pastes' || target === 'all') && pasteId) query.set('pasteId', pasteId);
 	if ((target === 'users' || target === 'all') && userUuid) query.set('userUUID', userUuid);
 
+	const headers = new Headers(request.headers);
+	headers.set('Authorization', `Bearer ${token}`);
+
 	const reportsRes = await fetch(`${apiUrl}/api/report/${target}?${query.toString()}`, {
-		headers: { Authorization: `Bearer ${token}` }
+		headers: headers
 	});
 
 	if (!reportsRes.ok) {

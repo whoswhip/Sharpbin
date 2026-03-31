@@ -4,7 +4,7 @@ import { apiUrl } from '$lib/server/api';
 import { getServerToken, clearServerTokens, roles, getUserFromToken } from '$lib/utils/auth';
 import type { Report } from '$lib/types/report';
 
-export const load: PageServerLoad = async ({ fetch, cookies, params, url }) => {
+export const load: PageServerLoad = async ({ fetch, cookies, params, url, request }) => {
 	const token = getServerToken(cookies);
 	if (!token) throw error(401, 'Login required');
 
@@ -14,9 +14,11 @@ export const load: PageServerLoad = async ({ fetch, cookies, params, url }) => {
 		throw error(401, 'Invalid token');
 	}
 	const canEdit = (user.roles & roles.Admin) !== 0 || (user.roles & roles.Moderator) !== 0;
+	const headers = new Headers(request.headers);
+	headers.set('Authorization', `Bearer ${token}`);
 
 	const res = await fetch(`${apiUrl}/api/report/${params.reportId}`, {
-		headers: { Authorization: `Bearer ${token}` }
+		headers: headers
 	});
 
 	if (!res.ok) {
