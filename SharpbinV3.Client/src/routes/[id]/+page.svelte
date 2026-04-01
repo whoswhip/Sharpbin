@@ -787,8 +787,8 @@
 							const a = document.createElement('a');
 							a.href = url;
 							a.download = data.paste?.title
-								? data.paste.title.slice(0, 100) + extension
-								: `paste_${data.paste?.id}${extension}`;
+								? `${data.paste.title.slice(0, 100)}.${extension}`
+								: `paste_${data.paste?.id}.${extension}`;
 							document.body.appendChild(a);
 							a.click();
 							document.body.removeChild(a);
