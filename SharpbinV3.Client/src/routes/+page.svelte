@@ -216,11 +216,17 @@
 
 <svelte:head>
 	<title>Create a Paste - Sharpbin</title>
+	<meta name="description" content="Create and share code snippets, and text instantly with Sharpbin. Supports syntax highlighting, encryption, expiry, and more." />
+	<meta name="robots" content="index, follow" />
+	<link rel="canonical" href={data.url} />
 	<meta property="og:title" content="Create a Paste - Sharpbin" />
-	<meta property="og:description" content="Create and share your pastes easily with Sharpbin." />
+	<meta property="og:description" content="Create and share code snippets, and text instantly with Sharpbin. Supports syntax highlighting, encryption, expiry, and more." />
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content={data.url} />
 	<meta property="og:site_name" content="Sharpbin" />
+	<meta name="twitter:card" content="summary" />
+	<meta name="twitter:title" content="Create a Paste - Sharpbin" />
+	<meta name="twitter:description" content="Create and share code snippets, and text instantly with Sharpbin." />
 </svelte:head>
 
 <main

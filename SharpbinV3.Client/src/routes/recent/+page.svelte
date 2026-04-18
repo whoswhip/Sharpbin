@@ -19,6 +19,16 @@
 <svelte:head>
 	<title>Recent Pastes - Sharpbin</title>
 	<meta name="description" content="Browse the most recent pastes shared on Sharpbin." />
+	<meta name="robots" content="noindex, follow" />
+	<link rel="canonical" href={data.url} />
+	<meta property="og:title" content="Recent Pastes - Sharpbin" />
+	<meta property="og:description" content="Browse the most recent pastes shared on Sharpbin." />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content={data.url} />
+	<meta property="og:site_name" content="Sharpbin" />
+	<meta name="twitter:card" content="summary" />
+	<meta name="twitter:title" content="Recent Pastes - Sharpbin" />
+	<meta name="twitter:description" content="Browse the most recent pastes shared on Sharpbin." />
 </svelte:head>
 
 <main

@@ -507,15 +507,19 @@
 			: 'Paste Not Found - Sharpbin'}</title
 	>
 	{#if data.paste}
+		{@const pasteDescription = `A ${syntaxes[data.paste.syntax].name} paste on Sharpbin created by ${
+			data.paste.author ? data.paste.author.username : 'Anonymous'
+		}, created on ${
+			extractDateFromUUIDv7(data.paste.uuid)?.toLocaleDateString() ?? 'Unknown Date'
+		} with ${data.paste.views} view${data.paste.views !== 1 ? 's' : ''}.`}
+		<meta name="description" content={pasteDescription} />
+		<meta name="robots" content={data.paste.visibility === 0 ? 'index, follow' : 'noindex, nofollow'} />
+		<link rel="canonical" href={data.url} />
+		{#if data.paste.author}
+			<meta name="author" content={data.paste.author.username} />
+		{/if}
 		<meta property="og:title" content={data.paste.title || 'Untitled Paste'} />
-		<meta
-			property="og:description"
-			content={`A ${syntaxes[data.paste.syntax].name} paste on Sharpbin created by ${
-				data.paste.author ? data.paste.author.username : 'Anonymous'
-			}, created on ${
-				extractDateFromUUIDv7(data.paste.uuid)?.toLocaleDateString() ?? 'Unknown Date'
-			} with ${data.paste.views} view${data.paste.views !== 1 ? 's' : ''}.`}
-		/>
+		<meta property="og:description" content={pasteDescription} />
 		<meta property="og:type" content="article" />
 		<meta property="og:url" content={data.url} />
 		<meta property="og:site_name" content="Sharpbin" />
@@ -526,7 +530,11 @@
 			<meta property="og:image:height" content="630" />
 			<meta name="twitter:card" content="summary_large_image" />
 			<meta name="twitter:image" content={pasteImageUrl} />
+		{:else}
+			<meta name="twitter:card" content="summary" />
 		{/if}
+		<meta name="twitter:title" content={data.paste.title || 'Untitled Paste'} />
+		<meta name="twitter:description" content={pasteDescription} />
 		<meta
 			property="og:article:published_time"
 			content={extractDateFromUUIDv7(data.paste.uuid)?.toISOString() ?? ''}
