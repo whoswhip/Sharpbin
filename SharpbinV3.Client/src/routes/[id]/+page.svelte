@@ -513,7 +513,10 @@
 			extractDateFromUUIDv7(data.paste.uuid)?.toLocaleDateString() ?? 'Unknown Date'
 		} with ${data.paste.views} view${data.paste.views !== 1 ? 's' : ''}.`}
 		<meta name="description" content={pasteDescription} />
-		<meta name="robots" content={data.paste.visibility === 0 ? 'index, follow' : 'noindex, nofollow'} />
+		<meta
+			name="robots"
+			content={data.paste.visibility === 0 ? 'index, follow' : 'noindex, nofollow'}
+		/>
 		<link rel="canonical" href={data.url} />
 		{#if data.paste.author}
 			<meta name="author" content={data.paste.author.username} />
