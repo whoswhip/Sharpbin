@@ -508,7 +508,7 @@
 	>
 	{#if data.paste}
 		{@const pasteDescription = `A ${syntaxes[data.paste.syntax].name} paste on Sharpbin created by ${
-			data.paste.author ? data.paste.author.username : 'Anonymous'
+			data.paste.author ? data.paste.author.username : 'an anonymous user'
 		}, created on ${
 			extractDateFromUUIDv7(data.paste.uuid)?.toLocaleDateString() ?? 'Unknown Date'
 		} with ${data.paste.views} view${data.paste.views !== 1 ? 's' : ''}.`}
