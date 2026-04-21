@@ -221,7 +221,8 @@
 		content="Create and share code snippets, and text instantly with Sharpbin. Supports syntax highlighting, encryption, expiry, and more."
 	/>
 	<meta name="robots" content="index, follow" />
-	<link rel="canonical" href={data.url} />
+	<link rel="canonical" href={data.url.split('/').slice(0, 3).join('/') + '/'} />
+	<!-- normalized to prevent duplicate content issues -google search console -->
 	<meta property="og:title" content="Create a Paste - Sharpbin" />
 	<meta
 		property="og:description"
