@@ -23,7 +23,7 @@ namespace SharpbinV3.Server.Services
                 || string.IsNullOrWhiteSpace(settings.From)
             )
             {
-                logger.LogWarning($"Email settings are not fully configured. Skipping sending email to {to}");
+                logger.LogWarning($"Email settings are not fully configured.");
                 return;
             }
             var email = new QueuedEmail(to, subject, body);
