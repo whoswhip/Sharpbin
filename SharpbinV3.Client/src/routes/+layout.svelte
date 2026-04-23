@@ -13,26 +13,25 @@
 
 	export let data: LayoutData;
 
-	if (typeof window !== 'undefined') {
-		startTokenRefreshInterval();
-		window.turnstileLoaded = () => {
-			window.dispatchEvent(new CustomEvent('turnstile:loaded'));
-		};
-	}
-
-	onMount(async () => {
-		await refreshTokenIfNeeded();
+	async function syncUserFromToken() {
 		const token = getToken();
 		if (!token) {
 			user.set(null);
 			return;
 		}
 
-		const res = await fetch('/api/user/me', {
-			headers: { Authorization: `Bearer ${token}` }
-		});
+		try {
+			const res = await fetch('/api/user/me', {
+				headers: { Authorization: `Bearer ${token}` }
+			});
 
-		if (res.ok) {
+			if (!res.ok) {
+				if (res.status === 401 || res.status === 403) {
+					user.set(null);
+				}
+				return;
+			}
+
 			const me = await res.json();
 			let userData = me;
 			if (me && 'user' in me && typeof me.user === 'object') {
@@ -40,9 +39,55 @@
 				userData = { ...rest, ...nestedUser };
 			}
 			user.set({ ...userData, totpEnabled: parseTotpEnabled(getToken()) });
-		} else {
-			user.set(null);
+		} catch {
+			return;
 		}
+	}
+
+	if (typeof window !== 'undefined') {
+		startTokenRefreshInterval();
+		window.turnstileLoaded = () => {
+			window.dispatchEvent(new CustomEvent('turnstile:loaded'));
+		};
+	}
+
+	onMount(() => {
+		const refreshAndSync = async () => {
+			await refreshTokenIfNeeded();
+			await syncUserFromToken();
+		};
+
+		const handleFocus = () => {
+			void refreshAndSync();
+		};
+
+		const handleVisibilityChange = () => {
+			if (document.visibilityState === 'visible') {
+				void refreshAndSync();
+			}
+		};
+
+		const handleTokensUpdated = () => {
+			void syncUserFromToken();
+		};
+
+		const handleTokensCleared = () => {
+			user.set(null);
+		};
+
+		void refreshAndSync();
+
+		window.addEventListener('focus', handleFocus);
+		document.addEventListener('visibilitychange', handleVisibilityChange);
+		window.addEventListener('auth:tokens-updated', handleTokensUpdated);
+		window.addEventListener('auth:tokens-cleared', handleTokensCleared);
+
+		return () => {
+			window.removeEventListener('focus', handleFocus);
+			document.removeEventListener('visibilitychange', handleVisibilityChange);
+			window.removeEventListener('auth:tokens-updated', handleTokensUpdated);
+			window.removeEventListener('auth:tokens-cleared', handleTokensCleared);
+		};
 	});
 </script>
 
