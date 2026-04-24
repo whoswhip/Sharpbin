@@ -1,4 +1,5 @@
 import hljs from 'highlight.js';
+import { escapeHtml } from '../utils/html';
 
 type HighlightRequest = {
 	id: number;
@@ -10,9 +11,6 @@ type HighlightResponse = {
 	id: number;
 	html: string;
 };
-
-const escapeHtml = (value: string) =>
-	value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 self.onmessage = (event: MessageEvent<HighlightRequest>) => {
 	const { id, code, lang } = event.data;

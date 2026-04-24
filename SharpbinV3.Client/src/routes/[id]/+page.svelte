@@ -42,6 +42,7 @@
 	import { syntaxes, expiresOptions } from '$lib/consts';
 	import { resolve } from '$app/paths';
 	import { decryptAES, encryptAES } from '$lib/utils/encryption';
+	import { escapeHtml } from '$lib/utils/html';
 	import { fade } from 'svelte/transition';
 	import { getToken, hasRole } from '$lib/utils/auth';
 	import { user } from '$lib/stores/user';
@@ -181,8 +182,6 @@
 		} else {
 			try {
 				if (lang === 'plaintext') {
-					const escapeHtml = (s: string) =>
-						s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 					highlighted = escapeHtml(code);
 				} else if (lang && hljs.getLanguage && hljs.getLanguage(lang)) {
 					highlighted = hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
@@ -191,8 +190,6 @@
 				}
 			} catch {
 				if (lang === 'plaintext') {
-					const escapeHtml = (s: string) =>
-						s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 					highlighted = escapeHtml(code);
 				} else {
 					highlighted = hljs.highlightAuto(code).value;
@@ -223,19 +220,18 @@
 			const rows = results.data as string[][];
 			const [header, ...body] = rows;
 
-			const escape = (v: string) =>
-				v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
 			const tableHtml = `
 			<table class="csv-table">
 				<thead>
 					<tr>
-						${header.map((c) => `<th>${c ? escape(c) : ''}</th>`).join('')}
+						${header.map((c) => `<th>${c ? escapeHtml(c) : ''}</th>`).join('')}
 					</tr>
 				</thead>
 				<tbody>
 					${body
-						.map((row) => `<tr>${row.map((c) => `<td>${c ? escape(c) : ''}</td>`).join('')}</tr>`)
+						.map(
+							(row) => `<tr>${row.map((c) => `<td>${c ? escapeHtml(c) : ''}</td>`).join('')}</tr>`
+						)
 						.join('')}
 				</tbody>
 			</table>
