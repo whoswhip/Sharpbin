@@ -1,13 +1,14 @@
 <script lang="ts">
 	import type { CommentReaction, CommentTreeNode } from '$lib/types/comment';
-	import { dateToRelativeString } from '$lib/utils/misc';
+	import { dateToRelativeString, tooltip } from '$lib/utils/misc';
 	import { parseCommentMarkdown } from '$lib/utils/markdown';
 	import { escapeHtml } from '$lib/utils/html';
 	import { user } from '$lib/stores/user';
 	import PasteCommentItem from '$lib/components/PasteCommentItem.svelte';
-	import { ThumbsUp, ThumbsDown } from '@lucide/svelte';
+	import { ThumbsUp, ThumbsDown, Trash2, Shredder } from '@lucide/svelte';
 	import { resolve } from '$app/paths';
 	import RichTextEditor from './RichTextEditor.svelte';
+	import { hasRole } from '$lib/utils/auth';
 
 	interface Props {
 		node: CommentTreeNode;
@@ -16,9 +17,19 @@
 		reactingIds: Record<number, boolean>;
 		onReact: (commentId: number, target: 1 | 2, current: CommentReaction) => Promise<void>;
 		onReply: (parentCommentID: number, content: string) => Promise<boolean>;
+		deleteCommentAction: (commentId: number, hardDelete?: boolean) => Promise<boolean>;
 	}
 
-	let { node, depth = 1, now, reactingIds, onReact, onReply }: Props = $props();
+	let {
+		node,
+		depth = 1,
+		now,
+		reactingIds,
+		onReact,
+		onReply,
+		deleteCommentAction
+	}: Props = $props();
+	let deleting = $state(false);
 
 	const maxCommentLength = 320;
 	let expanded = $state(false);
@@ -29,7 +40,7 @@
 	let replyError = $state('');
 	let replyEditor = $state<{ focus: () => void } | undefined>(undefined);
 
-	let commentText = $derived(node.content ?? 'Deleted comment');
+	let commentText = $derived(node.content ?? '*[Deleted comment]*');
 	let isLongComment = $derived(commentText.length > maxCommentLength);
 	let isDeleted = $derived(node.content === null);
 	let parsedHtml = $derived(
@@ -73,6 +84,13 @@
 			replyEditor?.focus();
 		});
 	}
+
+	async function handleDelete(hardDelete = false) {
+		if (deleting) return;
+		deleting = true;
+		await deleteCommentAction(node.id, hardDelete);
+		deleting = false;
+	}
 </script>
 
 <div class="p-3">
@@ -94,7 +112,11 @@
 				</a>
 			{/if}
 			{#if node.updatedAt}
-				<span class="text-neutral-500">edited</span>
+				<span
+					class="text-sm text-neutral-500"
+					use:tooltip={`Edited on ${new Date(node.updatedAt * 1000).toLocaleString()} • ${dateToRelativeString(new Date(node.updatedAt * 1000), true, true, now, 3)}`}
+					>edited</span
+				>
 			{/if}
 		</div>
 		<span class="shrink-0"
@@ -103,7 +125,7 @@
 	</div>
 
 	<div class="text-sm leading-relaxed text-neutral-200">
-		<div class="wrap-break-word" class:text-neutral-500={isDeleted}>
+		<div class="wrap-break-word" class:italic={isDeleted} class:text-neutral-800={isDeleted}>
 			{#if expanded || !isLongComment}
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 				{@html parsedHtml}
@@ -164,7 +186,7 @@
 			{#if !replyOpen}
 				<button
 					type="button"
-					class="h-7 min-w-12 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:text-neutral-100"
+					class="h-7 min-w-12 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 active:bg-neutral-700"
 					onclick={() => {
 						openReply(node.content ? `> ${node.content.replace(/\n/g, '\n> ')}\n\n` : '');
 					}}
@@ -174,7 +196,7 @@
 			{/if}
 			<button
 				type="button"
-				class="h-7 min-w-12 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:text-neutral-100"
+				class="h-7 min-w-12 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 active:bg-neutral-700"
 				onclick={() => {
 					if (replyOpen) {
 						replyOpen = false;
@@ -187,6 +209,26 @@
 			>
 				{replyOpen ? 'Cancel' : 'Reply'}
 			</button>
+			<div class="ml-auto">
+				<button
+					type="button"
+					class="h-7 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 active:bg-neutral-700"
+					onclick={() => handleDelete(false)}
+					disabled={deleting}
+				>
+					<Trash2 class="inline h-3.5 w-3.5" />
+				</button>
+				{#if hasRole($user.roles, 4)}
+					<button
+						type="button"
+						class="h-7 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 active:bg-neutral-700"
+						onclick={() => handleDelete(true)}
+						disabled={deleting}
+					>
+						<Shredder class="inline h-3.5 w-3.5" />
+					</button>
+				{/if}
+			</div>
 		{/if}
 	</div>
 
@@ -227,6 +269,7 @@
 							{reactingIds}
 							{onReact}
 							{onReply}
+							{deleteCommentAction}
 						/>
 					{/each}
 				</div>

@@ -514,6 +514,40 @@ namespace SharpbinV3.Server.Controllers
             );
         }
 
+        [HttpDelete]
+        [Authorize(Policy = "JwtOnly")]
+        [Route("{id}/comments/{commentId}")]
+        public async Task<IActionResult> DeleteComment(string id, long commentId, bool hardDelete = false)
+        {
+            var paste = await _pasteService.Get(id);
+            if (paste == null || paste.ExpiresAt != 0 && paste.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+                return NotFound(new { success = false, message = "Paste not found" });
+
+            var comment = await _commentService.GetCommentByID(commentId, paste.PID);
+            if (comment == null)
+                return NotFound(new { success = false, message = "Comment not found for this paste." });
+
+            var user = await _authService.GetUserFromHttpContext(HttpContext);
+            if (user == null)
+                return Unauthorized(new { success = false, message = "User not authenticated." });
+
+            var hasPrivilegedRole = user.Roles.HasFlag(Role.Admin) || user.Roles.HasFlag(Role.Moderator);
+            if (comment.UserUUID != user.UUID && !hasPrivilegedRole)
+                return StatusCode(403, new { success = false, message = "You do not have permission to delete this comment." });
+            if (hardDelete && !hasPrivilegedRole)
+                return StatusCode(403, new { success = false, message = "You do not have permission to hard delete this comment." });
+
+            bool result;
+            if (hardDelete)
+                result = await _commentService.HardDeleteComment(comment);
+            else
+                result = await _commentService.DeleteComment(comment);
+
+            if (!result)
+                return StatusCode(500, new { success = false, message = "An error occurred while deleting the comment." });
+            return Ok(new { success = true, message = "Comment deleted successfully." });
+        }
+
         [HttpGet]
         [EnableRateLimiting("NoLimit")]
         [Route("info")]

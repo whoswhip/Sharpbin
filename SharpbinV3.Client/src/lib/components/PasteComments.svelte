@@ -11,6 +11,7 @@
 	import PasteCommentItem from '$lib/components/PasteCommentItem.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import RichTextEditor from './RichTextEditor.svelte';
+	import { openModal } from '$lib/stores/modal';
 
 	interface Props {
 		pasteId: string;
@@ -187,6 +188,52 @@
 	async function submitTopLevelComment(content: string) {
 		await postComment(content, null);
 	}
+
+	async function deleteComment(commentId: number, hardDelete = false): Promise<boolean> {
+		errorMessage = '';
+		const token = getToken();
+		if (!token) {
+			errorMessage = 'You must be signed in to delete comments.';
+			return false;
+		}
+
+		const title = hardDelete ? 'Hard delete comment?' : 'Delete comment?';
+		const message = hardDelete
+			? 'This permanently removes the comment from the thread. This cannot be undone.'
+			: 'This will remove the comment content while preserving the thread structure.';
+		const confirmButtonText = hardDelete ? 'Hard delete' : 'Delete';
+		const ok = await openModal<boolean>({
+			mode: 'confirm',
+			title,
+			message,
+			confirmButtonText,
+			cancelValue: false
+		});
+		if (!ok) {
+			return false;
+		}
+
+		try {
+			const query = hardDelete ? '?hardDelete=true' : '';
+			const res = await fetch(`/api/paste/${pasteId}/comments/${commentId}${query}`, {
+				method: 'DELETE',
+				headers: {
+					Authorization: `Bearer ${token}`
+				}
+			});
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({}));
+				errorMessage = err?.message || 'Failed to delete comment.';
+				return false;
+			}
+
+			await refreshComments();
+			return true;
+		} catch {
+			errorMessage = 'Failed to delete comment.';
+			return false;
+		}
+	}
 </script>
 
 <section id="comments-section" class="mt-6 rounded border border-neutral-800 p-4">
@@ -239,6 +286,7 @@
 					{reactingIds}
 					onReact={reactToComment}
 					onReply={(parentCommentID, content) => postComment(content, parentCommentID)}
+					deleteCommentAction={deleteComment}
 				/>
 			{/each}
 		</div>
