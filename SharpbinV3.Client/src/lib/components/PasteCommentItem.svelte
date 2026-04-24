@@ -209,26 +209,28 @@
 			>
 				{replyOpen ? 'Cancel' : 'Reply'}
 			</button>
-			<div class="ml-auto">
-				<button
-					type="button"
-					class="h-7 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 active:bg-neutral-700"
-					onclick={() => handleDelete(false)}
-					disabled={deleting}
-				>
-					<Trash2 class="inline h-3.5 w-3.5" />
-				</button>
-				{#if hasRole($user.roles, 4)}
+			{#if node.author?.uuid === $user.uuid || hasRole($user.roles, 4) || hasRole($user.roles, 2)}
+				<div class="ml-auto">
 					<button
 						type="button"
 						class="h-7 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 active:bg-neutral-700"
-						onclick={() => handleDelete(true)}
+						onclick={() => handleDelete(false)}
 						disabled={deleting}
 					>
-						<Shredder class="inline h-3.5 w-3.5" />
+						<Trash2 class="inline h-3.5 w-3.5" />
 					</button>
-				{/if}
-			</div>
+					{#if hasRole($user.roles, 4) || hasRole($user.roles, 2)}
+						<button
+							type="button"
+							class="h-7 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 active:bg-neutral-700"
+							onclick={() => handleDelete(true)}
+							disabled={deleting}
+						>
+							<Shredder class="inline h-3.5 w-3.5" />
+						</button>
+					{/if}
+				</div>
+			{/if}
 		{/if}
 	</div>
 

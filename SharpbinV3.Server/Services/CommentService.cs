@@ -78,7 +78,26 @@ namespace SharpbinV3.Server.Services
 
         public async Task<bool> HardDeleteComment(Comment comment)
         {
-            _db.Comments.Remove(comment);
+            var commentIdsToDelete = new HashSet<long> { comment.Id };
+            var currentLevelIds = new List<long> { comment.Id };
+
+            while (currentLevelIds.Count != 0)
+            {
+                var childIds = await _db
+                    .Comments.Where(c => c.ParentCommentID.HasValue && currentLevelIds.Contains(c.ParentCommentID.Value))
+                    .Select(c => c.Id)
+                    .ToListAsync();
+
+                currentLevelIds = [];
+                foreach (var childId in childIds)
+                {
+                    if (commentIdsToDelete.Add(childId))
+                        currentLevelIds.Add(childId);
+                }
+            }
+
+            var commentsToDelete = await _db.Comments.Where(c => commentIdsToDelete.Contains(c.Id)).ToListAsync();
+            _db.Comments.RemoveRange(commentsToDelete);
             var result = await _db.SaveChangesAsync();
             return result > 0;
         }
