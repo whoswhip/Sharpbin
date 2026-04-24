@@ -59,6 +59,51 @@ namespace SharpbinV3.Server.Controllers
             return user == null ? NotFound(new { success = false, message = "User not found." }) : await BuildUserResponse(user, page);
         }
 
+        [HttpGet("uuid/{uuid}/requirements")]
+        [Authorize(Policy = "JwtOnly")]
+        [EnableRateLimiting("Strict")]
+        public async Task<IActionResult> GetUserActionRequirements(Guid uuid, [FromQuery] SecurityAction action)
+        {
+            var jwtUser = HttpContext.GetJwtUser()!;
+            var targetUser = await _userService.GetByUUID(uuid);
+            if (targetUser == null)
+                return NotFound(new { success = false, message = "User not found." });
+
+            if (
+                (targetUser.Roles.HasFlag(Role.Admin) && !jwtUser.Roles.HasFlag(Role.Admin))
+                || (!jwtUser.Roles.HasFlag(Role.Admin) && targetUser.UUID != jwtUser.UUID)
+            )
+                return StatusCode(403, new { success = false, message = "You do not have permission to perform this action." });
+
+            if (action == SecurityAction.UpdateRoles && !jwtUser.Roles.HasFlag(Role.Admin))
+                return StatusCode(403, new { success = false, message = "You do not have permission to perform this action." });
+
+            if (jwtUser.Roles.HasFlag(Role.Admin) && !jwtUser.TotpEnabled && _authSettings.Admins_Require_2FA)
+            {
+                return Ok(
+                    new
+                    {
+                        success = true,
+                        action,
+                        requiresTotp = false,
+                        blocked = true,
+                        message = "2FA is required to perform this action.",
+                    }
+                );
+            }
+
+            return Ok(
+                new
+                {
+                    success = true,
+                    action,
+                    requiresTotp = jwtUser.TotpEnabled,
+                    blocked = false,
+                    message = jwtUser.TotpEnabled ? "TOTP verification is required." : "No TOTP verification required.",
+                }
+            );
+        }
+
         [HttpPatch("uuid/{uuid}")]
         [Authorize(Policy = "JwtOnly")]
         [EnableRateLimiting("Strict")]
@@ -82,6 +127,10 @@ namespace SharpbinV3.Server.Controllers
             if (jwtUser.Roles.HasFlag(Role.Admin) && !jwtUser.TotpEnabled && _authSettings.Admins_Require_2FA)
                 return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
 
+            var updatingAdminFields =
+                (updatedUser.Roles.HasValue && updatedUser.Roles.Value != user.Roles)
+                || (updatedUser.IsBanned.HasValue && updatedUser.IsBanned.Value != user.IsBanned);
+
             user.DisplayName = updatedUser.DisplayName ?? user.DisplayName;
             if (jwtUser.Roles.HasFlag(Role.Admin) || user.UUID == jwtUser.UUID) // only admins or self
             {
@@ -90,7 +139,7 @@ namespace SharpbinV3.Server.Controllers
             }
             if (jwtUser.Roles.HasFlag(Role.Admin))
             {
-                if (jwtUser.TotpEnabled)
+                if (jwtUser.TotpEnabled && updatingAdminFields)
                 {
                     if (
                         string.IsNullOrEmpty(updatedUser.TotpCode)

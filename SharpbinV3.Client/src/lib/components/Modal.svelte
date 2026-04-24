@@ -4,25 +4,18 @@
 	import { parseTotpEnabled } from '$lib/utils/totp';
 	import { tick } from 'svelte';
 	import { extractError } from '$lib/utils/misc';
+	import type { ModalItem, ModalMode } from '$lib/types/modal';
 
 	interface Props {
 		show?: boolean;
-		mode?:
-			| 'decrypt'
-			| 'encrypt'
-			| 'confirm'
-			| 'prompt'
-			| 'multiselect'
-			| 'totp'
-			| 'totpSetup'
-			| 'report';
+		mode?: ModalMode;
 		title?: string;
 		message?: string;
 		error?: string;
 		placeholder?: string;
 		inputType?: string;
 		inputMaxLength?: number | null;
-		items?: { label: string; value: unknown }[];
+		items?: ModalItem[];
 		initialValue?: unknown;
 		totpActive?: boolean | null;
 		reportTarget?: 'user' | 'paste' | null;

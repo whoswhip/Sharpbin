@@ -31,7 +31,6 @@
 		extractError
 	} from '$lib/utils/misc';
 	import { getToken, hasRole, roles } from '$lib/utils/auth';
-	import { needsAdminTotp } from '$lib/utils/totp';
 	import { openModal } from '$lib/stores/modal';
 	import { user } from '$lib/stores/user';
 	import { onMount } from 'svelte';
@@ -135,6 +134,76 @@
 		{ label: 'Administrator', value: 4 }
 	];
 
+	type ActionSecurityRequirements = {
+		requiresTotp?: boolean;
+		blocked?: boolean;
+		message?: string;
+	};
+
+	type SecurityAction = 'UpdateRoles' | 'DeleteUser';
+
+	async function fetchActionSecurityRequirements(action: SecurityAction) {
+		const token = getToken();
+		if (!token || !data.user?.uuid) {
+			return { requiresTotp: false, blocked: false } satisfies ActionSecurityRequirements;
+		}
+
+		const res = await fetch(`/api/user/uuid/${data.user.uuid}/requirements?action=${action}`, {
+			headers: {
+				Authorization: `Bearer ${token}`
+			}
+		});
+
+		const payload = ((await res.json().catch(() => null)) ?? {}) as ActionSecurityRequirements;
+		if (!res.ok) {
+			const message = extractError(payload) || 'Failed to check security requirements.';
+			throw new Error(message);
+		}
+
+		return {
+			requiresTotp: Boolean(payload.requiresTotp),
+			blocked: Boolean(payload.blocked),
+			message: payload.message || ''
+		} satisfies ActionSecurityRequirements;
+	}
+
+	async function refreshUserInfo() {
+		if (!data.user?.uuid) return;
+		const token = getToken();
+		const res = await fetch(`/api/user/uuid/${data.user.uuid}?page=${currentPage}`, {
+			headers: token ? { Authorization: `Bearer ${token}` } : {}
+		});
+		if (!res.ok) return;
+		const json = await res.json().catch(() => null);
+		if (!json?.user) return;
+		data.user = json.user;
+		if (isOwner) {
+			user.update((u) =>
+				u
+					? {
+							...u,
+							displayName: json.user.displayName ?? u.displayName,
+							roles: json.user.roles ?? u.roles,
+							isBanned: json.user.isBanned ?? u.isBanned
+						}
+					: u
+			);
+		}
+	}
+
+	async function promptTotpCode(title: string, confirmButtonText: string) {
+		return String(
+			await openModal<string>({
+				mode: 'totp',
+				title,
+				placeholder: 'Enter 6-digit code',
+				inputType: 'text',
+				confirmButtonText,
+				cancelValue: ''
+			})
+		).trim();
+	}
+
 	async function fetchPage(pageNum: number) {
 		if (pageNum < 1 || pageNum > (pagination.totalPages || 1) || loading) return;
 		loading = true;
@@ -153,29 +222,10 @@
 		loading = false;
 	}
 
-	async function handleUserUpdate(displayName?: string, selectedRoles?: number) {
+	async function handleUserUpdate(displayName?: string, selectedRoles?: number, totpcode?: string) {
 		loading = true;
 		modalError = '';
 		const token = getToken();
-		const currentRoles = data.user?.roles ?? 0;
-		const nextRoles = selectedRoles ?? currentRoles;
-		let totpcode = '';
-		if (needsAdminTotp(totpEnabled, currentRoles, nextRoles)) {
-			totpcode = String(
-				await openModal<string>({
-					mode: 'totp',
-					title: 'Admin role requires TOTP',
-					placeholder: 'Enter 6-digit code',
-					inputType: 'text',
-					confirmButtonText: 'Continue',
-					cancelValue: ''
-				})
-			).trim();
-			if (!totpcode) {
-				loading = false;
-				return;
-			}
-		}
 		const res = await fetch(`/api/user/uuid/${data.user?.uuid}`, {
 			method: 'PATCH',
 			headers: {
@@ -185,11 +235,12 @@
 			body: JSON.stringify({
 				...(displayName !== undefined ? { displayName: displayName.trim() } : {}),
 				...(selectedRoles !== undefined ? { roles: selectedRoles } : {}),
-				...(totpcode ? { totpcode } : {})
+				...(totpcode?.trim() ? { totpcode: totpcode.trim() } : {})
 			})
 		});
 		loading = false;
 		if (!res.ok) {
+			loading = false;
 			const err = await res.json();
 			modalError = extractError(err) || 'Failed to update user';
 			await openModal({
@@ -201,10 +252,12 @@
 			});
 			return;
 		}
-		data.user!.displayName = displayName || data.user!.displayName;
-		if (selectedRoles !== undefined) {
-			data.user!.roles = selectedRoles;
+		try {
+			await refreshUserInfo();
+		} catch {
+			// ignore refresh failures and keep successful update result
 		}
+		loading = false;
 		modalError = '';
 	}
 
@@ -232,7 +285,8 @@
 		const res = await fetch(`/api/user/uuid/${data.user?.uuid}`, {
 			method: 'DELETE',
 			headers: {
-				Authorization: `Bearer ${token}`
+				Authorization: `Bearer ${token}`,
+				'Content-Type': 'application/json'
 			},
 			body: totpEnabled && totpcode ? JSON.stringify({ totpcode }) : undefined
 		});
@@ -385,7 +439,36 @@
 		});
 		if (!Array.isArray(value)) return;
 		const bitfield = value.reduce((acc, val) => acc | val, 0);
-		await handleUserUpdate(undefined, bitfield);
+
+		let totpcode = '';
+		try {
+			const requirements = await fetchActionSecurityRequirements('UpdateRoles');
+			if (requirements.blocked) {
+				await openModal({
+					mode: 'confirm',
+					title: 'Action blocked',
+					message: requirements.message || 'You cannot perform this action right now.',
+					confirmButtonText: 'OK',
+					cancelValue: true
+				});
+				return;
+			}
+			if (requirements.requiresTotp) {
+				totpcode = await promptTotpCode('TOTP required to update roles', 'Continue');
+				if (!totpcode) return;
+			}
+		} catch (e) {
+			await openModal({
+				mode: 'confirm',
+				title: 'Error',
+				message: e instanceof Error ? e.message : 'Failed to check security requirements.',
+				confirmButtonText: 'OK',
+				cancelValue: true
+			});
+			return;
+		}
+
+		await handleUserUpdate(undefined, bitfield, totpcode);
 	}
 
 	async function openDeleteAccount() {
@@ -409,6 +492,7 @@
 		});
 		if (result) {
 			handleTotpConfirm(result);
+			await refreshUserInfo();
 		}
 	}
 
