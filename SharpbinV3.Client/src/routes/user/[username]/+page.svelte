@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { createBubbler, stopPropagation } from 'svelte/legacy';
+
+	const bubble = createBubbler();
 	import { resolve } from '$app/paths';
 	import { goto, afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
@@ -36,41 +39,46 @@
 	import { reportStatusLabels, reportTargetLabels, reportTypeLabels } from '$lib/types/report';
 	import { fade } from 'svelte/transition';
 
-	export let data: PageData;
+	interface Props {
+		data: PageData;
+	}
 
-	let currentPage = data.pastes?.pagination?.page ?? 1;
-	let pagination: Pagination = data.pastes?.pagination ?? {
-		page: 1,
-		pageSize: 50,
-		totalCount: 0,
-		totalPages: 1
-	};
-	let pastes = data.pastes?.pastes ?? [];
-	let loading = false;
-	let isOwner = false;
+	let { data }: Props = $props();
+	const initialPagination: Pagination = (() => {
+		const pagination = data.pastes?.pagination;
+		return {
+			page: pagination?.page ?? 1,
+			pageSize: pagination?.pageSize ?? 50,
+			totalCount: pagination?.totalCount ?? 0,
+			totalPages: pagination?.totalPages ?? 1
+		};
+	})();
+
+	let currentPage = $state(initialPagination.page);
+	let pagination: Pagination = $state(initialPagination);
+	let pastes = $state((() => data.pastes?.pastes ?? [])());
+	let loading = $state(false);
+	let isOwner = $derived(data.user && $user ? data.user?.uuid === $user.uuid : false);
 	let modalError = '';
-	let totpEnabled = false;
-	let now = new Date();
+	let totpEnabled = $derived(Boolean($user?.totpEnabled));
+	let now = $state(new Date());
 	let interval: ReturnType<typeof setInterval> | null = null;
-	let isEditingDisplayName = false;
-	let editDisplayNameValue = '';
+	let isEditingDisplayName = $state(false);
+	let editDisplayNameValue = $state('');
 
-	let apiKeys: { uuid: string; name: string; createdAt: string; lastUsedAt: string | null }[] = [];
+	let apiKeys: { uuid: string; name: string; createdAt: string; lastUsedAt: string | null }[] =
+		$state([]);
 	let successfullyFetchedApiKeys = false;
-	let newApiKeyName = '';
-	let newApiKeyValue = '';
-	let isCreatingApiKey = false;
-	let apiKeyError = '';
-	let copiedApiKey = false;
+	let newApiKeyName = $state('');
+	let newApiKeyValue = $state('');
+	let isCreatingApiKey = $state(false);
+	let apiKeyError = $state('');
+	let copiedApiKey = $state(false);
 
-	$: isOwner = data.user && $user ? data.user?.uuid === $user.uuid : false;
-	$: totpEnabled = Boolean($user?.totpEnabled);
-	$: reportsSubmitted = data.reportsSubmitted;
-	$: reportsTarget = data.reportsTarget;
+	let reportsSubmitted = $derived(data.reportsSubmitted);
+	let reportsTarget = $derived(data.reportsTarget);
 
-	let activeTab: 'pastes' | 'reportsSubmitted' | 'reportsTarget' | 'settings' = isOwner
-		? 'settings'
-		: 'pastes';
+	let activeTab: 'pastes' | 'reportsSubmitted' | 'reportsTarget' | 'settings' = $state('pastes');
 
 	async function updateTab(newPageTab: typeof activeTab) {
 		if (activeTab === newPageTab) return;
@@ -93,7 +101,7 @@
 		}
 	}
 
-	$: {
+	$effect(() => {
 		const tab = page.url.searchParams.get('tab');
 		switch (tab) {
 			case 'pastes':
@@ -119,7 +127,7 @@
 					activeTab = 'pastes';
 				}
 		}
-	}
+	});
 
 	const roleOptions = [
 		{ label: 'Member', value: 1 },
@@ -245,10 +253,11 @@
 	}
 
 	function handleTotpConfirm(value: unknown) {
+		let enabled = totpEnabled;
 		if (value && typeof value === 'object' && 'enabled' in value) {
-			totpEnabled = Boolean((value as { enabled?: boolean }).enabled);
+			enabled = Boolean((value as { enabled?: boolean }).enabled);
 		}
-		user.update((u) => (u ? { ...u, totpEnabled } : u));
+		user.update((u) => (u ? { ...u, totpEnabled: enabled } : u));
 		modalError = '';
 	}
 
@@ -425,9 +434,10 @@
 		}
 	});
 
-	$: reportSiteKey =
+	let reportSiteKey = $derived(
 		(data as unknown as { authOptions?: { cf_turnstile_site_key?: string | null } }).authOptions
-			?.cf_turnstile_site_key ?? null;
+			?.cf_turnstile_site_key ?? null
+	);
 </script>
 
 <svelte:head>
@@ -525,7 +535,7 @@
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				class="absolute top-0 right-0"
-				on:click={() =>
+				onclick={() =>
 					openModal({
 						mode: 'report',
 						title: 'Report User',
@@ -546,7 +556,7 @@
 					'settings'
 						? 'border-neutral-200 text-white'
 						: 'border-transparent text-neutral-400'}"
-					on:click={() => updateTab('settings')}
+					onclick={() => updateTab('settings')}
 				>
 					Settings
 				</button>
@@ -556,7 +566,7 @@
 				'pastes'
 					? 'border-neutral-200 text-white'
 					: 'border-transparent text-neutral-400'}"
-				on:click={() => updateTab('pastes')}
+				onclick={() => updateTab('pastes')}
 			>
 				Pastes
 				<span class="ml-2 rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-300"
@@ -569,7 +579,7 @@
 					'reportsSubmitted'
 						? 'border-neutral-200 text-white'
 						: 'border-transparent text-neutral-400'}"
-					on:click={() => updateTab('reportsSubmitted')}
+					onclick={() => updateTab('reportsSubmitted')}
 				>
 					Submitted Reports
 					<span class="ml-2 rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-300"
@@ -583,7 +593,7 @@
 					'reportsTarget'
 						? 'border-neutral-200 text-white'
 						: 'border-transparent text-neutral-400'}"
-					on:click={() => updateTab('reportsTarget')}
+					onclick={() => updateTab('reportsTarget')}
 				>
 					Reports Against User
 					<span class="ml-2 rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-300"
@@ -624,20 +634,20 @@
 											bind:value={editDisplayNameValue}
 											class="w-full border-b border-neutral-600 bg-transparent px-2 py-1 font-mono text-neutral-300 outline-none focus:border-neutral-400"
 											maxlength="26"
-											on:keydown={(e) => {
+											onkeydown={(e) => {
 												if (e.key === 'Enter') saveDisplayName();
 												else if (e.key === 'Escape') cancelEditDisplayName();
 											}}
 										/>
 										<button
-											on:click={saveDisplayName}
+											onclick={saveDisplayName}
 											class="flex items-center gap-1 rounded bg-green-900/50 px-3 py-2 text-xs font-medium text-green-400 transition-colors hover:bg-green-900"
 										>
 											<Check class="h-4 w-4" />
 											Save
 										</button>
 										<button
-											on:click={cancelEditDisplayName}
+											onclick={cancelEditDisplayName}
 											class="flex items-center gap-1 rounded bg-neutral-700 px-3 py-2 text-xs font-medium text-neutral-300 transition-colors hover:bg-neutral-600"
 										>
 											<X class="h-4 w-4" />
@@ -649,7 +659,7 @@
 										>{data.user?.displayName || data.user?.username}</span
 									>
 									<button
-										on:click={startEditDisplayName}
+										onclick={startEditDisplayName}
 										class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
 									>
 										<Pencil class="h-4 w-4" />
@@ -683,7 +693,7 @@
 											>
 										</div>
 										<button
-											on:click={openTotpSetup}
+											onclick={openTotpSetup}
 											class="rounded bg-neutral-700 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-neutral-600"
 										>
 											{totpEnabled ? 'Manage' : 'Enable'}
@@ -720,7 +730,7 @@
 											>
 										</div>
 										<button
-											on:click={openEditRoles}
+											onclick={openEditRoles}
 											class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
 										>
 											Edit
@@ -764,7 +774,7 @@
 												maxlength="26"
 											/>
 											<button
-												on:click={createApiKey}
+												onclick={createApiKey}
 												disabled={loading || !newApiKeyName}
 												class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600 disabled:opacity-50"
 											>
@@ -776,7 +786,7 @@
 												Create
 											</button>
 											<button
-												on:click={() => {
+												onclick={() => {
 													isCreatingApiKey = false;
 													newApiKeyName = '';
 												}}
@@ -787,7 +797,7 @@
 										</div>
 									{:else}
 										<button
-											on:click={() => (isCreatingApiKey = true)}
+											onclick={() => (isCreatingApiKey = true)}
 											class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
 										>
 											<Plus class="h-4 w-4" />
@@ -801,7 +811,7 @@
 										<div class="mb-2 flex items-center justify-between">
 											<span class="text-sm font-medium text-green-400">API Key Created</span>
 											<button
-												on:click={() => (newApiKeyValue = '')}
+												onclick={() => (newApiKeyValue = '')}
 												class="text-green-400/70 hover:text-green-400"
 											>
 												<X class="h-4 w-4" />
@@ -816,7 +826,7 @@
 											>
 											<button
 												class="p-1 text-neutral-400 hover:text-white"
-												on:click={() => {
+												onclick={() => {
 													navigator.clipboard.writeText(newApiKeyValue);
 													copiedApiKey = true;
 													setTimeout(() => (copiedApiKey = false), 1000);
@@ -859,7 +869,7 @@
 													</div>
 												</div>
 												<button
-													on:click={() => deleteApiKey(key.uuid)}
+													onclick={() => deleteApiKey(key.uuid)}
 													disabled={loading}
 													class="p-2 text-neutral-500 transition-colors hover:text-red-400"
 													title="Revoke Key"
@@ -894,7 +904,7 @@
 										</p>
 									</div>
 									<button
-										on:click={openDeleteAccount}
+										onclick={openDeleteAccount}
 										class="rounded border border-red-500/50 bg-red-500/10 px-4 py-2 text-sm font-medium whitespace-nowrap text-red-400 transition-colors hover:bg-red-500 hover:text-white"
 									>
 										Delete Account
@@ -922,7 +932,7 @@
 					<div class="mt-4 flex items-center justify-center gap-4">
 						<button
 							class="rounded bg-neutral-700 px-3 py-1 disabled:opacity-50"
-							on:click={() => fetchPage(currentPage - 1)}
+							onclick={() => fetchPage(currentPage - 1)}
 							disabled={currentPage === 1 || loading}
 						>
 							Prev
@@ -932,7 +942,7 @@
 						</span>
 						<button
 							class="rounded bg-neutral-700 px-3 py-1 disabled:opacity-50"
-							on:click={() => fetchPage(currentPage + 1)}
+							onclick={() => fetchPage(currentPage + 1)}
 							disabled={currentPage === pagination.totalPages || loading}
 						>
 							Next
@@ -946,8 +956,8 @@
 							class="flex cursor-pointer flex-col gap-2 rounded border border-neutral-700 bg-neutral-800 px-5 py-4 transition-colors duration-200 hover:bg-neutral-700 focus:ring-2 focus:ring-neutral-600 focus:outline-none"
 							role="link"
 							tabindex="0"
-							on:click={() => goto(resolve(`/report/${report.reportID}`))}
-							on:keydown={(e) => {
+							onclick={() => goto(resolve(`/report/${report.reportID}`))}
+							onkeydown={(e) => {
 								if (e.key === 'Enter' || e.key === ' ') {
 									e.preventDefault();
 									goto(resolve(`/report/${report.reportID}`));
@@ -969,7 +979,7 @@
 									<a
 										href={resolve(`/${report.pasteId}`)}
 										class="text-neutral-300 hover:text-white"
-										on:click|stopPropagation
+										onclick={stopPropagation(bubble('click'))}
 									>
 										{report.pasteTitle !== '' ? report.pasteTitle : report.pasteId}
 									</a>
@@ -980,7 +990,7 @@
 											href={resolve(`/user/${report.targetUsername}`)}
 											class="text-neutral-300 hover:text-white"
 											use:tooltip={report.userUUID}
-											on:click|stopPropagation
+											onclick={stopPropagation(bubble('click'))}
 										>
 											{report.targetDisplayName || report.targetUsername}
 										</a>
@@ -1005,8 +1015,8 @@
 							class="flex cursor-pointer flex-col gap-2 rounded border border-neutral-700 bg-neutral-800 px-5 py-4 transition-colors duration-200 hover:bg-neutral-700 focus:ring-2 focus:ring-neutral-600 focus:outline-none"
 							role="link"
 							tabindex="0"
-							on:click={() => goto(resolve(`/report/${report.reportID}`))}
-							on:keydown={(e) => {
+							onclick={() => goto(resolve(`/report/${report.reportID}`))}
+							onkeydown={(e) => {
 								if (e.key === 'Enter' || e.key === ' ') {
 									e.preventDefault();
 									goto(resolve(`/report/${report.reportID}`));
@@ -1029,7 +1039,7 @@
 										href={resolve(`/user/${report.reporterUsername}`)}
 										class="text-neutral-300 hover:text-white"
 										use:tooltip={report.reporterUUID}
-										on:click|stopPropagation
+										onclick={stopPropagation(bubble('click'))}
 									>
 										{report.reporterDisplayName || report.reporterUsername}
 									</a>
@@ -1040,7 +1050,7 @@
 									<a
 										href={resolve(`/${report.pasteId ?? report.pastePID}`)}
 										class="text-neutral-300 hover:text-white"
-										on:click|stopPropagation
+										onclick={stopPropagation(bubble('click'))}
 									>
 										{report.pasteTitle ? report.pasteTitle : `Paste #${report.pastePID}`}
 									</a>
@@ -1051,7 +1061,7 @@
 											href={resolve(`/user/${report.targetUsername}`)}
 											class="text-neutral-300 hover:text-white"
 											use:tooltip={report.userUUID}
-											on:click|stopPropagation
+											onclick={stopPropagation(bubble('click'))}
 										>
 											{report.targetDisplayName || report.targetUsername}
 										</a>

@@ -5,46 +5,68 @@
 	import { tick } from 'svelte';
 	import { extractError } from '$lib/utils/misc';
 
-	export let show = false;
-	export let mode:
-		| 'decrypt'
-		| 'encrypt'
-		| 'confirm'
-		| 'prompt'
-		| 'multiselect'
-		| 'totp'
-		| 'totpSetup'
-		| 'report' = 'decrypt';
-	export let title = '';
-	export let message = '';
-	export let error = '';
-	export let placeholder = '';
-	export let inputType = 'text';
-	export let inputMaxLength: number | null = null;
-	export let items: { label: string; value: unknown }[] = [];
-	export let initialValue: unknown = null;
-	export let totpActive: boolean | null = null;
-	export let reportTarget: 'user' | 'paste' | null = null;
-	export let reportTargetId: string | number | null = null;
-	export let reportSiteKey: string | null = null;
-	export let onConfirm: (value: unknown) => void;
-	export let onCancel: () => void;
-	export let confirmButtonText = '';
+	interface Props {
+		show?: boolean;
+		mode?:
+			| 'decrypt'
+			| 'encrypt'
+			| 'confirm'
+			| 'prompt'
+			| 'multiselect'
+			| 'totp'
+			| 'totpSetup'
+			| 'report';
+		title?: string;
+		message?: string;
+		error?: string;
+		placeholder?: string;
+		inputType?: string;
+		inputMaxLength?: number | null;
+		items?: { label: string; value: unknown }[];
+		initialValue?: unknown;
+		totpActive?: boolean | null;
+		reportTarget?: 'user' | 'paste' | null;
+		reportTargetId?: string | number | null;
+		reportSiteKey?: string | null;
+		onConfirm: (value: unknown) => void;
+		onCancel: () => void;
+		confirmButtonText?: string;
+	}
 
-	let inputValue: string | unknown[] | boolean = '';
-	let totpSecret = '';
-	let totpQr = '';
-	let totpEnabled = false;
-	let totpInitialized = false;
-	let totpLoading = false;
-	let totpError = '';
-	let displayError = '';
-	let reportTypes: string[] = [];
-	let reportType = '';
-	let reportInitialized = false;
-	let reportLoading = false;
-	let multiselectInitialized = false;
-	let turnstileEl: HTMLDivElement | null = null;
+	let {
+		show = false,
+		mode = 'decrypt',
+		title = '',
+		message = '',
+		error = $bindable(''),
+		placeholder = '',
+		inputType = 'text',
+		inputMaxLength = null,
+		items = [],
+		initialValue = null,
+		totpActive = null,
+		reportTarget = null,
+		reportTargetId = null,
+		reportSiteKey = null,
+		onConfirm,
+		onCancel,
+		confirmButtonText = ''
+	}: Props = $props();
+
+	let inputValue: string | unknown[] | boolean = $state('');
+	let totpSecret = $state('');
+	let totpQr = $state('');
+	let totpEnabled = $state(false);
+	let totpInitialized = $state(false);
+	let totpLoading = $state(false);
+	let totpError = $state('');
+	let displayError = $derived(error || totpError);
+	let reportTypes: string[] = $state([]);
+	let reportType = $state('');
+	let reportInitialized = $state(false);
+	let reportLoading = $state(false);
+	let multiselectInitialized = $state(false);
+	let turnstileEl: HTMLDivElement | null = $state(null);
 	let turnstileWidgetId: string | null = null;
 
 	const titleMap = {
@@ -63,33 +85,11 @@
 		encrypt: 'Encrypt',
 		confirm: 'Confirm',
 		multiselect: 'Confirm',
-		totpSetup: totpEnabled ? 'Disable' : 'Enable',
+		totpSetup: 'Enable',
 		totp: 'Verify',
 		report: 'Submit Report',
 		prompt: 'Submit'
 	};
-
-	$: displayError = error || totpError;
-
-	$: if (!show) resetModal();
-
-	$: if (show && mode === 'totpSetup' && !totpInitialized) {
-		totpInitialized = true;
-		if (totpActive !== null) {
-			totpEnabled = totpActive;
-		}
-		initializeTotp();
-	}
-
-	$: if (show && mode === 'report' && !reportInitialized) {
-		reportInitialized = true;
-		initializeReport();
-	}
-
-	$: if (show && mode === 'multiselect' && !multiselectInitialized) {
-		multiselectInitialized = true;
-		inputValue = Array.isArray(initialValue) ? JSON.parse(JSON.stringify(initialValue)) : [];
-	}
 
 	function resetModal() {
 		inputValue =
@@ -212,7 +212,8 @@
 		return null;
 	}
 
-	async function handleSubmit() {
+	async function handleSubmit(event: Event) {
+		event.preventDefault();
 		if (mode === 'report') {
 			await submitReport();
 			return;
@@ -394,17 +395,44 @@
 		}
 	}
 
-	$: displayTitle = title || titleMap[mode];
-
-	$: confirmLabel = confirmButtonText || confirmLabelMap[mode];
-	$: shouldShowInput =
-		mode !== 'confirm' && mode !== 'multiselect' && mode !== 'totpSetup' && mode !== 'report';
+	$effect(() => {
+		if (!show) resetModal();
+	});
+	$effect(() => {
+		if (show && mode === 'totpSetup' && !totpInitialized) {
+			totpInitialized = true;
+			if (totpActive !== null) {
+				totpEnabled = totpActive;
+			}
+			initializeTotp();
+		}
+	});
+	$effect(() => {
+		if (show && mode === 'report' && !reportInitialized) {
+			reportInitialized = true;
+			initializeReport();
+		}
+	});
+	$effect(() => {
+		if (show && mode === 'multiselect' && !multiselectInitialized) {
+			multiselectInitialized = true;
+			inputValue = Array.isArray(initialValue) ? JSON.parse(JSON.stringify(initialValue)) : [];
+		}
+	});
+	let displayTitle = $derived(title || titleMap[mode]);
+	let confirmLabel = $derived(
+		confirmButtonText ||
+			(mode === 'totpSetup' ? (totpEnabled ? 'Disable' : 'Enable') : confirmLabelMap[mode])
+	);
+	let shouldShowInput = $derived(
+		mode !== 'confirm' && mode !== 'multiselect' && mode !== 'totpSetup' && mode !== 'report'
+	);
 </script>
 
 {#if show}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-xs">
 		<form
-			on:submit|preventDefault={handleSubmit}
+			onsubmit={handleSubmit}
 			class="w-full max-w-md rounded border border-neutral-800 bg-neutral-900 p-6"
 		>
 			<h2 class="mb-4 text-xl font-semibold text-white">
@@ -448,7 +476,7 @@
 									>
 									<button
 										type="button"
-										on:click={copySecret}
+										onclick={copySecret}
 										class="rounded bg-neutral-700 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
 									>
 										Copy
@@ -463,7 +491,7 @@
 							maxlength="6"
 							inputmode="numeric"
 							pattern="[0-9]*"
-							on:input={onCodeInput}
+							oninput={onCodeInput}
 							class="w-full rounded border border-neutral-700 bg-neutral-800 p-2 text-white outline-none"
 						/>
 					{/if}
@@ -543,7 +571,7 @@
 				</button>
 				<button
 					type="button"
-					on:click={onCancel}
+					onclick={onCancel}
 					class="cursor-pointer rounded border border-neutral-700 px-4 py-2 text-white hover:bg-neutral-950"
 				>
 					Cancel

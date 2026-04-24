@@ -8,27 +8,31 @@
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 
-	let username = '';
-	let password = '';
-	let confirmPassword = '';
-	let email = '';
-	let displayName = '';
-	let error = '';
+	let username = $state('');
+	let password = $state('');
+	let confirmPassword = $state('');
+	let email = $state('');
+	let displayName = $state('');
+	let error = $state('');
 
-	let passwordFocused = false;
-	let showPassword = false;
+	let passwordFocused = $state(false);
+	let showPassword = $state(false);
 
-	let passwordChecks = {
+	let passwordChecks = $state({
 		minLength: false,
 		maxLength: false,
 		upper: false,
 		lower: false,
 		number: false
-	};
-	let passwordValid = false;
-	let loading = false;
+	});
+	let passwordValid = $state(false);
+	let loading = $state(false);
 
-	export let data: PageData;
+	interface Props {
+		data: PageData;
+	}
+
+	let { data }: Props = $props();
 
 	onMount(() => {
 		const render = () => {
@@ -71,9 +75,12 @@
 			passwordChecks.number;
 	}
 
-	$: validatePassword(password);
+	$effect(() => {
+		validatePassword(password);
+	});
 
-	async function register() {
+	async function register(event: Event) {
+		event.preventDefault();
 		if (!passwordValid || password !== confirmPassword) return;
 		loading = true;
 		error = '';
@@ -143,7 +150,7 @@
 				Registration is currently disabled.
 			</div>
 		{/if}
-		<form on:submit|preventDefault={register} class="space-y-4">
+		<form onsubmit={register} class="space-y-4">
 			<input
 				type="text"
 				placeholder="Username"
@@ -179,15 +186,15 @@
 					placeholder="Password"
 					bind:value={password}
 					required
-					on:focus={() => (passwordFocused = true)}
-					on:blur={() => (passwordFocused = false)}
+					onfocus={() => (passwordFocused = true)}
+					onblur={() => (passwordFocused = false)}
 					autocomplete="new-password"
 					disabled={loading || !data.options?.registration_enabled}
 					class="focus:bg-neutral-750 w-[calc(100%-40px)] rounded-l border border-neutral-700 bg-neutral-800 p-2 placeholder-neutral-500 transition-colors duration-200 focus:border-neutral-600"
 				/>
 				<button
 					type="button"
-					on:click={() => (showPassword = !showPassword)}
+					onclick={() => (showPassword = !showPassword)}
 					disabled={loading || !data.options?.registration_enabled}
 					class="ml-2 flex w-10 items-center rounded-r border border-neutral-700 bg-neutral-800 p-2 transition-colors duration-200 hover:bg-neutral-700 focus:outline-none"
 				>

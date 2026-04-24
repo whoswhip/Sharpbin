@@ -5,12 +5,16 @@
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 
-	let username = '';
-	let password = '';
-	let error = '';
-	let totpEnabled = false;
-	let totpCode = '';
-	export let data: PageData;
+	let username = $state('');
+	let password = $state('');
+	let error = $state('');
+	let totpEnabled = $state(false);
+	let totpCode = $state('');
+	interface Props {
+		data: PageData;
+	}
+
+	let { data }: Props = $props();
 
 	onMount(() => {
 		const render = () => {
@@ -35,7 +39,8 @@
 		};
 	});
 
-	async function login() {
+	async function login(event: Event) {
+		event.preventDefault();
 		const body: { username: string; password: string; token?: string; totpcode?: string } = {
 			username,
 			password
@@ -96,7 +101,7 @@
 >
 	<div class="w-full max-w-md rounded border-2 border-neutral-800 bg-neutral-900 p-6">
 		<h1 class="mb-6 text-center text-3xl font-bold">Login</h1>
-		<form on:submit|preventDefault={login} class="space-y-4">
+		<form onsubmit={login} class="space-y-4">
 			<input
 				type="text"
 				placeholder="Username"
@@ -122,7 +127,7 @@
 					inputmode="numeric"
 					pattern="[0-9]*"
 					required
-					on:input={(e) => {
+					oninput={(e) => {
 						if (e.target instanceof HTMLInputElement) {
 							e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
 							totpCode = e.target.value;

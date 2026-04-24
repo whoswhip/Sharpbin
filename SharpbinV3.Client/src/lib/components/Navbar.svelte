@@ -15,9 +15,13 @@
 		window.location.href = '/';
 	}
 
-	export let data: PageData;
+	interface Props {
+		data: PageData;
+	}
 
-	let menuOpen = false;
+	let { data }: Props = $props();
+
+	let menuOpen = $state(false);
 
 	let currentPath = page.url.pathname;
 	let returnParam =
@@ -73,7 +77,7 @@
 					>Profile</a
 				>
 				<button
-					on:click={logout}
+					onclick={logout}
 					class="cursor-pointer rounded bg-neutral-700 px-3 py-1 text-white transition-colors hover:bg-neutral-600"
 					>Logout</button
 				>
@@ -104,7 +108,7 @@
 		</a>
 		<button
 			class="ml-auto flex h-10 w-10 items-center justify-center rounded border border-neutral-700 bg-neutral-800 p-2 hover:bg-neutral-700 focus:outline-none"
-			on:click={() => (menuOpen = !menuOpen)}
+			onclick={() => (menuOpen = !menuOpen)}
 			aria-label="Toggle Menu"
 			aria-expanded={menuOpen}
 		>
@@ -126,23 +130,23 @@
 			<a
 				href={resolve('/recent')}
 				class="block w-full rounded bg-neutral-800 px-3 py-2 text-center text-neutral-100 transition-colors hover:bg-neutral-700"
-				on:click={() => (menuOpen = false)}>Recent Pastes</a
+				onclick={() => (menuOpen = false)}>Recent Pastes</a
 			>
 			{#if $user}
 				{#if hasRole($user.roles, 2) || hasRole($user.roles, 4)}
 					<a
 						href={resolve('/reports')}
 						class="mt-1 block w-full rounded bg-neutral-800 px-3 py-2 text-center text-neutral-100 transition-colors hover:bg-neutral-700"
-						on:click={() => (menuOpen = false)}>Reports</a
+						onclick={() => (menuOpen = false)}>Reports</a
 					>
 				{/if}
 				<a
 					href={resolve(`/user/${$user.username}`)}
 					class="mt-1 block w-full rounded bg-neutral-800 px-3 py-2 text-center text-neutral-100 transition-colors hover:bg-neutral-700"
-					on:click={() => (menuOpen = false)}>Profile</a
+					onclick={() => (menuOpen = false)}>Profile</a
 				>
 				<button
-					on:click={() => {
+					onclick={() => {
 						logout();
 						menuOpen = false;
 					}}
@@ -153,7 +157,7 @@
 				<a
 					href={resolve(`/login${returnParam}`)}
 					class="mt-1 block w-full rounded bg-neutral-800 px-3 py-2 text-center text-neutral-100 transition-colors hover:bg-neutral-700"
-					on:click={() => (menuOpen = false)}>Login</a
+					onclick={() => (menuOpen = false)}>Login</a
 				>
 				<!-- eslint-disable svelte/no-navigation-without-resolve -->
 				<a
@@ -162,7 +166,7 @@
 						.options?.registration_enabled
 						? ''
 						: 'cursor-not-allowed bg-neutral-900 text-neutral-500'}"
-					on:click={() => (menuOpen = false)}>Register</a
+					onclick={() => (menuOpen = false)}>Register</a
 				>
 				<!-- eslint-enable svelte/no-navigation-without-resolve -->
 			{/if}

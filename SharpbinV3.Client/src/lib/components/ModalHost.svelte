@@ -2,7 +2,7 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import { cancelModal, confirmModal, modal } from '$lib/stores/modal';
 
-	$: state = $modal;
+	let state = $derived($modal);
 </script>
 
 <Modal

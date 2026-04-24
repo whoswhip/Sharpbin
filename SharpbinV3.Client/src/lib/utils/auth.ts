@@ -69,7 +69,8 @@ function parseBooleanClaim(value: unknown) {
 }
 
 function parseNumberClaim(value: unknown): number | null {
-	const numeric = typeof value === 'number' ? value : typeof value === 'string' ? parseInt(value, 10) : NaN;
+	const numeric =
+		typeof value === 'number' ? value : typeof value === 'string' ? parseInt(value, 10) : NaN;
 	return Number.isFinite(numeric) ? numeric : null;
 }
 

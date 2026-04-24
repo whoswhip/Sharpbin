@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { createBubbler, stopPropagation } from 'svelte/legacy';
+
+	const bubble = createBubbler();
 	import type { PageData } from './$types';
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
@@ -6,14 +9,30 @@
 	import { tooltip } from '$lib/utils/misc';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
-	export let data: PageData;
+	interface Props {
+		data: PageData;
+	}
 
-	let target = data.filters.target;
-	let status = data.filters.status;
-	let type = data.filters.type ?? '';
-	let pasteId = data.filters.pasteId;
-	let userUuid = data.filters.userUuid;
-	let mixedTarget = target === 'all' ? pasteId || userUuid : '';
+	let { data }: Props = $props();
+	const initialFilters = (() => {
+		const filters = data.filters;
+		return {
+			target: (filters.target as 'all' | 'pastes' | 'users') ?? 'all',
+			status: filters.status ?? '',
+			type: filters.type ?? '',
+			pasteId: filters.pasteId ?? '',
+			userUuid: filters.userUuid ?? ''
+		};
+	})();
+
+	let target = $state(initialFilters.target);
+	let status = $state(initialFilters.status);
+	let type = $state(initialFilters.type);
+	let pasteId = $state(initialFilters.pasteId);
+	let userUuid = $state(initialFilters.userUuid);
+	let mixedTarget = $state(
+		initialFilters.target === 'all' ? initialFilters.pasteId || initialFilters.userUuid : ''
+	);
 	let inputTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const targets = [
@@ -22,8 +41,8 @@
 		{ value: 'users', label: 'Users' }
 	];
 
-	const statuses = data.options?.statuses ?? [];
-	const types = data.options?.types ?? [];
+	let statuses = $derived(data.options?.statuses ?? []);
+	let types = $derived(data.options?.types ?? []);
 	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 	function applyFilters(page = 1) {
@@ -108,7 +127,7 @@
 					id="report-target"
 					class="rounded border border-neutral-700 bg-neutral-800 p-2"
 					bind:value={target}
-					on:change={(e) => {
+					onchange={(e) => {
 						if (e.currentTarget instanceof HTMLSelectElement) {
 							handleTargetChange(e.currentTarget.value);
 						}
@@ -125,7 +144,7 @@
 					id="report-status"
 					class="rounded border border-neutral-700 bg-neutral-800 p-2"
 					bind:value={status}
-					on:change={() => applyFilters(1)}
+					onchange={() => applyFilters(1)}
 				>
 					<option value="">Any</option>
 					{#each statuses as s (s)}
@@ -139,7 +158,7 @@
 					id="report-type"
 					class="rounded border border-neutral-700 bg-neutral-800 p-2"
 					bind:value={type}
-					on:change={() => applyFilters(1)}
+					onchange={() => applyFilters(1)}
 				>
 					<option value="">Any</option>
 					{#each types as t (t)}
@@ -165,7 +184,7 @@
 							? 'User UUID'
 							: 'Paste ID or User UUID'}
 					value={target === 'pastes' ? pasteId : target === 'users' ? userUuid : mixedTarget}
-					on:input={(e) => {
+					oninput={(e) => {
 						if (e.currentTarget instanceof HTMLInputElement) {
 							handleTargetInput(e.currentTarget.value);
 						}
@@ -181,8 +200,8 @@
 						class="flex cursor-pointer flex-col gap-2 rounded border border-neutral-700 bg-neutral-800 px-5 py-4 transition-colors duration-200 hover:bg-neutral-700 focus:ring-2 focus:ring-neutral-600 focus:outline-none"
 						role="link"
 						tabindex="0"
-						on:click={() => goto(resolve(`/report/${report.reportID}`))}
-						on:keydown={(e) => {
+						onclick={() => goto(resolve(`/report/${report.reportID}`))}
+						onkeydown={(e) => {
 							if (e.key === 'Enter' || e.key === ' ') {
 								e.preventDefault();
 								goto(resolve(`/report/${report.reportID}`));
@@ -204,7 +223,7 @@
 								<a
 									href={resolve(`/${report.pasteId}`)}
 									class="text-neutral-300 hover:text-white"
-									on:click|stopPropagation
+									onclick={stopPropagation(bubble('click'))}
 								>
 									{report.pasteTitle !== '' ? report.pasteTitle : report.pasteId}
 								</a>
@@ -215,7 +234,7 @@
 										href={resolve(`/user/${report.targetUsername}`)}
 										class="text-neutral-300 hover:text-white"
 										use:tooltip={report.userUUID}
-										on:click|stopPropagation
+										onclick={stopPropagation(bubble('click'))}
 									>
 										{report.targetDisplayName || report.targetUsername}
 									</a>
@@ -228,7 +247,7 @@
 									href={resolve(`/user/${report.reporterUsername}`)}
 									class="text-neutral-300 hover:text-white"
 									use:tooltip={report.reporterUUID}
-									on:click|stopPropagation
+									onclick={stopPropagation(bubble('click'))}
 								>
 									{report.reporterDisplayName || report.reporterUsername}
 								</a>
@@ -251,7 +270,7 @@
 			<div class="mt-6 flex items-center justify-center gap-4">
 				<button
 					class="rounded bg-neutral-700 px-3 py-1 disabled:opacity-50"
-					on:click={() => applyFilters(data.reports.pagination.page - 1)}
+					onclick={() => applyFilters(data.reports.pagination.page - 1)}
 					disabled={data.reports.pagination.page <= 1}
 				>
 					Prev
@@ -261,7 +280,7 @@
 				</span>
 				<button
 					class="rounded bg-neutral-700 px-3 py-1 disabled:opacity-50"
-					on:click={() => applyFilters(data.reports.pagination.page + 1)}
+					onclick={() => applyFilters(data.reports.pagination.page + 1)}
 					disabled={data.reports.pagination.page >= data.reports.pagination.totalPages}
 				>
 					Next

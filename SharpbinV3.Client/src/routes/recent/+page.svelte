@@ -3,9 +3,13 @@
 	import { onMount } from 'svelte';
 	import Paste from '$lib/components/Paste.svelte';
 
-	export let data: PageData;
+	interface Props {
+		data: PageData;
+	}
 
-	let now = new Date();
+	let { data }: Props = $props();
+
+	let now = $state(new Date());
 
 	onMount(() => {
 		const interval = setInterval(() => {

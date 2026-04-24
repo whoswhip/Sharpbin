@@ -5,15 +5,20 @@
 	import { tooltip } from '$lib/utils/misc';
 	import { getToken } from '$lib/utils/auth';
 
-	export let data: PageData;
+	interface Props {
+		data: PageData;
+	}
 
-	const report = data.report;
-	let saving = false;
-	let saveError = '';
-	const statusOptions = data.options?.statuses ?? [];
-	const typeOptions = data.options?.types ?? [];
-	let statusValue = reportStatusLabels[report.status] ?? '';
-	let typeValue = reportTypeLabels[report.type] ?? '';
+	let { data }: Props = $props();
+	const initialReport = () => ({ ...data.report });
+
+	let report = $state(initialReport());
+	let saving = $state(false);
+	let saveError = $state('');
+	let statusOptions = $derived(data.options?.statuses ?? []);
+	let typeOptions = $derived(data.options?.types ?? []);
+	let statusValue = $state(reportStatusLabels[report.status] ?? '');
+	let typeValue = $state(reportTypeLabels[report.type] ?? '');
 
 	async function updateReport() {
 		saveError = '';
@@ -143,7 +148,7 @@
 					<div class="flex items-center gap-3">
 						<button
 							class="rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600 disabled:opacity-60"
-							on:click={updateReport}
+							onclick={updateReport}
 							disabled={saving}
 						>
 							{saving ? 'Saving...' : 'Update Report'}

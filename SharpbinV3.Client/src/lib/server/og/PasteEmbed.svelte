@@ -10,11 +10,15 @@
 	import User from '@lucide/svelte/icons/user';
 	import type { PasteEmbedProps } from './pasteEmbed';
 
-	export let title: PasteEmbedProps['title'];
-	export let uploader: PasteEmbedProps['uploader'];
-	export let metadata: PasteEmbedProps['metadata'];
-	export let previewLines: PasteEmbedProps['previewLines'];
-	export let isEncrypted: PasteEmbedProps['isEncrypted'];
+	interface Props {
+		title: PasteEmbedProps['title'];
+		uploader: PasteEmbedProps['uploader'];
+		metadata: PasteEmbedProps['metadata'];
+		previewLines: PasteEmbedProps['previewLines'];
+		isEncrypted: PasteEmbedProps['isEncrypted'];
+	}
+
+	let { title, uploader, metadata, previewLines, isEncrypted }: Props = $props();
 
 	const metadataIcons = {
 		size: FileBox,

@@ -49,33 +49,41 @@
 	import { openModal } from '$lib/stores/modal';
 	import type { Paste } from '$lib/types/paste';
 	import HighlightWorker from '$lib/workers/highlight.worker?worker';
-	export let data: PageData;
+	interface Props {
+		data: PageData;
+	}
 
-	let reportSiteKey: string | null = null;
-	let editing = false;
-	let editContent: string | null = null;
-	let editMetadata: Paste | null = data.paste ? { ...data.paste } : null;
-	let editError = '';
-	let editLoading = false;
-	let isBinary = false;
-	let pasteContent = '';
-	let decryptedContent: string | null = null;
+	let { data = $bindable() }: Props = $props();
+
+	let reportSiteKey = $derived(
+		(data as unknown as { authOptions?: { cf_turnstile_site_key?: string | null } }).authOptions
+			?.cf_turnstile_site_key ?? null
+	);
+	let editing = $state(false);
+	let editContent: string | null = $state(null);
+	let editMetadata: Paste | null = $state(data.paste ? { ...data.paste } : null);
+	let editError = $state('');
+	let editLoading = $state(false);
+	let isBinary = $state(false);
+	let pasteContent = $state('');
+	let decryptedContent: string | null = $state(null);
 	let decryptError = '';
-	let decryptStatus = '';
-	let contentRendered = false;
-	let downloadedPaste = false;
-	let copiedPaste = false;
+	let decryptStatus = $state('');
+	let contentRendered = $state(false);
+	let downloadedPaste = $state(false);
+	let copiedPaste = $state(false);
 	let highlightWorker: Worker | null = null;
 	let highlightRequestId = 0;
 	let ignoreExternalMediaWarning = false;
 
-	let scrollY = 0;
+	let scrollY = $state(0);
 
-	let now = new Date();
-	$: isExpired =
+	let now = $state(new Date());
+	let isExpired = $derived(
 		data?.paste?.expiresAt && data.paste.expiresAt !== 0
 			? new Date(data.paste.expiresAt).getTime() <= now.getTime()
-			: false;
+			: false
+	);
 
 	let interval: ReturnType<typeof setInterval> | null = null;
 
@@ -490,12 +498,12 @@
 		}
 	});
 
-	$: if (data?.paste && (data.paste.visibility !== 2 || decryptedContent !== null)) renderPaste();
-	$: reportSiteKey =
-		(data as unknown as { authOptions?: { cf_turnstile_site_key?: string | null } }).authOptions
-			?.cf_turnstile_site_key ?? null;
-	$: pasteImageUrl =
-		data?.paste && data?.url ? `${new URL(data.url).origin}/${data.paste.id}.jpg` : null;
+	$effect(() => {
+		if (data?.paste && (data.paste.visibility !== 2 || decryptedContent !== null)) renderPaste();
+	});
+	let pasteImageUrl = $derived(
+		data?.paste && data?.url ? `${new URL(data.url).origin}/${data.paste.id}.jpg` : null
+	);
 </script>
 
 <svelte:window bind:scrollY />
@@ -750,7 +758,7 @@
 						<button
 							type="button"
 							class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
-							on:click={() => {
+							onclick={() => {
 								navigator.clipboard.writeText(decryptedContent ?? data.content);
 								copiedPaste = true;
 								setTimeout(() => (copiedPaste = false), 1000);
@@ -778,7 +786,7 @@
 					<button
 						type="button"
 						class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
-						on:click={() => {
+						onclick={() => {
 							const blob = new Blob([decryptedContent ?? data.content], {
 								type: 'text/plain'
 							});
@@ -839,7 +847,7 @@
 						<button
 							type="button"
 							class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-amber-600/50"
-							on:click={() => {
+							onclick={() => {
 								promptUser('report');
 							}}
 						>
@@ -853,7 +861,7 @@
 								<button
 									type="button"
 									class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
-									on:click={() => {
+									onclick={() => {
 										editContent = decryptedContent ?? data.content;
 										editError = '';
 										editing = true;
@@ -866,7 +874,7 @@
 							<button
 								type="button"
 								class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-red-900"
-								on:click={() => {
+								onclick={() => {
 									promptUser('confirm').then(async (value) => {
 										if (value) {
 											const token = getToken();
@@ -895,7 +903,7 @@
 							<button
 								type="button"
 								class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
-								on:click={async () => {
+								onclick={async () => {
 									if (editContent !== null || editMetadata !== null) {
 										await updatePaste(editContent, editMetadata);
 									}
@@ -908,7 +916,7 @@
 							<button
 								type="button"
 								class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
-								on:click={() => {
+								onclick={() => {
 									editing = false;
 									editError = '';
 								}}
@@ -922,7 +930,7 @@
 						<button
 							transition:fade={{ duration: 200 }}
 							class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
-							on:click={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+							onclick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
 							aria-label="Scroll to top"
 						>
 							<ArrowUp class="mr-1 h-5 w-5 text-neutral-400" />
@@ -963,7 +971,7 @@
 							? 'csv-container scrollbar overflow-x-auto overflow-y-auto scrollbar-thumb-neutral-600 scrollbar-track-neutral-800'
 							: 'codeblock-with-lines overflow-x-auto overflow-y-auto'}
 					class:hidden={!contentRendered}
-					on:click={handleMarkdownClick}
+					onclick={handleMarkdownClick}
 					role="presentation"
 				>
 					<!-- eslint-disable-next-line svelte/no-at-html-tags -->

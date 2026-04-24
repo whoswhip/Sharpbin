@@ -18,37 +18,47 @@
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { FileUp, X, Eye, EyeClosed, Dices } from '@lucide/svelte';
 
-	export let data: PageData;
+	interface Props {
+		data: PageData;
+	}
 
-	let textArea: HTMLTextAreaElement;
-	let markdownConatiner: HTMLDivElement;
+	let { data }: Props = $props();
 
-	let error = '';
-	let title = '';
-	let content = '';
-	let selectedSyntax = data.options?.syntaxes?.[0];
-	let expiresIn: number = 0;
-	let selectedVisibility = data.options?.visibilities?.[0]?.value;
-	let password = '';
-	let passwordVisible = false;
-	let anonymousUpload = false;
-	let isDragging = false;
-	let dragError = '';
-	let previewMode = false;
-	let renderedMarkdown = '';
+	let textArea = $state<HTMLTextAreaElement | undefined>(undefined);
+	let markdownConatiner = $state<HTMLDivElement | undefined>(undefined);
 
-	$: currentByteSize =
+	const getInitialSyntax = () => data.options?.syntaxes?.[0] ?? 'plaintext';
+	const getInitialVisibility = () => data.options?.visibilities?.[0]?.value ?? 0;
+
+	let error = $state('');
+	let title = $state('');
+	let content = $state('');
+	let selectedSyntax = $state(getInitialSyntax());
+	let expiresIn: number = $state(0);
+	let selectedVisibility = $state(getInitialVisibility());
+	let password = $state('');
+	let passwordVisible = $state(false);
+	let anonymousUpload = $state(false);
+	let isDragging = $state(false);
+	let dragError = $state('');
+	let previewMode = $state(false);
+	let renderedMarkdown = $state('');
+
+	let currentByteSize = $derived(
 		selectedVisibility === 2
 			? estimateEncryptedSize(content)
-			: new TextEncoder().encode(content).length;
+			: new TextEncoder().encode(content).length
+	);
 
-	$: if (selectedSyntax !== 'markdown') {
-		previewMode = false;
-	}
+	$effect(() => {
+		if (selectedSyntax !== 'markdown') {
+			previewMode = false;
+		}
+	});
 
 	const MAX_HEIGHT = () => Math.floor((window.innerHeight - 120) * 0.6);
 
-	let previewHeight = 'auto';
+	let previewHeight = $state('auto');
 	async function togglePreview(toPreview: boolean) {
 		if (toPreview && !previewMode) {
 			previewHeight = textArea?.style.height || 'auto';
@@ -59,11 +69,11 @@
 	}
 
 	function resize(markdown: boolean = false) {
-		if ((!markdown && !textArea) || (markdown && !markdownConatiner)) return;
+		const element = markdown ? markdownConatiner : textArea;
+		if (!element) return;
 
 		let h: number;
 		let max: number;
-		let element = markdown ? markdownConatiner : textArea;
 
 		element.style.height = 'auto';
 		h = element.scrollHeight;
@@ -106,17 +116,21 @@
 		};
 	});
 
-	const syntaxOptions =
-		data.options?.syntaxes?.map((lang: string) => ({
-			value: lang,
-			label: syntaxes[lang]?.name ?? lang.charAt(0).toUpperCase() + lang.slice(1)
-		})) ?? [];
+	let syntaxOptions = $derived.by(
+		() =>
+			data.options?.syntaxes?.map((lang: string) => ({
+				value: lang,
+				label: syntaxes[lang]?.name ?? lang.charAt(0).toUpperCase() + lang.slice(1)
+			})) ?? []
+	);
 
-	const visibilityOptions =
-		data.options?.visibilities?.map((visibility: { value: number; displayName: string }) => ({
-			value: visibility.value,
-			label: visibility.displayName
-		})) ?? [];
+	let visibilityOptions = $derived.by(
+		() =>
+			data.options?.visibilities?.map((visibility: { value: number; displayName: string }) => ({
+				value: visibility.value,
+				label: visibility.displayName
+			})) ?? []
+	);
 
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
@@ -244,7 +258,7 @@
 >
 	<div class="w-[95%] max-w-7xl rounded border-2 border-neutral-800 bg-neutral-900 p-6">
 		<h1 class="mb-6 text-center text-4xl font-bold">Create a Paste</h1>
-		<form class="mt-4" on:submit|preventDefault={handleSubmit}>
+		<form class="mt-4" onsubmit={handleSubmit}>
 			<input
 				type="text"
 				placeholder="Title (optional)"
@@ -274,10 +288,10 @@
 							minlength="1"
 							bind:this={textArea}
 							bind:value={content}
-							on:input={() => resize()}
-							on:change={() => resize()}
-							on:focus={() => resize()}
-							on:beforeinput={(e) => {
+							oninput={() => resize()}
+							onchange={() => resize()}
+							onfocus={() => resize()}
+							onbeforeinput={(e) => {
 								if (!data.options?.maxPasteSize) return;
 
 								const futureSize =
@@ -292,19 +306,19 @@
 									e.preventDefault();
 								}
 							}}
-							on:dragenter={(e) => {
+							ondragenter={(e) => {
 								e.preventDefault();
 								isDragging = true;
 							}}
-							on:dragover={(e) => {
+							ondragover={(e) => {
 								e.preventDefault();
 								isDragging = true;
 							}}
-							on:dragleave={(e) => {
+							ondragleave={(e) => {
 								e.preventDefault();
 								isDragging = false;
 							}}
-							on:drop={(e) => {
+							ondrop={(e) => {
 								requestAnimationFrame(() => resize());
 								e.preventDefault();
 								isDragging = false;
@@ -376,7 +390,7 @@
 								class="h-full w-1/2 rounded-l transition-colors {previewMode
 									? 'hover:bg-neutral-700'
 									: 'bg-neutral-700 text-white'}"
-								on:click={() => togglePreview(false)}
+								onclick={() => togglePreview(false)}
 							>
 								Code
 							</button>
@@ -385,7 +399,7 @@
 								class="h-full w-1/2 rounded-r transition-colors {!previewMode
 									? 'hover:bg-neutral-700'
 									: 'bg-neutral-700 text-white'}"
-								on:click={() => togglePreview(true)}
+								onclick={() => togglePreview(true)}
 							>
 								Preview
 							</button>
@@ -449,7 +463,7 @@
 					<button
 						type="button"
 						class="mr-1 ml-1 flex w-12.5 items-center justify-center border border-neutral-700 bg-neutral-800 p-2 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600"
-						on:click={() => {
+						onclick={() => {
 							const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 							const bytes = new Uint8Array(16);
 							crypto.getRandomValues(bytes);
@@ -462,7 +476,7 @@
 					<button
 						type="button"
 						class="flex w-12.5 items-center justify-center rounded-r border border-neutral-700 bg-neutral-800 p-2 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600"
-						on:click={() => (passwordVisible = !passwordVisible)}
+						onclick={() => (passwordVisible = !passwordVisible)}
 					>
 						{#if passwordVisible}
 							<EyeClosed class="h-5 w-5" />

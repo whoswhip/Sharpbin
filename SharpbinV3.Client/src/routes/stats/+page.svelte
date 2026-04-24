@@ -3,11 +3,17 @@
 	import { formatBytes, formatNumber, tooltip } from '$lib/utils/misc';
 	import { FileText, Users, Database, TrendingUp } from '@lucide/svelte';
 
-	export let data: PageData;
-	$: stats = data.stats.stats;
+	interface Props {
+		data: PageData;
+	}
 
-	$: dailyData = stats.pastes.daily || [];
-	$: maxCount = Math.max(...dailyData.map((d: { count: number; date: number }) => d.count), 5);
+	let { data }: Props = $props();
+	let stats = $derived(data.stats.stats);
+
+	let dailyData = $derived(stats.pastes.daily || []);
+	let maxCount = $derived(
+		Math.max(...dailyData.map((d: { count: number; date: number }) => d.count), 5)
+	);
 
 	function getOrdinal(n: number) {
 		const s = ['th', 'st', 'nd', 'rd'];

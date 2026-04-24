@@ -17,12 +17,16 @@
 	import { syntaxes } from '$lib/consts';
 	import type { Paste } from '$lib/types/paste';
 
-	export let paste: Paste;
-	export let now: Date;
-	export let showUser: boolean = true;
-	export let compact: boolean = false;
+	interface Props {
+		paste: Paste;
+		now: Date;
+		showUser?: boolean;
+		compact?: boolean;
+	}
 
-	const syntax = syntaxes[paste.syntax] ?? syntaxes['plaintext'];
+	let { paste, now, showUser = true, compact = false }: Props = $props();
+
+	let syntax = $derived(syntaxes[paste.syntax] ?? syntaxes['plaintext']);
 </script>
 
 {#if compact}
