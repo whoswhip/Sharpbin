@@ -17,7 +17,7 @@ namespace SharpbinV3.Server.Data.Entities
     [Index(nameof(UUID), IsUnique = true)]
     public sealed class User
     {
-        public int? UID { get; set; }
+        public long? UID { get; set; }
         [Key]
         public required Guid UUID { get; set; } = Guid.CreateVersion7();
         public long CreatedAt { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -39,6 +39,7 @@ namespace SharpbinV3.Server.Data.Entities
         public List<Report> Reports { get; set; } = [];
         public List<ApiKey> ApiKeys { get; set; } = [];
         public List<EmailVerificationToken> EmailVerificationTokens { get; set; } = [];
+        public List<Comment> Comments { get; set; } = [];
         public UserTotp? Totp { get; set; }
     }
 }

@@ -25,8 +25,9 @@ namespace SharpbinV3.Server.Data.Entities
         public Guid ReporterUUID { get; set; }
 
         public ReportTargetType TargetType { get; set; }
-        public int? PastePID { get; set; }
+        public long? PastePID { get; set; }
         public Guid? UserUUID { get; set; }
+        public long? CommentID { get; set; }
 
         public Paste? Paste { get; set; }
         public User? User { get; set; }
@@ -48,6 +49,8 @@ namespace SharpbinV3.Server.Data.Entities
     public enum ReportTargetType
     {
         Paste,
-        User
+        User,
+        Comment
+        
     }
 }

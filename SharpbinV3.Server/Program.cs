@@ -74,6 +74,7 @@ namespace SharpbinV3.Server
             builder.Services.AddScoped<UserService>();
             builder.Services.AddScoped<AuthService>();
             builder.Services.AddScoped<PasteService>();
+            builder.Services.AddScoped<CommentService>();
             builder.Services.AddScoped<ApiKeyService>();
             builder.Services.AddScoped<VerificationService>();
             builder.Services.AddScoped<TotpVerificationProvider>();
@@ -331,8 +332,8 @@ namespace SharpbinV3.Server
 
                         var pasteCount = await db.Pastes.CountAsync();
                         var userCount = await db.Users.CountAsync();
-                        var totalPasteSize = await db.Pastes.SumAsync(p => p.Size);
-                        var trueTotalPasteSize = await db.Pastes.SumAsync(p => p.TrueSize);
+                        var totalPasteSize = await db.Pastes.SumAsync(p => p.StoredSize);
+                        var trueTotalPasteSize = await db.Pastes.SumAsync(p => p.OriginalSize);
 
                         var dailyCounts = await db
                             .Pastes.Where(p => p.CreatedAt >= sevenDaysAgo)

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Text;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
@@ -18,17 +19,21 @@ namespace SharpbinV3.Server.Controllers
     [ApiController]
     public class PasteController(
         PasteService pasteService,
+        CommentService commentService,
         VerificationService verificationService,
         AuthService authService,
         ReportService reportService,
+        ICompressionService compressionService,
         IOptions<PasteSettings> options,
         IOptions<AuthSettings> authSettings
     ) : ControllerBase
     {
         private readonly PasteService _pasteService = pasteService;
+        private readonly CommentService _commentService = commentService;
         private readonly VerificationService _verificationService = verificationService;
         private readonly AuthService _authService = authService;
         private readonly ReportService _reportService = reportService;
+        private readonly ICompressionService _compressionService = compressionService;
         private readonly PasteSettings _pasteSettings = options.Value;
         private readonly AuthSettings _authSettings = authSettings.Value;
 
@@ -83,8 +88,8 @@ namespace SharpbinV3.Server.Controllers
                     UUID = paste.UUID,
                     CreatedAt = paste.CreatedAt,
                     IsCompressed = paste.IsCompressed,
-                    Size = paste.Size,
-                    TrueSize = paste.TrueSize,
+                    StoredSize = paste.StoredSize,
+                    OriginalSize = paste.OriginalSize,
                     ExpiresAt = paste.ExpiresAt,
                     Visibility = paste.Visibility,
                 }
@@ -101,6 +106,9 @@ namespace SharpbinV3.Server.Controllers
                 return NotFound(new { success = false, message = "Paste not found" });
 
             var jwtUser = HttpContext.GetJwtUser();
+            PasteInteraction? userInteraction = null;
+            if (jwtUser != null)
+                userInteraction = await _pasteService.GetUserInteraction(paste, jwtUser.UUID);
 
             int? reportCount = null;
             if (jwtUser != null && (jwtUser.Roles.HasFlag(Role.Admin) || jwtUser.Roles.HasFlag(Role.Moderator)))
@@ -119,8 +127,8 @@ namespace SharpbinV3.Server.Controllers
                         UUID = paste.UUID,
                         CreatedAt = paste.CreatedAt,
                         Title = paste.Title,
-                        Size = paste.Size,
-                        TrueSize = paste.TrueSize,
+                        StoredSize = paste.StoredSize,
+                        OriginalSize = paste.OriginalSize,
                         IsCompressed = paste.IsCompressed,
                         Views = paste.Views,
                         Syntax = paste.Syntax,
@@ -128,6 +136,9 @@ namespace SharpbinV3.Server.Controllers
                         ExpiresAt = paste.ExpiresAt,
                         EditedAt = paste.EditedAt,
                         ReportCount = reportCount,
+                        UserReaction = userInteraction != null ? userInteraction.Type : null,
+                        Likes = paste.PositiveInteractionCount,
+                        Dislikes = paste.NegativeInteractionCount,
                         Author =
                             paste.User != null && paste.User.Visibility == 0
                                 ? new UserSimpleDto
@@ -231,8 +242,8 @@ namespace SharpbinV3.Server.Controllers
                         UUID = newPaste.UUID,
                         CreatedAt = newPaste.CreatedAt,
                         Title = newPaste.Title,
-                        Size = newPaste.Size,
-                        TrueSize = newPaste.TrueSize,
+                        OriginalSize = newPaste.OriginalSize,
+                        StoredSize = newPaste.StoredSize,
                         IsCompressed = newPaste.IsCompressed,
                         Views = newPaste.Views,
                         Syntax = newPaste.Syntax,
@@ -297,111 +308,67 @@ namespace SharpbinV3.Server.Controllers
         }
 
         [HttpPost]
-        [Route("{id}/report")]
         [Authorize(Policy = "JwtOnlyAndNotBanned")]
-        [EnableRateLimiting("Sensitive")]
-        public async Task<IActionResult> ReportPaste(string id, [FromBody] ReportDto request)
+        [Route("{id}/reaction")]
+        public async Task<IActionResult> ReactToPaste(string id, [FromBody] ReactToPasteDto request)
         {
             var paste = await _pasteService.Get(id);
-            if (paste == null)
-                return NotFound(new { success = false, message = "Paste not found." });
-            var user = HttpContext.GetJwtUser()!;
+            if (paste == null || paste.ExpiresAt != 0 && paste.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+                return NotFound(new { success = false, message = "Paste not found" });
 
-            Enum.TryParse<ReportType>(request.ReportType, true, out var reportType);
-            if (!Enum.IsDefined(reportType))
-                return BadRequest(new { success = false, message = "Invalid report type." });
+            var user = await _authService.GetUserFromHttpContext(HttpContext);
+            if (user == null)
+                return Unauthorized(new { success = false, message = "User not authenticated." });
+            if (paste.AuthorUUID == user.UUID)
+                return BadRequest(new { success = false, message = "You cannot react to your own paste." });
 
-            if (
-                !await _verificationService.VerifyAsync(
-                    new VerificationContext { Token = request.VerificationToken, Ip = HttpContext.GetRequestIP() }
-                )
-            )
-                return BadRequest(new { success = false, message = "Verification failed." });
+            var existingInteraction = await _pasteService.GetUserInteraction(paste, user.UUID);
 
-            Report report = await _reportService.CreateReport(user.UUID, ReportTargetType.Paste, paste.PID, reportType, request.Description);
-            if (report == null)
-                return StatusCode(500, new { success = false, message = "An error occurred while reporting the paste." });
+            if (request.Reaction.HasValue)
+            {
+                if (existingInteraction == null)
+                {
+                    var created = await _pasteService.RecordInteraction(paste, user, request.Reaction.Value);
+                    if (created == null)
+                        return StatusCode(500, new { success = false, message = "Could not save reaction." });
+                }
+                else if (existingInteraction.Type != request.Reaction.Value)
+                {
+                    var removed = await _pasteService.RemoveInteraction(paste, user);
+                    if (!removed)
+                        return StatusCode(500, new { success = false, message = "Could not update reaction." });
+
+                    var created = await _pasteService.RecordInteraction(paste, user, request.Reaction.Value);
+                    if (created == null)
+                        return StatusCode(500, new { success = false, message = "Could not update reaction." });
+                }
+            }
+            else if (existingInteraction != null)
+            {
+                var removed = await _pasteService.RemoveInteraction(paste, user);
+                if (!removed)
+                    return StatusCode(500, new { success = false, message = "Could not remove reaction." });
+            }
+
+            var updatedPaste = await _pasteService.Get(id);
+            if (updatedPaste == null)
+                return StatusCode(500, new { success = false, message = "Could not load updated paste." });
+
+            var updatedInteraction = await _pasteService.GetUserInteraction(updatedPaste, user.UUID);
 
             return Ok(
                 new
                 {
                     success = true,
-                    message = "Paste reported successfully.",
-                    report = new ReportResponseDto
+                    reaction = new PasteReactionResponseDto
                     {
-                        ReportID = report.ReportID,
-                        Type = report.Type,
-                        Status = report.Status,
-                        Description = report.Description,
-                        CreatedAt = report.CreatedAt,
-                        UpdatedAt = report.UpdatedAt,
-                        ReporterUUID = report.ReporterUUID,
-                        TargetType = report.TargetType,
-                        UserUUID = report.UserUUID,
+                        PasteID = updatedPaste.ID,
+                        Likes = updatedPaste.PositiveInteractionCount,
+                        Dislikes = updatedPaste.NegativeInteractionCount,
+                        UserReaction = updatedInteraction?.Type,
                     },
                 }
             );
-        }
-
-        [HttpPatch]
-        [Route("{id}/report/{reportId}")]
-        [Authorize(Policy = "JwtOnlyAndNotBanned")]
-        [EnableRateLimiting("Sensitive")]
-        public async Task<IActionResult> ModifyPasteReport(string id, int reportId, [FromBody] ReportDto request)
-        {
-            var paste = await _pasteService.Get(id);
-            if (paste == null)
-                return NotFound(new { success = false, message = "Paste not found." });
-
-            var report = await _reportService.GetReportByID(reportId);
-            if (report == null || report.TargetType != ReportTargetType.Paste || report.PastePID != paste.PID)
-                return NotFound(new { success = false, message = "Report not found." });
-
-            var user = HttpContext.GetJwtUser()!;
-
-            var hasPrivilegedRole = user.Roles.HasFlag(Role.Admin) || user.Roles.HasFlag(Role.Moderator);
-            if (report.ReporterUUID != user.UUID && !hasPrivilegedRole)
-                return StatusCode(403, new { success = false, message = "You do not have permission to modify this report." });
-
-            Enum.TryParse<ReportType>(request.ReportType, true, out var reportType);
-            if (!Enum.IsDefined(reportType))
-                return BadRequest(new { success = false, message = "Invalid report type." });
-
-            report.Type = reportType;
-            report.Description = request.Description;
-
-            var updatedReport = await _reportService.UpdateReport(report);
-            if (updatedReport == null)
-                return StatusCode(500, new { success = false, message = "An error occurred while updating the report." });
-
-            return Ok(new { success = true, message = "Report updated successfully." });
-        }
-
-        [HttpDelete]
-        [Route("{id}/report/{reportId}")]
-        [Authorize(Policy = "JwtOnlyAndNotBanned")]
-        [EnableRateLimiting("Sensitive")]
-        public async Task<IActionResult> DeletePasteReport(string id, int reportId)
-        {
-            var paste = await _pasteService.Get(id);
-            if (paste == null)
-                return NotFound(new { success = false, message = "Paste not found." });
-
-            var report = await _reportService.GetReportByID(reportId);
-            if (report == null || report.TargetType != ReportTargetType.Paste || report.PastePID != paste.PID)
-                return NotFound(new { success = false, message = "Report not found." });
-
-            var user = HttpContext.GetJwtUser()!;
-
-            var hasPrivilegedRole = user.Roles.HasFlag(Role.Admin) || user.Roles.HasFlag(Role.Moderator);
-            if (report.ReporterUUID != user.UUID && !hasPrivilegedRole)
-                return StatusCode(403, new { success = false, message = "You do not have permission to delete this report." });
-
-            bool result = await _reportService.DeleteReport(report);
-            if (!result)
-                return StatusCode(500, new { success = false, message = "An error occurred while deleting the report." });
-
-            return Ok(new { success = true, message = "Report deleted successfully." });
         }
 
         [HttpGet]
@@ -416,8 +383,8 @@ namespace SharpbinV3.Server.Controllers
                     UUID = p.UUID,
                     CreatedAt = p.CreatedAt,
                     Title = p.Title,
-                    Size = p.Size,
-                    TrueSize = p.TrueSize,
+                    StoredSize = p.StoredSize,
+                    OriginalSize = p.OriginalSize,
                     IsCompressed = p.IsCompressed,
                     Views = p.Views,
                     Syntax = p.Syntax,
@@ -443,6 +410,112 @@ namespace SharpbinV3.Server.Controllers
 
         [HttpGet]
         [EnableRateLimiting("NoLimit")]
+        [Route("{id}/comments")]
+        public async Task<IActionResult> GetComments(string id)
+        {
+            var paste = await _pasteService.Get(id);
+            if (paste == null || paste.ExpiresAt != 0 && paste.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+                return NotFound(new { success = false, message = "Paste not found" });
+
+            var comments = await _commentService.GetCommentsByPaste(paste);
+
+            Dictionary<long, Interaction>? userInteractionMap = null;
+            var user = await _authService.GetUserFromHttpContext(HttpContext);
+            if (user != null)
+                userInteractionMap = await _commentService.GetUserInteractions(comments.Select(c => c.Id).ToList(), user.UUID);
+
+            return Ok(new { success = true, comments = comments.Select(c => ToCommentResponse(c, userInteractionMap)) });
+        }
+
+        [HttpPost]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
+        [Route("{id}/comments")]
+        public async Task<IActionResult> CreateComment(string id, [FromBody] CreateCommentDto request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Content))
+                return BadRequest(new { success = false, message = "Comment content cannot be empty." });
+
+            var paste = await _pasteService.Get(id);
+            if (paste == null || paste.ExpiresAt != 0 && paste.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+                return NotFound(new { success = false, message = "Paste not found" });
+
+            if (Encoding.UTF8.GetByteCount(request.Content) > 5000)
+                return BadRequest(new { success = false, message = "Comment content exceeds maximum size of 5000 bytes." });
+
+            if (request.ParentCommentID.HasValue)
+            {
+                var parent = await _commentService.GetCommentByID(request.ParentCommentID.Value, paste.PID);
+                if (parent == null)
+                    return BadRequest(new { success = false, message = "Parent comment not found for this paste." });
+            }
+
+            var user = await _authService.GetUserFromHttpContext(HttpContext);
+            if (user == null)
+                return Unauthorized(new { success = false, message = "User not authenticated." });
+
+            var comment = await _commentService.CreateComment(user, paste, request.Content, request.ParentCommentID);
+            var created = await _commentService.GetCommentByID(comment.Id);
+            if (created == null)
+                return StatusCode(500, new { success = false, message = "Failed to load created comment." });
+
+            var userInteractionMap = new Dictionary<long, Interaction>();
+            return Ok(new { success = true, comment = ToCommentResponse(created, userInteractionMap) });
+        }
+
+        [HttpPost]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
+        [Route("{id}/comments/{commentId}/reaction")]
+        public async Task<IActionResult> ReactToComment(string id, long commentId, [FromBody] ReactToCommentDto request)
+        {
+            var paste = await _pasteService.Get(id);
+            if (paste == null || paste.ExpiresAt != 0 && paste.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+                return NotFound(new { success = false, message = "Paste not found" });
+
+            var comment = await _commentService.GetCommentByID(commentId, paste.PID);
+            if (comment == null)
+                return NotFound(new { success = false, message = "Comment not found for this paste." });
+
+            var user = await _authService.GetUserFromHttpContext(HttpContext);
+            if (user == null)
+                return Unauthorized(new { success = false, message = "User not authenticated." });
+
+            if (request.Reaction.HasValue)
+            {
+                var result = await _commentService.UpsertInteraction(comment, user, request.Reaction.Value);
+                if (result == null)
+                    return StatusCode(500, new { success = false, message = "Could not save reaction." });
+            }
+            else
+            {
+                await _commentService.RemoveInteraction(comment, user);
+            }
+
+            var updated = await _commentService.GetCommentByID(commentId);
+            if (updated == null)
+                return StatusCode(500, new { success = false, message = "Could not load updated comment." });
+
+            var interactionMap = await _commentService.GetUserInteractions([commentId], user.UUID);
+            Interaction? userReaction = null;
+            if (interactionMap.TryGetValue(commentId, out var mappedReaction))
+                userReaction = mappedReaction;
+
+            return Ok(
+                new
+                {
+                    success = true,
+                    reaction = new CommentReactionResponseDto
+                    {
+                        CommentID = updated.Id,
+                        Likes = updated.PositiveInteractionCount,
+                        Dislikes = updated.NegativeInteractionCount,
+                        UserReaction = userReaction,
+                    },
+                }
+            );
+        }
+
+        [HttpGet]
+        [EnableRateLimiting("NoLimit")]
         [Route("info")]
         public IActionResult GetCreatePasteOptions()
         {
@@ -461,6 +534,48 @@ namespace SharpbinV3.Server.Controllers
                     RequiresVerification = _pasteSettings.RequiresVerification,
                 }
             );
+        }
+
+        private CommentResponseDto ToCommentResponse(Comment comment, Dictionary<long, Interaction>? userInteractionMap)
+        {
+            string? content = null;
+            if (comment.Content != null)
+            {
+                var bytes = comment.IsCompressed ? _compressionService.Decompress(comment.Content) : comment.Content;
+                content = Encoding.UTF8.GetString(bytes);
+            }
+
+            Interaction? userReaction = null;
+            if (userInteractionMap != null && userInteractionMap.TryGetValue(comment.Id, out var mappedReaction))
+                userReaction = mappedReaction;
+
+            return new CommentResponseDto
+            {
+                Id = comment.Id,
+                ParentCommentID = comment.ParentCommentID,
+                Content = content,
+                StoredSize = comment.StoredSize,
+                OriginalSize = comment.OriginalSize,
+                IsCompressed = comment.IsCompressed,
+                CreatedAt = comment.CreatedAt,
+                UpdatedAt = comment.UpdatedAt,
+                Likes = comment.PositiveInteractionCount,
+                Dislikes = comment.NegativeInteractionCount,
+                UserReaction = userReaction,
+                Author =
+                    comment.User != null && comment.User.Visibility == 0
+                        ? new UserSimpleDto
+                        {
+                            UID = comment.User.UID,
+                            UUID = comment.User.UUID,
+                            Username = comment.User.Username,
+                            DisplayName = comment.User.DisplayName,
+                            Visibility = comment.User.Visibility,
+                            Roles = comment.User.Roles,
+                            IsBanned = comment.User.IsBanned,
+                        }
+                        : null,
+            };
         }
     }
 }

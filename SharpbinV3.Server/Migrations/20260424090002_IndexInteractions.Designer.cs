@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SharpbinV3.Server.Data;
 
@@ -10,9 +11,11 @@ using SharpbinV3.Server.Data;
 namespace SharpbinV3.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260424090002_IndexInteractions")]
+    partial class IndexInteractions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.3");
@@ -63,16 +66,16 @@ namespace SharpbinV3.Server.Migrations
                     b.Property<bool>("IsCompressed")
                         .HasColumnType("INTEGER");
 
-                    b.Property<long>("OriginalSize")
-                        .HasColumnType("INTEGER");
-
                     b.Property<long?>("ParentCommentID")
                         .HasColumnType("INTEGER");
 
                     b.Property<long>("PastePID")
                         .HasColumnType("INTEGER");
 
-                    b.Property<long>("StoredSize")
+                    b.Property<long>("Size")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("TrueSize")
                         .HasColumnType("INTEGER");
 
                     b.Property<long?>("UpdatedAt")
@@ -468,7 +471,7 @@ namespace SharpbinV3.Server.Migrations
                         .IsRequired();
 
                     b.HasOne("SharpbinV3.Server.Data.Entities.User", "User")
-                        .WithMany("Comments")
+                        .WithMany()
                         .HasForeignKey("UserUUID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -601,8 +604,6 @@ namespace SharpbinV3.Server.Migrations
             modelBuilder.Entity("SharpbinV3.Server.Data.Entities.User", b =>
                 {
                     b.Navigation("ApiKeys");
-
-                    b.Navigation("Comments");
 
                     b.Navigation("EmailVerificationTokens");
 

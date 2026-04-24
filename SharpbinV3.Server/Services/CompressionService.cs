@@ -33,13 +33,11 @@ namespace SharpbinV3.Server.Services
             if (!IsCompressed(compressedData))
                 throw new ArgumentException("Data is not in a valid compressed format.", nameof(compressedData));
 
-            using (MemoryStream ms = new())
-            {
-                using MemoryStream compressedStream = new(compressedData);
-                using GZipStream gzip = new(compressedStream, CompressionMode.Decompress);
-                gzip.CopyTo(ms);
-            }
-            return compressedData;
+            using MemoryStream ms = new();
+            using MemoryStream compressedStream = new(compressedData);
+            using GZipStream gzip = new(compressedStream, CompressionMode.Decompress);
+            gzip.CopyTo(ms);
+            return ms.ToArray();
         }
 
         private static bool IsCompressed(byte[] data)

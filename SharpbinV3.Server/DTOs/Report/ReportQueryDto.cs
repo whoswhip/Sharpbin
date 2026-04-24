@@ -6,7 +6,7 @@ namespace SharpbinV3.Server.DTOs.Report
     {
         public Guid? ReporterUUID { get; init; }
         public Guid? UserUUID { get; init; }
-        public int? PastePID { get; init; }
+        public long? PastePID { get; init; }
         public string? PasteId { get; init; }
         public ReportTargetType? TargetType { get; init; }
         public ReportType? Type { get; init; }

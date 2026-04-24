@@ -24,7 +24,10 @@
 		CalendarCog,
 		Flag,
 		ArrowUp,
-		HatGlasses
+		HatGlasses,
+		MessageCircle,
+		ThumbsUp,
+		ThumbsDown
 	} from '@lucide/svelte/icons/index';
 	import {
 		formatBytes,
@@ -47,14 +50,33 @@
 	import { getToken, hasRole } from '$lib/utils/auth';
 	import { user } from '$lib/stores/user';
 	import Dropdown from '$lib/components/Dropdown.svelte';
+	import PasteComments from '$lib/components/PasteComments.svelte';
 	import { openModal } from '$lib/stores/modal';
-	import type { Paste } from '$lib/types/paste';
+	import type { Paste, PasteReaction } from '$lib/types/paste';
 	import HighlightWorker from '$lib/workers/highlight.worker?worker';
 	interface Props {
 		data: PageData;
 	}
 
 	let { data = $bindable() }: Props = $props();
+
+	function updatePasteState(patch: Partial<Paste>) {
+		if (!data?.paste) return;
+		data = {
+			...data,
+			paste: {
+				...data.paste,
+				...patch
+			}
+		};
+	}
+
+	function updatePageContent(content: string) {
+		data = {
+			...data,
+			content
+		};
+	}
 
 	let reportSiteKey = $derived(
 		(data as unknown as { authOptions?: { cf_turnstile_site_key?: string | null } }).authOptions
@@ -73,9 +95,11 @@
 	let contentRendered = $state(false);
 	let downloadedPaste = $state(false);
 	let copiedPaste = $state(false);
+	let reactingToPaste = $state(false);
 	let highlightWorker: Worker | null = null;
 	let highlightRequestId = 0;
 	let ignoreExternalMediaWarning = false;
+	let iconsOnly = $state(false);
 
 	let scrollY = $state(0);
 
@@ -293,7 +317,7 @@
 					editLoading = false;
 					return;
 				}
-				data.content = rawContent;
+				updatePageContent(rawContent);
 				decryptedContent = rawContent;
 				await renderPaste(rawContent);
 			}
@@ -324,10 +348,13 @@
 					return;
 				}
 				const resJson = await res.json();
-				data.paste.syntax = resJson.paste.syntax ?? data.paste.syntax;
-				data.paste.expiresAt = resJson.paste.expiresAt ?? data.paste.expiresAt;
-				data.paste.visibility = resJson.paste.visibility ?? data.paste.visibility;
-				data.paste.title = resJson.paste.title ?? data.paste.title;
+				updatePasteState({
+					syntax: resJson.paste.syntax ?? data.paste.syntax,
+					expiresAt: resJson.paste.expiresAt ?? data.paste.expiresAt,
+					visibility: resJson.paste.visibility ?? data.paste.visibility,
+					title: resJson.paste.title ?? data.paste.title
+				});
+				editMetadata = data.paste ? { ...data.paste } : null;
 			}
 		} catch {
 			editError = 'An error occurred while updating.';
@@ -335,6 +362,48 @@
 			editLoading = false;
 			editing = false;
 			editContent = null;
+		}
+	}
+
+	async function reactToPaste(target: 1 | 2) {
+		if (!data?.paste || reactingToPaste) return;
+
+		const token = getToken();
+		if (!token) {
+			return;
+		}
+
+		reactingToPaste = true;
+		const currentReaction = (data.paste.userReaction ?? null) as PasteReaction;
+		const nextReaction: PasteReaction = currentReaction === target ? null : target;
+
+		try {
+			const res = await fetch(`/api/paste/${data.paste.id}/reaction`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				body: JSON.stringify({ reaction: nextReaction })
+			});
+
+			if (!res.ok) {
+				return;
+			}
+
+			const json = await res.json();
+			const reaction = json?.reaction;
+			if (!reaction) {
+				return;
+			}
+
+			updatePasteState({
+				likes: reaction.likes ?? data.paste.likes,
+				dislikes: reaction.dislikes ?? data.paste.dislikes,
+				userReaction: reaction.userReaction ?? null
+			});
+		} finally {
+			reactingToPaste = false;
 		}
 	}
 
@@ -599,7 +668,9 @@
 						<div
 							class="flex"
 							use:tooltip={`${
-								data.paste.isCompressed ? `Compressed Size: ${formatBytes(data.paste.size)}` : ''
+								data.paste.isCompressed
+									? `Compressed Size: ${formatBytes(data.paste.sizeStored)}`
+									: ''
 							}${
 								data.paste.visibility === 2
 									? ` • Decrypted Size: ${formatBytes(decryptedContent ? new TextEncoder().encode(decryptedContent).length : 0)}`
@@ -607,7 +678,7 @@
 							}`}
 						>
 							<FileBox class="mr-2 h-6 w-6 text-neutral-400" />
-							<span class="text-neutral-400">{formatBytes(data.paste.trueSize)}</span>
+							<span class="text-neutral-400">{formatBytes(data.paste.originalSize)}</span>
 						</div>
 					</div>
 
@@ -745,6 +816,32 @@
 								? 's'
 								: ''}</span
 						>
+						{#if $user && $user.uuid !== data.paste?.author?.uuid}
+							<button
+								type="button"
+								class="ml-4 rounded border px-2 py-0.5 text-sm transition-colors disabled:opacity-60 {data
+									.paste.userReaction === 1
+									? 'border-green-700 bg-green-900 text-green-200'
+									: 'border-neutral-700 bg-neutral-700 text-neutral-300 hover:bg-neutral-600'}"
+								onclick={() => reactToPaste(1)}
+								disabled={reactingToPaste}
+							>
+								<ThumbsUp class="mr-1 inline-block h-4 w-4 text-green-400" />
+								<span>{formatNumber(data.paste.likes)}</span>
+							</button>
+							<button
+								type="button"
+								class="rounded border px-2 py-0.5 text-sm transition-colors disabled:opacity-60 {data
+									.paste.userReaction === 2
+									? 'border-red-700 bg-red-900 text-red-200'
+									: 'border-neutral-700 bg-neutral-700 text-neutral-300 hover:bg-neutral-600'}"
+								onclick={() => reactToPaste(2)}
+								disabled={reactingToPaste}
+							>
+								<ThumbsDown class="mr-1 inline-block h-4 w-4 text-red-400" />
+								<span>{formatNumber(data.paste.dislikes)}</span>
+							</button>
+						{/if}
 					</div>
 				{:else}
 					<div></div>
@@ -760,7 +857,7 @@
 								setTimeout(() => (copiedPaste = false), 1000);
 							}}
 						>
-							<div class="relative mr-1 h-5 w-5">
+							<div class="relative {iconsOnly ? '' : 'mr-1'} h-5 w-5">
 								{#if copiedPaste}
 									<span
 										transition:fade={{ duration: 200 }}
@@ -775,8 +872,9 @@
 									>
 								{/if}
 							</div>
-
-							<span class="text-neutral-300">Copy</span>
+							{#if !iconsOnly}
+								<span class="text-neutral-300">Copy</span>
+							{/if}
 						</button>
 					{/if}
 					<button
@@ -812,7 +910,7 @@
 							setTimeout(() => (downloadedPaste = false), 1000);
 						}}
 					>
-						<div class="relative mr-1 h-5 w-5">
+						<div class="relative {iconsOnly ? '' : 'mr-1'} h-5 w-5">
 							{#if downloadedPaste}
 								<span
 									transition:fade={{ duration: 200 }}
@@ -827,17 +925,36 @@
 								>
 							{/if}
 						</div>
-
-						<span class="text-neutral-300">Download</span>
+						{#if !iconsOnly}
+							<span class="text-neutral-300">Download</span>
+						{/if}
 					</button>
 
 					<a
 						href={resolve(`/raw/${data.paste.id}`)}
 						class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
 					>
-						<File class="mr-1 h-5 w-5 text-neutral-400" />
-						<span class="text-neutral-300">View Raw</span>
+						<File class="{iconsOnly ? '' : 'mr-1'} h-5 w-5 text-neutral-400" />
+						{#if !iconsOnly}
+							<span class="text-neutral-300">View Raw</span>
+						{/if}
 					</a>
+
+					<button
+						type="button"
+						class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
+						onclick={() => {
+							document.getElementById('comments-section')?.scrollIntoView({
+								behavior: 'smooth',
+								block: 'start'
+							});
+						}}
+					>
+						<MessageCircle class="{iconsOnly ? '' : 'mr-1'} h-5 w-5 text-neutral-400" />
+						{#if !iconsOnly}
+							<span class="text-neutral-300">Comments</span>
+						{/if}
+					</button>
 
 					{#if $user !== null && $user.uuid !== data.paste?.author?.uuid}
 						<button
@@ -847,8 +964,10 @@
 								promptUser('report');
 							}}
 						>
-							<Flag class="mr-1 h-5 w-5 text-amber-400" />
-							<span class="text-amber-300">Report</span>
+							<Flag class="{iconsOnly ? '' : 'mr-1'} h-5 w-5 text-amber-400" />
+							{#if !iconsOnly}
+								<span class="text-amber-300">Report</span>
+							{/if}
 						</button>
 					{/if}
 					{#if $user && ($user.uuid === data.paste?.author?.uuid || hasRole($user.roles, 2) || hasRole($user.roles, 4))}
@@ -863,8 +982,10 @@
 										editing = true;
 									}}
 								>
-									<Pencil class="mr-1 h-5 w-5 text-neutral-400" />
-									<span class="text-neutral-300">Edit</span>
+									<Pencil class="{iconsOnly ? '' : 'mr-1'} h-5 w-5 text-neutral-400" />
+									{#if !iconsOnly}
+										<span class="text-neutral-300">Edit</span>
+									{/if}
 								</button>
 							{/if}
 							<button
@@ -892,8 +1013,10 @@
 									});
 								}}
 							>
-								<Trash2 class="mr-1 h-5 w-5 text-red-400" />
-								<span class="text-red-300">Delete</span>
+								<Trash2 class="{iconsOnly ? '' : 'mr-1'} h-5 w-5 text-red-400" />
+								{#if !iconsOnly}
+									<span class="text-red-300">Delete</span>
+								{/if}
 							</button>
 						{:else}
 							<button
@@ -906,8 +1029,10 @@
 								}}
 								disabled={editLoading}
 							>
-								<PencilLine class="mr-1 h-5 w-5 text-neutral-400" />
-								<span class="text-neutral-300">{editLoading ? 'Saving...' : 'Save Edits'}</span>
+								<PencilLine class="{iconsOnly ? '' : 'mr-1'} h-5 w-5 text-neutral-400" />
+								{#if !iconsOnly || editLoading}
+									<span class="text-neutral-300">{editLoading ? 'Saving...' : 'Save Edits'}</span>
+								{/if}
 							</button>
 							<button
 								type="button"
@@ -917,8 +1042,10 @@
 									editError = '';
 								}}
 							>
-								<PencilOff class="mr-1 h-5 w-5 text-neutral-400" />
-								<span class="text-neutral-300">Cancel Edit</span>
+								<PencilOff class="{iconsOnly ? '' : 'mr-1'} h-5 w-5 text-neutral-400" />
+								{#if !iconsOnly}
+									<span class="text-neutral-300">Cancel Edit</span>
+								{/if}
 							</button>
 						{/if}
 					{/if}
@@ -929,8 +1056,10 @@
 							onclick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
 							aria-label="Scroll to top"
 						>
-							<ArrowUp class="mr-1 h-5 w-5 text-neutral-400" />
-							<span class="text-neutral-300">Scroll to top</span>
+							<ArrowUp class="{iconsOnly ? '' : 'mr-1'} h-5 w-5 text-neutral-400" />
+							{#if !iconsOnly}
+								<span class="text-neutral-300">Scroll to top</span>
+							{/if}
 						</button>
 					{/if}
 				</div>
@@ -974,6 +1103,8 @@
 					{@html pasteContent}
 				</div>
 			{/if}
+
+			<PasteComments pasteId={data.paste.id} initialComments={data.comments ?? []} />
 		{:else}
 			<h1 class="mb-4 text-center text-4xl font-bold">Paste not found</h1>
 			<h2 class="mt-2 text-center text-xl">The paste you are looking for does not exist.</h2>

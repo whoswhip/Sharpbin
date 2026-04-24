@@ -28,4 +28,4 @@ export const reportTypeLabels = ['CopyrightViolation', 'IllegalContent', 'Fraud'
 
 export const reportStatusLabels = ['Open', 'Closed'] as const;
 
-export const reportTargetLabels = ['Paste', 'User'] as const;
+export const reportTargetLabels = ['Paste', 'User', 'Comment'] as const;

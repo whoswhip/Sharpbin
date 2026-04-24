@@ -5,7 +5,7 @@ namespace SharpbinV3.Server.DTOs.User
 {
     public class UserSimpleDto
     {
-        public int? UID { get; set; }
+        public long? UID { get; set; }
         public Guid UUID { get; set; }
         public long CreatedAt { get; set; }
         public string Username { get; set; } = string.Empty;

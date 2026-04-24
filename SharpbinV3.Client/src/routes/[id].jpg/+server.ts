@@ -161,7 +161,7 @@ export const GET: RequestHandler = async ({ params, fetch }) => {
 		const content = rawContent || 'No content available.';
 		const created = paste.createdAt ? new Date(paste.createdAt) : extractDateFromUUIDv7(paste.uuid);
 		const metadata: PasteEmbedProps['metadata'] = [
-			{ icon: 'size', value: formatBytes(paste.trueSize) },
+			{ icon: 'size', value: formatBytes(paste.originalSize) },
 			{
 				icon: 'views',
 				value: `${formatNumber(paste.views)} view${paste.views === 1 ? '' : 's'}`

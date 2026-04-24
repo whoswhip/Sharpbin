@@ -77,7 +77,7 @@ export const load: PageServerLoad = async ({ params, fetch, cookies, url, parent
 
 	if (token && !asGuest && canModerate && (!reportsSubmitted || !isOwner)) {
 		headers.set('Authorization', `Bearer ${token}`);
-		const submittedRes = await fetch(`${apiUrl}/api/user/${user.uuid}/reports/submitted`, {
+		const submittedRes = await fetch(`${apiUrl}/api/report/users/${user.uuid}/reports/submitted`, {
 			headers: headers
 		});
 		if (submittedRes.ok) reportsSubmitted = await submittedRes.json();
@@ -85,7 +85,7 @@ export const load: PageServerLoad = async ({ params, fetch, cookies, url, parent
 
 	if (token && !asGuest && !isOwner && canModerate) {
 		headers.set('Authorization', `Bearer ${token}`);
-		const r = await fetch(`${apiUrl}/api/user/${user.uuid}/reports`, {
+		const r = await fetch(`${apiUrl}/api/report/users/${user.uuid}/reports`, {
 			headers: headers
 		});
 		if (r.ok) reportsTarget = await r.json();

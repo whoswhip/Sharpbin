@@ -29,9 +29,12 @@ namespace SharpbinV3.Server.Services
             bool shouldCompress
         )
         {
+            long originalSize = Encoding.UTF8.GetByteCount(content);
             var data = Encoding.UTF8.GetBytes(content);
             if (shouldCompress)
                 data = _cs.Compress(content);
+
+            double compressionRatio = (double)data.Length / originalSize;
 
             var paste = new Paste
             {
@@ -40,10 +43,10 @@ namespace SharpbinV3.Server.Services
                 Title = title,
                 AuthorUUID = author?.UUID,
                 User = author,
-                Content = data,
-                Size = data.Length,
-                TrueSize = Encoding.UTF8.GetByteCount(content),
-                IsCompressed = data.Length < Encoding.UTF8.GetByteCount(content),
+                Content = compressionRatio < _pasteSettings.CompressionThreshold ? data : Encoding.UTF8.GetBytes(content),
+                StoredSize = data.Length,
+                OriginalSize = originalSize,
+                IsCompressed = compressionRatio < _pasteSettings.CompressionThreshold,
                 Syntax = syntax,
                 Visibility = visibility,
                 ExpiresAt = expiresAt,
@@ -93,15 +96,18 @@ namespace SharpbinV3.Server.Services
 
         public async Task<bool> EditText(Paste paste, string text)
         {
+            long originalSize = Encoding.UTF8.GetByteCount(text);
             var data = Encoding.UTF8.GetBytes(text);
             if (_pasteSettings.EnablePasteCompression)
                 data = _cs.Compress(text);
 
-            paste.Content = data;
-            paste.Size = data.Length;
-            paste.TrueSize = Encoding.UTF8.GetByteCount(text);
+            double compressionRatio = (double)data.Length / originalSize;
+
+            paste.Content = compressionRatio < _pasteSettings.CompressionThreshold ? data : Encoding.UTF8.GetBytes(text);
+            paste.StoredSize = data.Length;
+            paste.OriginalSize = originalSize;
             paste.EditedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            paste.IsCompressed = data.Length < Encoding.UTF8.GetByteCount(text);
+            paste.IsCompressed = compressionRatio < _pasteSettings.CompressionThreshold;
             _db.Pastes.Update(paste);
             var result = await _db.SaveChangesAsync();
 
@@ -112,43 +118,82 @@ namespace SharpbinV3.Server.Services
 
         public async Task<(Paste? paste, bool alreadyExists)> RecordView(Paste paste, HttpContext context)
         {
-            if (paste == null)
-                return (null, false);
-            if (context == null)
-                return (null, false);
-            if (_pasteSettings.View_HMAC_Secret == null)
+            if (paste == null || context == null || _pasteSettings.View_HMAC_Secret == null)
                 return (null, false);
 
             var viewerIp = context.GetRequestIP();
             var viewerUserAgent = context.Request.Headers.UserAgent.ToString();
-            JwtUser? viewerUser = context.GetJwtUser();
+            var viewerUser = context.GetJwtUser();
 
-            string viewerHash;
-            if (viewerUser != null)
-                viewerHash = Utilities.ComputeHmacSha256(_pasteSettings.View_HMAC_Secret, viewerUser.UUID.ToString());
-            else
-                viewerHash = Utilities.ComputeHmacSha256(_pasteSettings.View_HMAC_Secret, viewerIp + viewerUserAgent);
+            var viewerHash =
+                viewerUser != null
+                    ? Utilities.ComputeHmacSha256(_pasteSettings.View_HMAC_Secret, $"user:{viewerUser.UUID}")
+                    : Utilities.ComputeHmacSha256(_pasteSettings.View_HMAC_Secret, $"anon:{viewerIp}:{viewerUserAgent}");
 
-            if (await _db.PasteViews.AnyAsync(pv => pv.PastePID == paste.PID && pv.ViewerHash == viewerHash))
+            var view = new PasteView
+            {
+                PastePID = paste.PID,
+                ViewerHash = viewerHash,
+                ViewedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            };
+
+            _db.PasteViews.Add(view);
+
+            try
+            {
+                paste.Views += 1;
+                _db.Pastes.Update(paste);
+
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
                 return (null, true);
+            }
 
-            _db.PasteViews.Add(
-                new PasteView
-                {
-                    PastePID = paste.PID,
-                    ViewerHash = viewerHash,
-                    ViewedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                }
-            );
+            InvalidatePasteCache(paste.ID);
+            return (paste, false);
+        }
 
-            paste.Views += 1;
-            _db.Pastes.Update(paste);
-            var result = await _db.SaveChangesAsync();
+        public async Task<PasteInteraction?> RecordInteraction(Paste paste, User user, Interaction type)
+        {
+            if (paste == null || user == null)
+                return null;
 
-            if (result > 0)
+            var interaction = new PasteInteraction
+            {
+                PasteID = paste.PID,
+                UserUUID = user.UUID,
+                Type = type,
+            };
+
+            _db.PasteInteractions.Add(interaction);
+
+            try
+            {
+                await _db.SaveChangesAsync();
                 InvalidatePasteCache(paste.ID);
+                return interaction;
+            }
+            catch (DbUpdateException)
+            {
+                return null;
+            }
+        }
 
-            return (result > 0 ? paste : null, result > 0);
+        public async Task<bool> RemoveInteraction(Paste paste, User user)
+        {
+            if (paste == null || user == null)
+                return false;
+
+            var interaction = await _db.PasteInteractions.FirstOrDefaultAsync(pi => pi.PasteID == paste.PID && pi.UserUUID == user.UUID);
+            if (interaction == null)
+                return false;
+
+            _db.PasteInteractions.Remove(interaction);
+            await _db.SaveChangesAsync();
+            InvalidatePasteCache(paste.ID);
+            return true;
         }
 
         public async Task<Paste?> Get(string id)
@@ -159,7 +204,17 @@ namespace SharpbinV3.Server.Services
                 async entry =>
                 {
                     entry.SetSlidingExpiration(TimeSpan.FromMinutes(10));
-                    return await _db.Pastes.Include(p => p.User).FirstOrDefaultAsync(p => p.ID == id);
+                    var _paste = await _db.Pastes.AsNoTracking().Include(p => p.User).FirstOrDefaultAsync(p => p.ID == id);
+                    if (_paste != null)
+                    {
+                        _paste.PositiveInteractionCount = await _db
+                            .PasteInteractions.Where(pi => pi.PasteID == _paste.PID && pi.Type == Interaction.Positive)
+                            .CountAsync();
+                        _paste.NegativeInteractionCount = await _db
+                            .PasteInteractions.Where(pi => pi.PasteID == _paste.PID && pi.Type == Interaction.Negative)
+                            .CountAsync();
+                    }
+                    return _paste;
                 }
             );
             return paste ?? null;
@@ -189,6 +244,14 @@ namespace SharpbinV3.Server.Services
             return pastes ?? [];
         }
 
+        public async Task<PasteInteraction?> GetUserInteraction(Paste paste, Guid userUUID)
+        {
+            if (paste == null)
+                return null;
+
+            return await _db.PasteInteractions.FirstOrDefaultAsync(pi => pi.PasteID == paste.PID && pi.UserUUID == userUUID);
+        }
+
         public bool ValidateSyntax(string syntax)
         {
             return _pasteSettings.ValidSyntaxLanguages.Contains(syntax);
@@ -201,7 +264,7 @@ namespace SharpbinV3.Server.Services
 
         public bool ValidateVisibility(Visibility visibility)
         {
-            return Enum.IsDefined(typeof(Visibility), visibility);
+            return Enum.IsDefined(visibility);
         }
 
         public bool ValidateExpiresAt(long expiresAt)

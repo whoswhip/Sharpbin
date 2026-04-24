@@ -8,7 +8,8 @@ namespace SharpbinV3.Server.Data.Entities
     {
         [Key]
         public int Id { get; set; }
-        public int PastePID { get; set; }
+        public long PastePID { get; set; }
+        
         [MaxLength(64)]
         public string ViewerHash { get; set; } = null!;
         public long ViewedAt { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();

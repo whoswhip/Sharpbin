@@ -302,7 +302,8 @@
 			body.VerificationToken = verification;
 		}
 		const targetId = encodeURIComponent(String(reportTargetId));
-		const res = await fetch(`/api/${reportTarget}/${targetId}/report`, {
+		const reportPath = reportTarget === 'paste' ? 'pastes' : 'users';
+		const res = await fetch(`/api/report/${reportPath}/${targetId}/report`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',

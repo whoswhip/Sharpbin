@@ -121,3 +121,7 @@ select {
 .markdown th {
 	background-color: #2a2a2a;
 }
+
+button {
+	cursor: pointer;
+}

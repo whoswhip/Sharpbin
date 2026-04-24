@@ -7,12 +7,15 @@ namespace SharpbinV3.Server.Data
     {
         public DbSet<User> Users => Set<User>();
         public DbSet<Paste> Pastes => Set<Paste>();
+        public DbSet<PasteInteraction> PasteInteractions => Set<PasteInteraction>();
         public DbSet<PasteView> PasteViews => Set<PasteView>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<UserTotp> UserTotps => Set<UserTotp>();
         public DbSet<Report> Reports => Set<Report>();
         public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
         public DbSet<EmailVerificationToken> EmailVerificationTokens => Set<EmailVerificationToken>();
+        public DbSet<Comment> Comments => Set<Comment>();
+        public DbSet<CommentInteraction> CommentInteractions => Set<CommentInteraction>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -59,6 +62,12 @@ namespace SharpbinV3.Server.Data
                 .HasForeignKey(r => r.UserUUID)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            modelBuilder.Entity<Report>()
+                .HasOne<Comment>()
+                .WithMany(c => c.Reports)
+                .HasForeignKey(r => r.CommentID)
+                .OnDelete(DeleteBehavior.SetNull);
+
             modelBuilder.Entity<ApiKey>()
                 .HasOne(a => a.User)
                 .WithMany(u => u.ApiKeys)
@@ -69,6 +78,24 @@ namespace SharpbinV3.Server.Data
                 .HasOne(a => a.User)
                 .WithMany(u => u.EmailVerificationTokens)
                 .HasForeignKey(a => a.UserUUID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Comment>()
+                .HasOne(c => c.ParentComment)
+                .WithMany(c => c.Replies)
+                .HasForeignKey(c => c.ParentCommentID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<CommentInteraction>()
+                .HasOne(ci => ci.Comment)
+                .WithMany(c => c.Interactions)
+                .HasForeignKey(ci => ci.CommentID)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            modelBuilder.Entity<PasteInteraction>()
+                .HasOne(pi => pi.Paste)
+                .WithMany(p => p.Interactions)
+                .HasForeignKey(pi => pi.PasteID)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }

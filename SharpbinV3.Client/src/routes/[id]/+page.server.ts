@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
 import type { Paste } from '$lib/types/paste';
+import type { PasteComment } from '$lib/types/comment';
 import { getServerToken } from '$lib/utils/auth';
 import { apiUrl, viewInternalApiKey } from '$lib/server/api';
 import { error } from '@sveltejs/kit';
@@ -46,12 +47,22 @@ export const load: PageServerLoad = async ({ params, fetch, url, cookies, parent
 
 	const pasteContent = await fetch(`${apiUrl}/api/paste/${id}/raw`, { headers: clientHeaders });
 	const pasteOptions = await fetch(`${apiUrl}/api/paste/info`, { headers: clientHeaders });
+	const commentsRes = await fetch(`${apiUrl}/api/paste/${id}/comments`, { headers: clientHeaders });
 	const options = await pasteOptions.json();
 	const content = await pasteContent.text();
+	let comments: PasteComment[] = [];
+
+	if (commentsRes.ok) {
+		const commentsJson = await commentsRes.json().catch(() => ({}));
+		comments = Array.isArray(commentsJson?.comments)
+			? (commentsJson.comments as PasteComment[])
+			: [];
+	}
 
 	return {
 		paste,
 		content,
+		comments,
 		options,
 		authOptions:
 			parentData && typeof parentData === 'object' && parentData !== null && 'options' in parentData

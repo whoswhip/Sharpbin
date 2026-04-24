@@ -26,7 +26,7 @@ namespace SharpbinV3.Server.Services
             return report;
         }
 
-        public async Task<Report> CreateReport(Guid reporterUUID, ReportTargetType targetType, int? pastePID, ReportType type, string description)
+        public async Task<Report> CreateReport(Guid reporterUUID, ReportTargetType targetType, long? pastePID, ReportType type, string description)
         {
             var report = new Report
             {
@@ -55,9 +55,7 @@ namespace SharpbinV3.Server.Services
                 q = q.Where(r => r.PastePID == query.PastePID);
 
             if (query.PasteId != null)
-            {
-                q = q.Where(r => _db.Pastes.Where(p => p.ID == query.PasteId).Select(p => (int?)p.PID).Contains(r.PastePID));
-            }
+                q = q.Where(r => r.Paste != null && r.Paste.ID == query.PasteId);
 
             if (query.TargetType != null)
                 q = q.Where(r => r.TargetType == query.TargetType);
