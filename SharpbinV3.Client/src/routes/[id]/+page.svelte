@@ -816,32 +816,32 @@
 								? 's'
 								: ''}</span
 						>
-						{#if $user && $user.uuid !== data.paste?.author?.uuid}
-							<button
-								type="button"
-								class="ml-4 rounded border px-2 py-0.5 text-sm transition-colors disabled:opacity-60 {data
-									.paste.userReaction === 1
-									? 'border-green-700 bg-green-900 text-green-200'
-									: 'border-neutral-700 bg-neutral-700 text-neutral-300 hover:bg-neutral-600'}"
-								onclick={() => reactToPaste(1)}
-								disabled={reactingToPaste}
-							>
-								<ThumbsUp class="mr-1 inline-block h-4 w-4 text-green-400" />
-								<span>{formatNumber(data.paste.likes)}</span>
-							</button>
-							<button
-								type="button"
-								class="rounded border px-2 py-0.5 text-sm transition-colors disabled:opacity-60 {data
-									.paste.userReaction === 2
-									? 'border-red-700 bg-red-900 text-red-200'
-									: 'border-neutral-700 bg-neutral-700 text-neutral-300 hover:bg-neutral-600'}"
-								onclick={() => reactToPaste(2)}
-								disabled={reactingToPaste}
-							>
-								<ThumbsDown class="mr-1 inline-block h-4 w-4 text-red-400" />
-								<span>{formatNumber(data.paste.dislikes)}</span>
-							</button>
-						{/if}
+						<button
+							type="button"
+							class="ml-4 rounded border px-2 py-0.5 text-sm transition-colors disabled:opacity-60 {data
+								.paste.userReaction === 1
+								? 'border-green-700 bg-green-900 text-green-200'
+								: 'border-neutral-700 bg-neutral-700 text-neutral-300 hover:bg-neutral-600'}
+								{$user?.uuid === data.paste.author?.uuid || !$user ? '' : 'cursor-not-allowed'}"
+							onclick={() => reactToPaste(1)}
+							disabled={reactingToPaste}
+						>
+							<ThumbsUp class="mr-1 inline-block h-4 w-4 text-green-400" />
+							<span>{formatNumber(data.paste.likes)}</span>
+						</button>
+						<button
+							type="button"
+							class="rounded border px-2 py-0.5 text-sm transition-colors disabled:opacity-60 {data
+								.paste.userReaction === 2
+								? 'border-red-700 bg-red-900 text-red-200'
+								: 'border-neutral-700 bg-neutral-700 text-neutral-300 hover:bg-neutral-600'}
+								{$user?.uuid === data.paste.author?.uuid || !$user ? '' : 'cursor-not-allowed'}"
+							onclick={() => reactToPaste(2)}
+							disabled={reactingToPaste}
+						>
+							<ThumbsDown class="mr-1 inline-block h-4 w-4 text-red-400" />
+							<span>{formatNumber(data.paste.dislikes)}</span>
+						</button>
 					</div>
 				{:else}
 					<div></div>
