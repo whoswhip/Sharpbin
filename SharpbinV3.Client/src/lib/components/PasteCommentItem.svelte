@@ -119,7 +119,9 @@
 				>
 			{/if}
 		</div>
-		<span class="shrink-0"
+		<span
+			class="shrink-0"
+			use:tooltip={`${new Date(node.createdAt * 1000).toLocaleString()} • ${dateToRelativeString(new Date(node.createdAt * 1000), true, true, now, 3)}`}
 			>{dateToRelativeString(new Date(node.createdAt * 1000), true, false, now, 2)}</span
 		>
 	</div>
