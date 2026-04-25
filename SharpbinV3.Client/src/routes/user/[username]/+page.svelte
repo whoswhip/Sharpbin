@@ -361,7 +361,6 @@
 
 	async function saveDisplayName() {
 		const value = editDisplayNameValue.trim();
-		if (!value) return;
 		await handleUserUpdate(value);
 		isEditingDisplayName = false;
 	}
