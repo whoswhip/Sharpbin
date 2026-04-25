@@ -7,7 +7,7 @@ export interface Paste {
 	uuid: string;
 	createdAt: number;
 	title: string | null;
-	sizeStored: number;
+	storedSize: number;
 	originalSize: number;
 	isCompressed: boolean;
 	views: number;

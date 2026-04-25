@@ -93,7 +93,7 @@
 				<div
 					class="flex items-center gap-2"
 					use:tooltip={paste.isCompressed
-						? `Compressed Size: ${formatBytes(paste.sizeStored)}`
+						? `Compressed Size: ${formatBytes(paste.storedSize)}`
 						: ''}
 				>
 					<FileBox class="h-4 w-4" />
@@ -177,7 +177,7 @@
 				<div
 					class="mt-1 flex items-center gap-2 text-sm text-neutral-400"
 					use:tooltip={paste.isCompressed
-						? `Compressed Size: ${formatBytes(paste.sizeStored)}`
+						? `Compressed Size: ${formatBytes(paste.storedSize)}`
 						: ''}
 				>
 					<FileBox class="h-4 w-4" />

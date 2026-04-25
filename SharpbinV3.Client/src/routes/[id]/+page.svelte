@@ -669,7 +669,7 @@
 							class="flex"
 							use:tooltip={`${
 								data.paste.isCompressed
-									? `Compressed Size: ${formatBytes(data.paste.sizeStored)}`
+									? `Compressed Size: ${formatBytes(data.paste.storedSize)}`
 									: ''
 							}${
 								data.paste.visibility === 2
