@@ -819,7 +819,7 @@
 
 						<button
 						    type="button"
-						    class="ml-4 rounded border px-2 py-0.5 text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed {data
+						    class="ml-4 rounded border px-2 py-0.5 text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed! {data
 						        .paste.userReaction === 1
 						        ? 'border-green-700 bg-green-900 text-green-200'
 						        : 'border-neutral-700 bg-neutral-700 text-neutral-300 hover:bg-neutral-600'}"
@@ -832,7 +832,7 @@
 						</button>
 						<button
 						    type="button"
-						    class="rounded border px-2 py-0.5 text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed {data
+						    class="rounded border px-2 py-0.5 text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed! {data
 						        .paste.userReaction === 2
 						        ? 'border-red-700 bg-red-900 text-red-200'
 						        : 'border-neutral-700 bg-neutral-700 text-neutral-300 hover:bg-neutral-600'}"
