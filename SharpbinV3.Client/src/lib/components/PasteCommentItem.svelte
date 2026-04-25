@@ -102,7 +102,7 @@
 				{/if}
 				<a
 					href={resolve(`/user/${node.author?.username}`)}
-					class="flex items-center gap-2 hover:underline"
+					class="flex items-center gap-2 underline"
 				>
 					<span
 						class="truncate font-semibold text-neutral-200 {node.author.isBanned
