@@ -154,7 +154,7 @@
 			type="button"
 			class="h-7 min-w-12 rounded border px-2 py-1 text-xs {node.userReaction !== 1
 				? 'hover:bg-neutral-800 active:bg-neutral-700'
-				: 'hover:bg-green-800 active:bg-green-700'}"
+				: 'hover:bg-green-800 active:bg-green-700'} disabled:cursor-not-allowed disabled:hover:bg-transparent"
 			class:border-green-700={node.userReaction === 1}
 			class:bg-green-900={node.userReaction === 1}
 			class:text-green-200={node.userReaction === 1}
@@ -170,7 +170,7 @@
 			type="button"
 			class="h-7 min-w-12 rounded border px-2 py-1 text-xs {node.userReaction !== 2
 				? 'hover:bg-neutral-800 active:bg-neutral-700'
-				: 'hover:bg-red-800 active:bg-red-700'}"
+				: 'hover:bg-red-800 active:bg-red-700'} disabled:cursor-not-allowed disabled:hover:bg-transparent"
 			class:border-red-700={node.userReaction === 2}
 			class:bg-red-900={node.userReaction === 2}
 			class:text-red-200={node.userReaction === 2}
