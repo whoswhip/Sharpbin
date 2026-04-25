@@ -113,43 +113,63 @@ namespace SharpbinV3.Server.Controllers
                 return BadRequest(ModelState);
 
             var jwtUser = HttpContext.GetJwtUser()!;
+            var reqUser = await _userService.GetByUUID(uuid);
+            if (reqUser == null)
+                return NotFound(new { success = false, message = "User not found." });
 
             var user = await _userService.GetByUUID(uuid);
             if (user == null)
                 return NotFound(new { success = false, message = "User not found." });
 
             if (
-                (user.Roles.HasFlag(Role.Admin) && !jwtUser.Roles.HasFlag(Role.Admin))
-                || (!jwtUser.Roles.HasFlag(Role.Admin) && user.UUID != jwtUser.UUID)
+                (user.Roles.HasFlag(Role.Admin) && !reqUser.Roles.HasFlag(Role.Admin))
+                || (!reqUser.Roles.HasFlag(Role.Admin) && user.UUID != reqUser.UUID)
             )
                 return StatusCode(403, new { success = false, message = "You do not have permission to modify this user." });
 
-            if (jwtUser.Roles.HasFlag(Role.Admin) && !jwtUser.TotpEnabled && _authSettings.Admins_Require_2FA)
+            bool isSensitiveUpdate =
+                (updatedUser.Roles.HasValue && updatedUser.Roles.Value != user.Roles) // updating roles
+                || (updatedUser.IsBanned.HasValue && updatedUser.IsBanned.Value != user.IsBanned) // updating ban status
+                || (
+                    updatedUser.Email != null && updatedUser.Email != user.Email // updating email
+                );
+
+            if (reqUser.Roles.HasFlag(Role.Admin) && !jwtUser.TotpEnabled && _authSettings.Admins_Require_2FA && isSensitiveUpdate)
                 return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
 
-            var updatingAdminFields =
-                (updatedUser.Roles.HasValue && updatedUser.Roles.Value != user.Roles)
-                || (updatedUser.IsBanned.HasValue && updatedUser.IsBanned.Value != user.IsBanned);
+            if (isSensitiveUpdate && jwtUser.TotpEnabled)
+            {
+                if (
+                    string.IsNullOrEmpty(updatedUser.TotpCode)
+                    || !await _totp.VerifyAsync(new VerificationContext { UserUUID = reqUser.UUID, Code = updatedUser.TotpCode })
+                )
+                {
+                    return Unauthorized(new { message = "Invalid TOTP code." });
+                }
+            }
+
+            if (user.Roles.HasFlag(Role.Admin) && !reqUser.Roles.HasFlag(Role.Admin))
+                return StatusCode(403, new { success = false, message = "You do not have permission to modify this user." });
+            if (
+                updatedUser.Roles.HasValue
+                && user.Roles.HasFlag(Role.Admin)
+                && !updatedUser.Roles.Value.HasFlag(Role.Admin)
+                && reqUser.UID > user.UID
+            )
+            // prevents demoting of other older admins by newer admins
+            // allows self demotion in case of compromisation
+            {
+                return StatusCode(403, new { success = false, message = "You cannot remove the admin role from this user." });
+            }
 
             user.DisplayName = updatedUser.DisplayName ?? user.DisplayName;
-            if (jwtUser.Roles.HasFlag(Role.Admin) || user.UUID == jwtUser.UUID) // only admins or self
+            if (reqUser.Roles.HasFlag(Role.Admin) || user.UUID == reqUser.UUID)
             {
                 user.Email = updatedUser.Email ?? user.Email;
                 user.Visibility = updatedUser.Visibility ?? user.Visibility;
             }
-            if (jwtUser.Roles.HasFlag(Role.Admin))
+            if (reqUser.Roles.HasFlag(Role.Admin))
             {
-                if (jwtUser.TotpEnabled && updatingAdminFields)
-                {
-                    if (
-                        string.IsNullOrEmpty(updatedUser.TotpCode)
-                        || !await _totp.VerifyAsync(new VerificationContext { UserUUID = jwtUser.UUID, Code = updatedUser.TotpCode })
-                    )
-                    {
-                        return Unauthorized(new { message = "Invalid TOTP code." });
-                    }
-                }
-
                 user.Roles = updatedUser.Roles ?? user.Roles;
                 user.IsBanned = updatedUser.IsBanned ?? user.IsBanned;
             }
@@ -173,6 +193,8 @@ namespace SharpbinV3.Server.Controllers
                 return StatusCode(403, new { success = false, message = "You do not have permission to delete this user." });
             if (jwtUser.Roles.HasFlag(Role.Admin) && !jwtUser.TotpEnabled && _authSettings.Admins_Require_2FA)
                 return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
+            if (user.Roles.HasFlag(Role.Admin))
+                return StatusCode(403, new { success = false, message = "You cannot delete an admin user." });
 
             if (jwtUser.TotpEnabled)
             {

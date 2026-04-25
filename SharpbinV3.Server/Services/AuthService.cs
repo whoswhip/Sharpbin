@@ -30,7 +30,6 @@ namespace SharpbinV3.Server.Services
         IOptions<JWTSettings> jwtOptions,
         IOptions<AuthSettings> authOptions,
         IOptions<AppSettings> appSettings,
-        IOptions<EmailSettings> emailSettings,
         ILogger<AuthService> logger
     )
     {
@@ -39,7 +38,6 @@ namespace SharpbinV3.Server.Services
         private readonly JWTSettings _jwtSettings = jwtOptions.Value;
         private readonly AuthSettings _authSettings = authOptions.Value;
         private readonly AppSettings _appSettings = appSettings.Value;
-        private readonly EmailSettings _emailSettings = emailSettings.Value;
         private readonly ILogger _logger = logger;
         private const int EmailVerificationTokenLength = 64;
 
