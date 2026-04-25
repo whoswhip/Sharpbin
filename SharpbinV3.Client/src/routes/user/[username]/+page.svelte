@@ -78,13 +78,28 @@
 	let reportsTarget = $derived(data.reportsTarget);
 
 	let activeTab: 'pastes' | 'reportsSubmitted' | 'reportsTarget' | 'settings' = $state('pastes');
+	let activeSubTab:
+		| 'settings:general'
+		| 'settings:security'
+		| 'settings:admin'
+		| 'settings:developer'
+		| null = $state(null);
 
-	async function updateTab(newPageTab: typeof activeTab) {
-		if (activeTab === newPageTab) return;
+	async function updateTab(
+		newPageTab: typeof activeTab,
+		newPageSubTab: typeof activeSubTab = null
+	) {
+		if (activeTab === newPageTab && activeSubTab === newPageSubTab) return;
 		activeTab = newPageTab;
+		activeSubTab = newPageSubTab;
 
 		const url = new URL(page.url);
 		url.searchParams.set('tab', newPageTab);
+		if (newPageSubTab) {
+			url.searchParams.set('subtab', newPageSubTab);
+		} else {
+			url.searchParams.delete('subtab');
+		}
 
 		// @ts-expect-error - resolve still works even though it's flagged as an error
 		// eslint-disable-next-line svelte/no-navigation-without-resolve
@@ -95,13 +110,19 @@
 			invalidateAll: false
 		});
 
-		if (newPageTab === 'settings' && isOwner && apiKeys.length === 0) {
+		if (
+			newPageTab === 'settings' &&
+			newPageSubTab === 'settings:developer' &&
+			isOwner &&
+			apiKeys.length === 0
+		) {
 			await fetchApiKeys();
 		}
 	}
 
 	$effect(() => {
 		const tab = page.url.searchParams.get('tab');
+		const subTab = page.url.searchParams.get('subtab');
 		switch (tab) {
 			case 'pastes':
 				activeTab = 'pastes';
@@ -124,6 +145,29 @@
 					activeTab = 'settings';
 				} else {
 					activeTab = 'pastes';
+				}
+		}
+
+		switch (subTab) {
+			case 'settings:general':
+				activeSubTab = 'settings:general';
+				break;
+			case 'settings:security':
+				activeSubTab = 'settings:security';
+				break;
+			case 'settings:admin':
+				activeSubTab = 'settings:admin';
+				break;
+			case 'settings:developer':
+				activeSubTab = 'settings:developer';
+				break;
+			default:
+				if (activeTab === 'settings' && isOwner) {
+					activeSubTab = 'settings:general';
+				} else if ($user?.roles && hasRole($user.roles, roles.Admin) && activeTab === 'settings') {
+					activeSubTab = 'settings:admin';
+				} else {
+					activeSubTab = null;
 				}
 		}
 	});
@@ -689,27 +733,79 @@
 
 		<div class="relative mt-4 min-h-50 w-full">
 			{#if loading}
-				<div
-					class="absolute inset-0 z-10 flex items-center justify-center bg-neutral-900/50 backdrop-blur-sm"
-				>
+				<div class="absolute inset-0 z-10 flex items-center justify-center bg-neutral-900/50">
 					<LoaderCircle class="h-8 w-8 animate-spin text-neutral-200" />
 				</div>
 			{/if}
 
 			{#if activeTab === 'settings'}
+				<div class="-mt-4 mb-4 flex w-full border-b border-neutral-800">
+					<button
+						class="border-b-2 px-4 py-2 font-medium transition-colors hover:text-white {activeSubTab ===
+						'settings:general'
+							? 'border-neutral-200 text-white'
+							: 'border-transparent text-neutral-400'}"
+						onclick={() =>
+							updateTab(
+								'settings',
+								activeSubTab === 'settings:general' ? null : 'settings:general'
+							)}
+					>
+						General
+					</button>
+					{#if isOwner}
+						<button
+							class="border-b-2 px-4 py-2 font-medium transition-colors hover:text-white {activeSubTab ===
+							'settings:security'
+								? 'border-neutral-200 text-white'
+								: 'border-transparent text-neutral-400'}"
+							onclick={() =>
+								updateTab(
+									'settings',
+									activeSubTab === 'settings:security' ? null : 'settings:security'
+								)}
+						>
+							Security
+						</button>
+					{/if}
+					{#if $user?.roles && hasRole($user.roles, roles.Admin)}
+						<button
+							class="border-b-2 px-4 py-2 font-medium transition-colors hover:text-white {activeSubTab ===
+							'settings:admin'
+								? 'border-neutral-200 text-white'
+								: 'border-transparent text-neutral-400'}"
+							onclick={() =>
+								updateTab('settings', activeSubTab === 'settings:admin' ? null : 'settings:admin')}
+						>
+							Admin
+						</button>
+					{/if}
+					{#if isOwner}
+						<button
+							class="border-b-2 px-4 py-2 font-medium transition-colors hover:text-white {activeSubTab ===
+							'settings:developer'
+								? 'border-neutral-200 text-white'
+								: 'border-transparent text-neutral-400'}"
+							onclick={() =>
+								updateTab(
+									'settings',
+									activeSubTab === 'settings:developer' ? null : 'settings:developer'
+								)}
+						>
+							Developer
+						</button>
+					{/if}
+				</div>
 				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-					<div class="col-span-2">
-						<div class="rounded border border-neutral-800 bg-neutral-900/50 p-6">
-							<div class="mb-6 flex items-start">
-								<div>
-									<h2 class="text-xl font-semibold text-neutral-100">Display Name</h2>
-									<p class="mt-1 text-sm text-neutral-400">
-										{isOwner
-											? 'Your display name is shown publicly on your profile and pastes.'
-											: "This user's display name is shown publicly on their profile and pastes."}
-									</p>
-								</div>
-							</div>
+					{#if activeSubTab === 'settings:general'}
+						<div class="col-span-2">
+							<h2 class="text-xl font-semibold text-neutral-100">Display Name</h2>
+							<p class="mb-1 text-sm text-neutral-400">
+								{isOwner
+									? 'Your display name is shown publicly on your profile and pastes.'
+									: "This user's display name is shown publicly on their profile and pastes."}
+							</p>
+
 							<div class="flex items-center justify-between rounded bg-neutral-800/50 p-3">
 								{#if isEditingDisplayName}
 									<div class="flex w-full items-center gap-2">
@@ -752,235 +848,28 @@
 								{/if}
 							</div>
 						</div>
-					</div>
-
-					{#if isOwner}
-						<div class="col-span-2 md:col-span-1">
-							<div class="h-full rounded border border-neutral-800 bg-neutral-900/50 p-6">
-								<div class="mb-6 flex items-start">
-									<div>
-										<h2 class="text-xl font-semibold text-neutral-100">Security</h2>
-										<p class="mt-1 text-sm text-neutral-400">
-											Manage your account security settings.
-										</p>
-									</div>
-								</div>
-
-								<div class="space-y-4">
-									<div class="flex items-center justify-between rounded bg-neutral-800/50 p-3">
-										<div class="flex flex-col">
-											<span class="text-sm font-medium text-neutral-200"
-												>Two-Factor Authentication</span
-											>
-											<span class="text-xs text-neutral-500"
-												>{totpEnabled ? 'Enabled' : 'Disabled'}</span
-											>
-										</div>
-										<button
-											onclick={openTotpSetup}
-											class="rounded bg-neutral-700 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-neutral-600"
-										>
-											{totpEnabled ? 'Manage' : 'Enable'}
-										</button>
-									</div>
-								</div>
-							</div>
-						</div>
-					{/if}
-
-					{#if $user?.roles && hasRole($user.roles, roles.Admin)}
-						<div class="col-span-2 {isOwner ? 'md:col-span-1' : ''}">
-							<div class="h-full rounded border border-neutral-800 bg-neutral-900/50 p-6">
-								<div class="mb-6 flex items-start">
-									<div>
-										<h2 class="text-xl font-semibold text-neutral-100">Administration</h2>
-										<p class="mt-1 text-sm text-neutral-400">Manage user roles and permissions.</p>
-									</div>
-								</div>
-								<div class="space-y-4">
-									<div class="flex items-center justify-between rounded bg-neutral-800/50 p-3">
-										<div class="flex flex-col">
-											<span class="text-sm font-medium text-neutral-200">User Roles</span>
-											<span class="text-xs text-neutral-500"
-												>{(() => {
-													let count = 0;
-													if (data.user?.roles) {
-														if (hasRole(data.user.roles, roles.User)) count++;
-														if (hasRole(data.user.roles, roles.Moderator)) count++;
-														if (hasRole(data.user.roles, roles.Admin)) count++;
-													}
-													return count;
-												})()} roles assigned</span
-											>
-										</div>
-										<button
-											onclick={openEditRoles}
-											class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
-										>
-											Edit
-										</button>
-									</div>
-								</div>
-							</div>
-						</div>
-					{/if}
-
-					{#if isOwner}
+					{:else if isOwner && activeSubTab === 'settings:security'}
 						<div class="col-span-2">
-							<div class="rounded border border-neutral-800 bg-neutral-900/50 p-6">
-								<div class="mb-6 flex items-start justify-between">
-									<div>
-										<h2 class="text-xl font-semibold text-neutral-100">
-											API Keys ({apiKeys.length}/10)
-										</h2>
-										<p class="mt-1 text-sm text-neutral-400">
-											Manage API keys for accessing Sharpbin programmatically.
-										</p>
+							<div class="space-y-4">
+								<div class="flex items-center justify-between rounded bg-neutral-800/50 p-4">
+									<div class="flex flex-col">
+										<span class=" font-medium text-neutral-200">Two-Factor Authentication</span>
+										<span class="text-sm text-neutral-500"
+											>{totpEnabled ? 'Enabled' : 'Disabled'}</span
+										>
 									</div>
-								</div>
-
-								{#if apiKeyError}
-									<div
-										class="mb-4 rounded border border-red-900/50 bg-red-900/10 p-3 text-sm text-red-200"
+									<button
+										onclick={openTotpSetup}
+										class="rounded bg-neutral-700 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-neutral-600"
 									>
-										{apiKeyError}
-									</div>
-								{/if}
-
-								<div class="mb-6">
-									{#if isCreatingApiKey}
-										<div class="flex items-center gap-2">
-											<input
-												type="text"
-												placeholder="Key Name"
-												bind:value={newApiKeyName}
-												class="flex-1 border-b border-neutral-600 bg-transparent px-3 py-2 font-mono text-neutral-300 outline-none focus:border-neutral-400"
-												maxlength="26"
-											/>
-											<button
-												onclick={createApiKey}
-												disabled={loading || !newApiKeyName}
-												class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600 disabled:opacity-50"
-											>
-												{#if loading}
-													<LoaderCircle class="h-4 w-4 animate-spin" />
-												{:else}
-													<Plus class="h-4 w-4" />
-												{/if}
-												Create
-											</button>
-											<button
-												onclick={() => {
-													isCreatingApiKey = false;
-													newApiKeyName = '';
-												}}
-												class="flex items-center gap-2 rounded bg-neutral-800 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-700"
-											>
-												Cancel
-											</button>
-										</div>
-									{:else}
-										<button
-											onclick={() => (isCreatingApiKey = true)}
-											class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
-										>
-											<Plus class="h-4 w-4" />
-											Create New Key
-										</button>
-									{/if}
-								</div>
-
-								{#if newApiKeyValue}
-									<div class="mb-6 rounded border border-green-900/50 bg-green-900/10 p-4">
-										<div class="mb-2 flex items-center justify-between">
-											<span class="text-sm font-medium text-green-400">API Key Created</span>
-											<button
-												onclick={() => (newApiKeyValue = '')}
-												class="text-green-400/70 hover:text-green-400"
-											>
-												<X class="h-4 w-4" />
-											</button>
-										</div>
-										<p class="mb-3 text-xs text-green-200/70">
-											Please copy your API key now. You won't be able to see it again.
-										</p>
-										<div class="flex items-center gap-2 rounded bg-neutral-900/50 p-2">
-											<code class="flex-1 font-mono text-sm break-all text-green-300"
-												>{newApiKeyValue}</code
-											>
-											<button
-												class="p-1 text-neutral-400 hover:text-white"
-												onclick={() => {
-													navigator.clipboard.writeText(newApiKeyValue);
-													copiedApiKey = true;
-													setTimeout(() => (copiedApiKey = false), 1000);
-												}}
-												use:tooltip={'Copy to clipboard'}
-											>
-												<div class="relative mr-1 h-5 w-5">
-													{#if copiedApiKey}
-														<span
-															transition:fade={{ duration: 200 }}
-															class="absolute inset-0 flex items-center justify-center"
-															><Check class="h-4 w-4 text-green-400" /></span
-														>
-													{:else}
-														<span
-															transition:fade={{ duration: 200 }}
-															class="absolute inset-0 flex items-center justify-center"
-															><Copy class="h-4 w-4 text-neutral-400" /></span
-														>
-													{/if}
-												</div>
-											</button>
-										</div>
-									</div>
-								{/if}
-
-								<div class="space-y-2">
-									{#if apiKeys.length !== 0}
-										{#each apiKeys as key (key.uuid)}
-											<div class="flex items-center justify-between rounded bg-neutral-800/50 p-3">
-												<div class="flex flex-col gap-1">
-													<span class="font-medium text-neutral-200">{key.name}</span>
-													<div class="flex gap-3 text-xs text-neutral-500">
-														<span>Created: {new Date(key.createdAt).toLocaleDateString()}</span>
-														<span
-															>Last used: {key.lastUsedAt
-																? dateToRelativeString(new Date(key.lastUsedAt), true, false, now)
-																: 'Never'}</span
-														>
-													</div>
-												</div>
-												<button
-													onclick={() => deleteApiKey(key.uuid)}
-													disabled={loading}
-													class="p-2 text-neutral-500 transition-colors hover:text-red-400"
-													title="Revoke Key"
-												>
-													<Trash2 class="h-4 w-4" />
-												</button>
-											</div>
-										{/each}
-									{/if}
+										{totpEnabled ? 'Manage' : 'Enable'}
+									</button>
 								</div>
 							</div>
 						</div>
-					{/if}
-
-					{#if isOwner || ($user?.roles && hasRole($user.roles, roles.Admin))}
-						<div class="col-span-2">
-							<div class="rounded border border-red-900/30 bg-red-900/10 p-6">
-								<div class="flex items-start">
-									<div>
-										<h2 class="text-xl font-semibold text-red-400">Danger Zone</h2>
-										<p class="mt-1 text-sm text-red-200/70">
-											Irreversible actions related to this account.
-										</p>
-									</div>
-								</div>
-
-								<div class="mt-6 flex items-center justify-between rounded bg-red-900/20 p-4">
+						{#if isOwner}
+							<div class="col-span-2">
+								<div class="flex items-center justify-between rounded bg-red-900/20 p-4">
 									<div>
 										<h3 class="font-medium text-red-200">Delete Account</h3>
 										<p class="pr-0.5 text-sm text-red-200/60">
@@ -994,6 +883,190 @@
 										Delete Account
 									</button>
 								</div>
+							</div>
+						{/if}
+					{:else if $user?.roles && hasRole($user.roles, roles.Admin) && activeSubTab === 'settings:admin'}
+						<div class="col-span-2">
+							<div class="space-y-4">
+								<div class="flex items-center justify-between rounded bg-neutral-800/50 p-4">
+									<div class="flex flex-col">
+										<span class="font-medium text-neutral-200">User Roles</span>
+										<span class="text-sm text-neutral-500"
+											>{(() => {
+												let count = 0;
+												if (data.user?.roles) {
+													if (hasRole(data.user.roles, roles.User)) count++;
+													if (hasRole(data.user.roles, roles.Moderator)) count++;
+													if (hasRole(data.user.roles, roles.Admin)) count++;
+												}
+												return count;
+											})()} roles assigned</span
+										>
+									</div>
+									<button
+										onclick={openEditRoles}
+										class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
+									>
+										<Pencil class="h-4 w-4" />
+
+										Edit
+									</button>
+								</div>
+							</div>
+						</div>
+						{#if !isOwner && data.user?.roles && !hasRole(data.user.roles, roles.Admin)}
+							<div class="col-span-2">
+								<div class="flex items-center justify-between rounded bg-red-900/20 p-4">
+									<div>
+										<h3 class="font-medium text-red-200">Delete Account</h3>
+										<p class="pr-0.5 text-sm text-red-200/60">
+											Permanently delete this account and all associated data.
+										</p>
+									</div>
+									<button
+										onclick={openDeleteAccount}
+										class="rounded border border-red-500/50 bg-red-500/10 px-4 py-2 text-sm font-medium whitespace-nowrap text-red-400 transition-colors hover:bg-red-500 hover:text-white"
+									>
+										Delete Account
+									</button>
+								</div>
+							</div>
+						{/if}
+					{:else if isOwner && activeSubTab === 'settings:developer'}
+						<div class="col-span-2">
+							<div class="mb-2 flex flex-col items-start justify-between">
+								<h2 class="text-xl font-semibold text-neutral-100">
+									API Keys ({apiKeys.length}/10)
+								</h2>
+								<p class="text-sm text-neutral-400">
+									Manage API keys for accessing Sharpbin programmatically.
+								</p>
+							</div>
+
+							{#if apiKeyError}
+								<div
+									class="mb-4 rounded border border-red-900/50 bg-red-900/10 p-3 text-sm text-red-200"
+								>
+									{apiKeyError}
+								</div>
+							{/if}
+
+							<div class="mb-6">
+								{#if isCreatingApiKey}
+									<div class="flex items-center gap-2">
+										<input
+											type="text"
+											placeholder="Key Name"
+											bind:value={newApiKeyName}
+											class="flex-1 border-b border-neutral-600 bg-transparent px-3 py-2 font-mono text-neutral-300 outline-none focus:border-neutral-400"
+											maxlength="26"
+										/>
+										<button
+											onclick={createApiKey}
+											disabled={loading || !newApiKeyName}
+											class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600 disabled:opacity-50"
+										>
+											{#if loading}
+												<LoaderCircle class="h-4 w-4 animate-spin" />
+											{:else}
+												<Plus class="h-4 w-4" />
+											{/if}
+											Create
+										</button>
+										<button
+											onclick={() => {
+												isCreatingApiKey = false;
+												newApiKeyName = '';
+											}}
+											class="flex items-center gap-2 rounded bg-neutral-800 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-700"
+										>
+											Cancel
+										</button>
+									</div>
+								{:else}
+									<button
+										onclick={() => (isCreatingApiKey = true)}
+										class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
+									>
+										<Plus class="h-4 w-4" />
+										Create New Key
+									</button>
+								{/if}
+							</div>
+
+							{#if newApiKeyValue}
+								<div class="mb-6 rounded border border-green-900/50 bg-green-900/10 p-4">
+									<div class="mb-2 flex items-center justify-between">
+										<span class="text-sm font-medium text-green-400">API Key Created</span>
+										<button
+											onclick={() => (newApiKeyValue = '')}
+											class="text-green-400/70 hover:text-green-400"
+										>
+											<X class="h-4 w-4" />
+										</button>
+									</div>
+									<p class="mb-3 text-xs text-green-200/70">
+										Please copy your API key now. You won't be able to see it again.
+									</p>
+									<div class="flex items-center gap-2 rounded bg-neutral-900/50 p-2">
+										<code class="flex-1 font-mono text-sm break-all text-green-300"
+											>{newApiKeyValue}</code
+										>
+										<button
+											class="p-1 text-neutral-400 hover:text-white"
+											onclick={() => {
+												navigator.clipboard.writeText(newApiKeyValue);
+												copiedApiKey = true;
+												setTimeout(() => (copiedApiKey = false), 1000);
+											}}
+											use:tooltip={'Copy to clipboard'}
+										>
+											<div class="relative mr-1 h-5 w-5">
+												{#if copiedApiKey}
+													<span
+														transition:fade={{ duration: 200 }}
+														class="absolute inset-0 flex items-center justify-center"
+														><Check class="h-4 w-4 text-green-400" /></span
+													>
+												{:else}
+													<span
+														transition:fade={{ duration: 200 }}
+														class="absolute inset-0 flex items-center justify-center"
+														><Copy class="h-4 w-4 text-neutral-400" /></span
+													>
+												{/if}
+											</div>
+										</button>
+									</div>
+								</div>
+							{/if}
+
+							<div class="space-y-2">
+								{#if apiKeys.length !== 0}
+									{#each apiKeys as key (key.uuid)}
+										<div class="flex items-center justify-between rounded bg-neutral-800/50 p-3">
+											<div class="flex flex-col gap-1">
+												<span class="font-medium text-neutral-200">{key.name}</span>
+												<div class="flex gap-3 text-xs text-neutral-500">
+													<span>Created: {new Date(key.createdAt).toLocaleDateString()}</span>
+													<span
+														>Last used: {key.lastUsedAt
+															? dateToRelativeString(new Date(key.lastUsedAt), true, false, now)
+															: 'Never'}</span
+													>
+												</div>
+											</div>
+											<button
+												onclick={() => deleteApiKey(key.uuid)}
+												disabled={loading}
+												class="p-2 text-neutral-500 transition-colors hover:text-red-400"
+												title="Revoke Key"
+											>
+												<Trash2 class="h-4 w-4" />
+											</button>
+										</div>
+									{/each}
+								{/if}
 							</div>
 						</div>
 					{/if}
