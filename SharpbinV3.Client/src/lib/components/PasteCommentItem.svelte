@@ -8,7 +8,7 @@
 	import { ThumbsUp, ThumbsDown, Trash2, Shredder } from '@lucide/svelte';
 	import { resolve } from '$app/paths';
 	import RichTextEditor from './RichTextEditor.svelte';
-	import { hasRole } from '$lib/utils/auth';
+	import { hasRole, roles } from '$lib/utils/auth';
 
 	interface Props {
 		node: CommentTreeNode;
@@ -221,7 +221,7 @@
 					>
 						<Trash2 class="inline h-3.5 w-3.5" />
 					</button>
-					{#if hasRole($user.roles, 4) || hasRole($user.roles, 2)}
+					{#if hasRole($user.roles, roles.Moderator) || hasRole($user.roles, roles.Admin)}
 						<button
 							type="button"
 							class="h-7 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 active:bg-neutral-700"
