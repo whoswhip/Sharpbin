@@ -17,6 +17,25 @@ namespace SharpbinV3.Server.Extensions
             "X-ProxyUser-IP",
         ];
 
+        public static readonly string[] BotUserAgents =
+        [
+            "bot",
+            "crawl",
+            "spider",
+            "slurp",
+            "mediapartners-google",
+            "adsbot-google",
+            "googlebot",
+            "bingbot",
+            "yandexbot",
+            "duckduckbot",
+            "baiduspider",
+            "sogou",
+            "exabot",
+            "facebot",
+            "ia_archiver",
+        ];
+
         private const string ApiKeyContextKey = "ApiKey";
 
         private static string? GetClaimValue(IEnumerable<Claim> claims, params string[] claimTypes)
@@ -109,6 +128,12 @@ namespace SharpbinV3.Server.Extensions
                 }
             }
             return context.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+        }
+
+        public static bool IsKnownBot(this HttpContext context)
+        {
+            var userAgent = context.Request.Headers.UserAgent.FirstOrDefault()?.ToLower() ?? "";
+            return BotUserAgents.Any(userAgent.Contains);
         }
     }
 }

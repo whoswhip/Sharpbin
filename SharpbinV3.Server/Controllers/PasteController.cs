@@ -280,6 +280,8 @@ namespace SharpbinV3.Server.Controllers
         [Authorize(Policy = "NotBanned")]
         public async Task<IActionResult> RecordPasteView(string id)
         {
+            if (HttpContext.IsKnownBot())
+                return Ok(new { success = true, message = "View not recorded for known bot." });
             var paste = await _pasteService.Get(id);
             if (paste == null)
                 return NotFound(new { success = false, message = "Paste not found." });
