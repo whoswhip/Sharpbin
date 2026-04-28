@@ -50,7 +50,7 @@
 					{#if paste.createdAt > Date.now() - 86_400_000}
 						Created {dateToRelativeString(new Date(paste.createdAt), true, false, now)}
 					{:else}
-						Created on {new Date(paste.createdAt).toLocaleDateString()}
+						{new Date(paste.createdAt).toLocaleDateString()}
 					{/if}
 				{:else}
 					Creation date unknown
@@ -136,13 +136,19 @@
 						{/if}
 					</span>
 				</div>
-				{#if paste.editedAt}
+				{#if paste.editedAt && paste.editedAt != 0}
 					<div
 						class="mt-1 flex items-center gap-2 text-sm text-neutral-400"
 						use:tooltip={new Date(paste.editedAt).toLocaleString()}
 					>
 						<History class="h-4 w-4" />
-						<span>Edited {dateToRelativeString(new Date(paste.editedAt), true, false, now)}</span>
+						<span>
+							 {#if paste.editedAt > Date.now() - 86_400_000}
+								Edited {dateToRelativeString(new Date(paste.editedAt), true, false, now)}
+							{:else}
+								Edited on {new Date(paste.editedAt).toLocaleDateString()}
+							{/if}
+						</span>
 					</div>
 				{/if}
 				{#if paste.expiresAt > 0}
