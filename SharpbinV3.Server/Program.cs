@@ -332,8 +332,8 @@ namespace SharpbinV3.Server
 
                         var pasteCount = await db.Pastes.CountAsync();
                         var userCount = await db.Users.CountAsync();
-                        var totalPasteSize = await db.Pastes.SumAsync(p => p.StoredSize);
-                        var trueTotalPasteSize = await db.Pastes.SumAsync(p => p.OriginalSize);
+                        var totalStoredSize = await db.Pastes.SumAsync(p => p.StoredSize);
+                        var totalOriginalSize = await db.Pastes.SumAsync(p => p.OriginalSize);
 
                         var dailyCounts = await db
                             .Pastes.Where(p => p.CreatedAt >= sevenDaysAgo)
@@ -363,8 +363,8 @@ namespace SharpbinV3.Server
                                     {
                                         total = pasteCount,
                                         past7Days = pasteCountWeek,
-                                        totalSizeInBytes = totalPasteSize,
-                                        trueTotalSizeInBytes = trueTotalPasteSize,
+                                        totalStoredSizeInBytes = totalStoredSize,
+                                        totalOriginalSizeInBytes = totalOriginalSize,
                                         daily = dailyStats,
                                     },
                                     users = new { total = userCount },

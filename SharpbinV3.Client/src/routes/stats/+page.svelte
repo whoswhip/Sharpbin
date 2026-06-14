@@ -81,11 +81,11 @@
 					<p
 						class="text-2xl font-bold"
 						use:tooltip={[
-							`${stats.pastes.trueTotalSizeInBytes != stats.pastes.totalSizeInBytes ? `Uncompressed Size: ${formatBytes(stats.pastes.trueTotalSizeInBytes)}` : ''}`,
+							`${stats.pastes.totalStoredSizeInBytes != stats.pastes.totalOriginalSizeInBytes ? `Uncompressed Size: ${formatBytes(stats.pastes.totalOriginalSizeInBytes)}` : ''}`,
 							true
 						]}
 					>
-						{formatBytes(stats.pastes.totalSizeInBytes)}
+						{formatBytes(stats.pastes.totalStoredSizeInBytes)}
 					</p>
 				</div>
 			</div>

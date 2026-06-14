@@ -224,9 +224,9 @@ namespace SharpbinV3.Server.Controllers
 
         private async Task<IActionResult> BuildUserResponse(User user, int page = 1)
         {
-            var isAuthenticatedUser = HttpContext.User?.FindFirst("uuid")?.Value == user.UUID.ToString();
+            var isRequestedUser = HttpContext.User?.FindFirst("uuid")?.Value == user.UUID.ToString();
             var pasteQuery = _db.Pastes.AsNoTracking().Where(p => p.AuthorUUID == user.UUID);
-            if (!isAuthenticatedUser)
+            if (!isRequestedUser)
             {
                 if (user.Visibility == Visibility.Private && (!user.Roles.HasFlag(Role.Admin) || !user.Roles.HasFlag(Role.Moderator)))
                     return NotFound();
@@ -270,7 +270,7 @@ namespace SharpbinV3.Server.Controllers
                 TotalPages = totalPages,
             };
 
-            if (isAuthenticatedUser)
+            if (isRequestedUser)
             {
                 var reports = await _reportService.GetReports(
                     new ReportQuery
