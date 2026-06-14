@@ -45,7 +45,7 @@ namespace SharpbinV3.Server.Services
         {
             var user = new User
             {
-                Username = username,
+                Username = UserService.NormalizeUsername(username),
                 PasswordHash = Bcrypt.HashPassword(password),
                 Email = email,
                 DisplayName = displayName,
@@ -181,7 +181,7 @@ namespace SharpbinV3.Server.Services
         public async Task<User> UpdateUser(User user)
         {
             var existingUser = await _db.Users.FirstOrDefaultAsync(u => u.UUID == user.UUID) ?? throw new Exception("User not found");
-            existingUser.Username = user.Username;
+            existingUser.Username = UserService.NormalizeUsername(user.Username);
             existingUser.Email = user.Email;
             existingUser.DisplayName = user.DisplayName;
             existingUser.Roles = user.Roles;

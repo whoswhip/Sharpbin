@@ -26,10 +26,11 @@ namespace SharpbinV3.Server.Services
 
         public Task<User?> GetByUsername(string username, bool withPastes = false)
         {
+            var normalizedUsername = NormalizeUsername(username);
             IQueryable<User> query = _db.Users;
             if (withPastes)
                 query = query.Include(u => u.Pastes);
-            return query.FirstOrDefaultAsync(u => u.Username == username);
+            return query.FirstOrDefaultAsync(u => u.Username == normalizedUsername);
         }
 
         public Task<User?> GetByEmail(string email, bool withPastes = false)
@@ -42,9 +43,12 @@ namespace SharpbinV3.Server.Services
 
         public async Task<User> Update(User user)
         {
+            user.Username = NormalizeUsername(user.Username);
             _db.Users.Update(user);
             await _db.SaveChangesAsync();
             return user;
         }
+
+        public static string NormalizeUsername(string username) => username.ToLowerInvariant();
     }
 }

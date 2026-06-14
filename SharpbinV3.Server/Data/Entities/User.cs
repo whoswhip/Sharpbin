@@ -15,6 +15,7 @@ namespace SharpbinV3.Server.Data.Entities
 
     [Index(nameof(UID))]
     [Index(nameof(UUID), IsUnique = true)]
+    [Index(nameof(Username), IsUnique = true)]
     public sealed class User
     {
         public long? UID { get; set; }
