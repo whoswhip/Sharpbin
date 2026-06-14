@@ -61,7 +61,19 @@ namespace SharpbinV3.Server.Controllers
             if (!string.IsNullOrEmpty(request.DisplayName) && request.DisplayName.Length > 26)
                 return BadRequest(new { success = false, message = "Display name should not exceed 26 characters." });
 
-            var user = await _authService.CreateUser(request.Username, request.Password, request.Email, request.DisplayName);
+            User user;
+            try
+            {
+                user = await _authService.CreateUser(request.Username, request.Password, request.Email, request.DisplayName);
+            }
+            catch (DbUpdateException)
+            {
+                if (await _userService.GetByUsername(request.Username) != null)
+                    return Conflict(new { success = false, message = "Username already exists." });
+
+                throw;
+            }
+
             if (!string.IsNullOrWhiteSpace(user.Email))
                 await _authService.SendEmailVerification(user);
 
