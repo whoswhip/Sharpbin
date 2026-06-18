@@ -239,6 +239,5 @@ namespace SharpbinV3.Server.Services
             var currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             return expiresAt > currentTime - 1000;
         }
-
     }
 }
