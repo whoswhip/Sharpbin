@@ -7,5 +7,6 @@ namespace SharpbinV3.Server.Settings
         [Required, MaxLength(256)]
         public string Domain { get; set; } = string.Empty;
         public bool Https { get; set; } = true;
+        public string[] AllowedCorsOrigins { get; set; } = ["http://localhost:5173"];
     }
 }

@@ -18,7 +18,7 @@ namespace SharpbinV3.Server.Services
             if (string.IsNullOrEmpty(_authSettings.API_Key_HMAC_Secret))
                 return Utilities.ComputeSha256(input);
             else
-                return Utilities.ComputeHmacSha256(input, _authSettings.API_Key_HMAC_Secret);
+                return Utilities.ComputeHmacSha256(_authSettings.API_Key_HMAC_Secret, input);
         }
 
         public async Task<ApiKey?> GetByKeyAsync(string key)

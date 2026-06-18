@@ -124,10 +124,7 @@ namespace SharpbinV3.Server.Controllers
             var actorIsAdmin = actorUser.Roles.HasFlag(Role.Admin);
             var isSelfUpdate = targetUser.UUID == actorUser.UUID;
 
-            if (
-                (targetUser.Roles.HasFlag(Role.Admin) && !actorIsAdmin)
-                || (!actorIsAdmin && !isSelfUpdate)
-            )
+            if ((targetUser.Roles.HasFlag(Role.Admin) && !actorIsAdmin) || (!actorIsAdmin && !isSelfUpdate))
                 return StatusCode(403, new { success = false, message = "You do not have permission to modify this user." });
 
             if ((updatedUser.Roles.HasValue || updatedUser.IsBanned.HasValue) && !actorIsAdmin)

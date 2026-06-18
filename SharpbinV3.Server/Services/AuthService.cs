@@ -141,23 +141,21 @@ namespace SharpbinV3.Server.Services
 
                 var jti = principal.Claims.First(c => c.Type == JwtRegisteredClaimNames.Jti).Value;
                 var userUUID = principal.Claims.First(c => c.Type == "uuid").Value;
+                var userGuid = Guid.Parse(userUUID);
 
                 var tokenHash = Utilities.ComputeSha256(refreshToken);
-                var storedToken = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash);
+                await using var transaction = await _db.Database.BeginTransactionAsync();
+                var now = DateTimeOffset.UtcNow;
+                var revokedCount = await _db
+                    .RefreshTokens.Where(rt =>
+                        rt.TokenHash == tokenHash && !rt.Used && !rt.Revoked && rt.ExpiresAt >= now && rt.JwtId == jti && rt.UserUUID == userGuid
+                    )
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(rt => rt.Used, true).SetProperty(rt => rt.Revoked, true));
 
-                if (
-                    storedToken == null
-                    || storedToken.Used
-                    || storedToken.Revoked
-                    || storedToken.ExpiresAt < DateTimeOffset.UtcNow
-                    || storedToken.JwtId != jti
-                    || storedToken.UserUUID != Guid.Parse(userUUID)
-                )
-                {
+                if (revokedCount != 1)
                     return new CreateJWT { Success = false, Errors = ["Invalid or expired refresh token."] };
-                }
 
-                var user = await _db.Users.FirstOrDefaultAsync(u => u.UUID == Guid.Parse(userUUID));
+                var user = await _db.Users.FirstOrDefaultAsync(u => u.UUID == userGuid);
                 if (user == null)
                     return new CreateJWT { Success = false, Errors = ["Invalid token."] };
 
@@ -165,9 +163,7 @@ namespace SharpbinV3.Server.Services
                 if (!newTokenResult.Success)
                     return newTokenResult;
 
-                storedToken.Used = true;
-                storedToken.Revoked = true;
-                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
 
                 return newTokenResult;
             }

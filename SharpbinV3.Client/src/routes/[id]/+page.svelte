@@ -1094,7 +1094,7 @@
 					class={data.paste.syntax === 'markdown'
 						? 'markdown rounded-b-md bg-neutral-800 p-4'
 						: data.paste.syntax === 'csv'
-							? 'csv-container scrollbar overflow-x-auto overflow-y-auto scrollbar-thumb-neutral-600 scrollbar-track-neutral-800'
+							? 'csv-container scrollbar scrollbar-thumb-neutral-600 scrollbar-track-neutral-800 overflow-x-auto overflow-y-auto'
 							: 'codeblock-with-lines overflow-x-auto overflow-y-auto'}
 					class:hidden={!contentRendered}
 					onclick={handleMarkdownClick}

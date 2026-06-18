@@ -9,6 +9,7 @@ services:
       - "backend.env"
     environment:
       DATA_PROTECTION_KEY_PATH: /app/data/keys
+      ConnectionStrings__DefaultConnection: "Data Source=/app/data/sharpbin.db"
     volumes:
       - sharpbin-data:/app/data
       - ./SharpbinV3.Server/appsettings.json:/app/appsettings.json

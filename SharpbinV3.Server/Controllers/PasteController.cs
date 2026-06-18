@@ -294,9 +294,9 @@ namespace SharpbinV3.Server.Controllers
             )
                 return Unauthorized(new { success = false, message = "Invalid API key." });
 
-            if (paste.AuthorUUID != HttpContext.GetJwtUser()?.UUID)
+            if (paste.AuthorUUID == HttpContext.GetJwtUser()?.UUID)
                 return Ok(new { success = true, message = "View not recorded for author's own paste." });
-            if (paste.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() && paste.Visibility != 0)
+            if (paste.ExpiresAt != 0 && paste.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() && paste.Visibility != 0)
                 return Ok(new { success = true, message = "View not recorded for expired paste." });
 
             var result = await _pasteService.RecordView(paste, HttpContext);

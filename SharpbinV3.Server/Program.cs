@@ -276,7 +276,9 @@ namespace SharpbinV3.Server
 
             builder.Services.AddCors(o =>
             {
-                o.AddDefaultPolicy(p => p.WithOrigins("http://localhost:5173").AllowAnyHeader().AllowAnyMethod());
+                var allowedOrigins =
+                    builder.Configuration.GetSection(nameof(AppSettings.AllowedCorsOrigins)).Get<string[]>() ?? ["http://localhost:5173"];
+                o.AddDefaultPolicy(p => p.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod());
             });
 
             builder
