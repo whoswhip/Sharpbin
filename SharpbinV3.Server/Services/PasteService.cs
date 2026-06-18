@@ -1,6 +1,5 @@
 ﻿using System.Text;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using SharpbinV3.Server.Data;
 using SharpbinV3.Server.Data.Entities;
@@ -10,14 +9,11 @@ using SharpbinV3.Server.Settings;
 
 namespace SharpbinV3.Server.Services
 {
-    public sealed class PasteService(AppDbContext db, ICompressionService cs, IMemoryCache cache, IOptions<PasteSettings> options)
+    public sealed class PasteService(AppDbContext db, ICompressionService cs, IOptions<PasteSettings> options)
     {
         private readonly AppDbContext _db = db;
         private readonly ICompressionService _cs = cs;
-        private readonly IMemoryCache _cache = cache;
         private readonly PasteSettings _pasteSettings = options.Value;
-        private readonly Lock _invalidationLock = new();
-        private readonly HashSet<string> _pasteListCacheKeys = [];
 
         public async Task<Paste> Create(
             User? author,
@@ -35,6 +31,8 @@ namespace SharpbinV3.Server.Services
                 data = _cs.Compress(content);
 
             double compressionRatio = (double)data.Length / originalSize;
+            var isCompressed = compressionRatio < _pasteSettings.CompressionThreshold;
+            var storedContent = isCompressed ? data : Encoding.UTF8.GetBytes(content);
 
             var paste = new Paste
             {
@@ -43,10 +41,10 @@ namespace SharpbinV3.Server.Services
                 Title = title,
                 AuthorUUID = author?.UUID,
                 User = author,
-                Content = compressionRatio < _pasteSettings.CompressionThreshold ? data : Encoding.UTF8.GetBytes(content),
-                StoredSize = data.Length,
+                Content = storedContent,
+                StoredSize = storedContent.Length,
                 OriginalSize = originalSize,
-                IsCompressed = compressionRatio < _pasteSettings.CompressionThreshold,
+                IsCompressed = isCompressed,
                 Syntax = syntax,
                 Visibility = visibility,
                 ExpiresAt = expiresAt,
@@ -59,8 +57,6 @@ namespace SharpbinV3.Server.Services
             }
             await _db.SaveChangesAsync();
 
-            InvalidatePasteListCache();
-
             return paste;
         }
 
@@ -69,8 +65,6 @@ namespace SharpbinV3.Server.Services
             _db.Pastes.Remove(paste);
             var result = await _db.SaveChangesAsync();
 
-            InvalidatePasteCache(paste.ID);
-
             return result > 0;
         }
 
@@ -78,8 +72,6 @@ namespace SharpbinV3.Server.Services
         {
             _db.Pastes.Update(paste);
             await _db.SaveChangesAsync();
-
-            InvalidatePasteCache(paste.ID);
 
             return paste;
         }
@@ -102,16 +94,16 @@ namespace SharpbinV3.Server.Services
                 data = _cs.Compress(text);
 
             double compressionRatio = (double)data.Length / originalSize;
+            var isCompressed = compressionRatio < _pasteSettings.CompressionThreshold;
+            var storedContent = isCompressed ? data : Encoding.UTF8.GetBytes(text);
 
-            paste.Content = compressionRatio < _pasteSettings.CompressionThreshold ? data : Encoding.UTF8.GetBytes(text);
-            paste.StoredSize = data.Length;
+            paste.Content = storedContent;
+            paste.StoredSize = storedContent.Length;
             paste.OriginalSize = originalSize;
             paste.EditedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            paste.IsCompressed = compressionRatio < _pasteSettings.CompressionThreshold;
+            paste.IsCompressed = isCompressed;
             _db.Pastes.Update(paste);
             var result = await _db.SaveChangesAsync();
-
-            InvalidatePasteCache(paste.ID);
 
             return result > 0;
         }
@@ -151,7 +143,6 @@ namespace SharpbinV3.Server.Services
                 return (null, true);
             }
 
-            InvalidatePasteCache(paste.ID);
             return (paste, false);
         }
 
@@ -172,7 +163,6 @@ namespace SharpbinV3.Server.Services
             try
             {
                 await _db.SaveChangesAsync();
-                InvalidatePasteCache(paste.ID);
                 return interaction;
             }
             catch (DbUpdateException)
@@ -192,56 +182,31 @@ namespace SharpbinV3.Server.Services
 
             _db.PasteInteractions.Remove(interaction);
             await _db.SaveChangesAsync();
-            InvalidatePasteCache(paste.ID);
             return true;
         }
 
         public async Task<Paste?> Get(string id)
         {
-            string key = $"v1:paste:{id}";
-            var paste = await _cache.GetOrCreateAsync(
-                key,
-                async entry =>
-                {
-                    entry.SetSlidingExpiration(TimeSpan.FromMinutes(10));
-                    var _paste = await _db.Pastes.AsNoTracking().Include(p => p.User).FirstOrDefaultAsync(p => p.ID == id);
-                    if (_paste != null)
-                    {
-                        _paste.PositiveInteractionCount = await _db
-                            .PasteInteractions.Where(pi => pi.PasteID == _paste.PID && pi.Type == Interaction.Positive)
-                            .CountAsync();
-                        _paste.NegativeInteractionCount = await _db
-                            .PasteInteractions.Where(pi => pi.PasteID == _paste.PID && pi.Type == Interaction.Negative)
-                            .CountAsync();
-                    }
-                    return _paste;
-                }
-            );
+            var paste = await _db.Pastes.AsNoTracking().Include(p => p.User).FirstOrDefaultAsync(p => p.ID == id);
+            if (paste != null)
+            {
+                paste.PositiveInteractionCount = await _db
+                    .PasteInteractions.Where(pi => pi.PasteID == paste.PID && pi.Type == Interaction.Positive)
+                    .CountAsync();
+                paste.NegativeInteractionCount = await _db
+                    .PasteInteractions.Where(pi => pi.PasteID == paste.PID && pi.Type == Interaction.Negative)
+                    .CountAsync();
+            }
             return paste ?? null;
         }
 
         public async Task<List<Paste>> GetList(int offset, int count, bool publicOnly = false)
         {
-            string key = $"v1:list:pastes:public={publicOnly}:offset={offset}:count={count}";
+            var query = _db.Pastes.AsQueryable();
+            if (publicOnly)
+                query = query.Where(p => p.Visibility == 0);
 
-            var pastes = await _cache.GetOrCreateAsync(
-                key,
-                async entry =>
-                {
-                    entry.SetSlidingExpiration(TimeSpan.FromMinutes(5));
-
-                    lock (_invalidationLock)
-                        _pasteListCacheKeys.Add(key);
-
-                    var query = _db.Pastes.AsQueryable();
-                    if (publicOnly)
-                        query = query.Where(p => p.Visibility == 0);
-
-                    return await query.OrderByDescending(p => p.PID).Skip(offset).Take(count).Include(p => p.User).ToListAsync();
-                }
-            );
-
-            return pastes ?? [];
+            return await query.OrderByDescending(p => p.PID).Skip(offset).Take(count).Include(p => p.User).ToListAsync();
         }
 
         public async Task<PasteInteraction?> GetUserInteraction(Paste paste, Guid userUUID)
@@ -275,21 +240,5 @@ namespace SharpbinV3.Server.Services
             return expiresAt > currentTime - 1000;
         }
 
-        private void InvalidatePasteCache(string pasteId)
-        {
-            string key = $"v1:paste:{pasteId}";
-            _cache.Remove(key);
-        }
-
-        private void InvalidatePasteListCache()
-        {
-            lock (_invalidationLock)
-            {
-                foreach (var listKey in _pasteListCacheKeys)
-                    _cache.Remove(listKey);
-
-                _pasteListCacheKeys.Clear();
-            }
-        }
     }
 }

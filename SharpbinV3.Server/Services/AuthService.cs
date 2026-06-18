@@ -146,11 +146,18 @@ namespace SharpbinV3.Server.Services
                 var tokenHash = Utilities.ComputeSha256(refreshToken);
                 await using var transaction = await _db.Database.BeginTransactionAsync();
                 var now = DateTimeOffset.UtcNow;
-                var revokedCount = await _db
-                    .RefreshTokens.Where(rt =>
-                        rt.TokenHash == tokenHash && !rt.Used && !rt.Revoked && rt.ExpiresAt >= now && rt.JwtId == jti && rt.UserUUID == userGuid
-                    )
-                    .ExecuteUpdateAsync(setters => setters.SetProperty(rt => rt.Used, true).SetProperty(rt => rt.Revoked, true));
+                var revokedCount = await _db.Database.ExecuteSqlInterpolatedAsync(
+                    $"""
+                    UPDATE RefreshTokens
+                    SET Used = 1, Revoked = 1
+                    WHERE TokenHash = {tokenHash}
+                      AND Used = 0
+                      AND Revoked = 0
+                      AND ExpiresAt >= {now}
+                      AND JwtId = {jti}
+                      AND UserUUID = {userGuid}
+                    """
+                );
 
                 if (revokedCount != 1)
                     return new CreateJWT { Success = false, Errors = ["Invalid or expired refresh token."] };

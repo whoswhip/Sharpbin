@@ -4,17 +4,12 @@ import { extractError } from '$lib/utils/misc';
 import { error } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ fetch, request }) => {
-	try {
-		const headers = new Headers(request.headers);
-		const res = await fetch('/api/paste/recent', { headers });
-		if (!res.ok) {
-			const errorMsg = extractError(await res.json()) || 'Failed to fetch recent pastes.';
-			throw error(res.status, errorMsg);
-		}
-		const recentPastes: Paste[] = await res.json();
-		return { recentPastes };
-	} catch (error) {
-		console.error(error);
-		return { recentPastes: [] };
+	const headers = new Headers(request.headers);
+	const res = await fetch('/api/paste/recent', { headers });
+	if (!res.ok) {
+		const errorMsg = extractError(await res.json()) || 'Failed to fetch recent pastes.';
+		throw error(res.status, errorMsg);
 	}
+	const recentPastes: Paste[] = await res.json();
+	return { recentPastes };
 };

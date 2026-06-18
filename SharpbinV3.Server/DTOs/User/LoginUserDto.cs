@@ -8,8 +8,9 @@ namespace SharpbinV3.Server.DTOs.User
         public string? Username { get; set; }
         public string? Email { get; set; }
 
+        [Required]
         [StringLength(128, MinimumLength = 6)]
-        public string? Password { get; set; }
+        public required string Password { get; set; }
         public string? Token { get; set; }
         public string? TotpCode { get; set; }
     }

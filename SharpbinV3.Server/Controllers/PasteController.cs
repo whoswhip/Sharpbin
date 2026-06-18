@@ -179,6 +179,10 @@ namespace SharpbinV3.Server.Controllers
             string content = await new StreamReader(Request.Body).ReadToEndAsync();
             if (content == null || id == null)
                 return StatusCode(400, new { success = false, message = "Invalid request." });
+            if (Encoding.UTF8.GetByteCount(content) > _pasteSettings.MaxPasteSizeInBytes)
+                return BadRequest(
+                    new { success = false, message = $"Paste size exceeds the maximum allowed size of {_pasteSettings.MaxPasteSizeInBytes} bytes." }
+                );
 
             var paste = await _pasteService.Get(id);
             if (paste == null)
@@ -294,7 +298,7 @@ namespace SharpbinV3.Server.Controllers
             )
                 return Unauthorized(new { success = false, message = "Invalid API key." });
 
-            if (paste.AuthorUUID == HttpContext.GetJwtUser()?.UUID)
+            if (paste.AuthorUUID.HasValue && paste.AuthorUUID == HttpContext.GetJwtUser()?.UUID)
                 return Ok(new { success = true, message = "View not recorded for author's own paste." });
             if (paste.ExpiresAt != 0 && paste.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() && paste.Visibility != 0)
                 return Ok(new { success = true, message = "View not recorded for expired paste." });

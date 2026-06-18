@@ -9,7 +9,7 @@ namespace SharpbinV3.Server.DTOs
     {
         public string? DisplayName { get; set; }
         public string? Email { get; set; }
-        public Visibility? Visibility { get; set; } = Data.Enums.Visibility.Public;
+        public Visibility? Visibility { get; set; }
         public Role? Roles { get; set; }
         public bool? IsBanned { get; set; }
         public string? TotpCode { get; set; }

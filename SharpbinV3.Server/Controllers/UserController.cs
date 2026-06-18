@@ -227,10 +227,12 @@ namespace SharpbinV3.Server.Controllers
         private async Task<IActionResult> BuildUserResponse(User user, int page = 1)
         {
             var isRequestedUser = HttpContext.User?.FindFirst("uuid")?.Value == user.UUID.ToString();
+            var requester = HttpContext.GetJwtUser();
+            var requesterIsStaff = requester != null && (requester.Roles.HasFlag(Role.Admin) || requester.Roles.HasFlag(Role.Moderator));
             var pasteQuery = _db.Pastes.AsNoTracking().Where(p => p.AuthorUUID == user.UUID);
             if (!isRequestedUser)
             {
-                if (user.Visibility == Visibility.Private && (!user.Roles.HasFlag(Role.Admin) || !user.Roles.HasFlag(Role.Moderator)))
+                if (user.Visibility == Visibility.Private && !requesterIsStaff)
                     return NotFound();
                 else if (user.Visibility != Visibility.Unlisted)
                     pasteQuery = pasteQuery.Where(p => p.Visibility == Visibility.Public);

@@ -22,15 +22,17 @@ namespace SharpbinV3.Server.Services
                 data = _cs.Compress(content);
 
             double compressionRatio = (double)data.Length / originalSize;
+            var isCompressed = compressionRatio < _pasteSettings.CompressionThreshold;
+            var storedContent = isCompressed ? data : Encoding.UTF8.GetBytes(content);
 
             var comment = new Comment
             {
                 PastePID = paste.PID,
                 ParentCommentID = parentCommentId,
-                Content = compressionRatio < _pasteSettings.CompressionThreshold ? data : Encoding.UTF8.GetBytes(content),
-                StoredSize = data.Length,
+                Content = storedContent,
+                StoredSize = storedContent.Length,
                 OriginalSize = originalSize,
-                IsCompressed = compressionRatio < _pasteSettings.CompressionThreshold,
+                IsCompressed = isCompressed,
                 UserUUID = author.UUID,
                 CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
             };
@@ -51,12 +53,14 @@ namespace SharpbinV3.Server.Services
                 data = _cs.Compress(newContent);
 
             double compressionRatio = (double)data.Length / originalSize;
+            var isCompressed = compressionRatio < _pasteSettings.CompressionThreshold;
+            var storedContent = isCompressed ? data : Encoding.UTF8.GetBytes(newContent);
 
-            comment.Content = compressionRatio < _pasteSettings.CompressionThreshold ? data : Encoding.UTF8.GetBytes(newContent);
-            comment.StoredSize = data.Length;
+            comment.Content = storedContent;
+            comment.StoredSize = storedContent.Length;
             comment.OriginalSize = originalSize;
             comment.UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            comment.IsCompressed = compressionRatio < _pasteSettings.CompressionThreshold;
+            comment.IsCompressed = isCompressed;
 
             _db.Comments.Update(comment);
             var result = await _db.SaveChangesAsync();

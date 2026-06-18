@@ -10,7 +10,13 @@ RUN npm run build
 
 FROM node:20-alpine as runner
 WORKDIR /app
-COPY --from=build /app .
-RUN apk add --no-cache wget
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=5173
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts && apk add --no-cache wget
+COPY --from=build --chown=node:node /app/build ./build
+RUN chown -R node:node /app
 EXPOSE 5173
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "5173"]
+USER node
+CMD ["node", "build"]

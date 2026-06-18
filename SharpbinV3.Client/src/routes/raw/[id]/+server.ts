@@ -15,10 +15,14 @@ export const GET: RequestHandler = async ({ params, request }) => {
 			statusText: 'Not Found'
 		});
 	}
-	const content = await res.text();
-	return new Response(content, {
-		headers: {
-			'Content-Type': 'text/plain; charset=utf-8'
-		}
+	const responseHeaders = new Headers(res.headers);
+	responseHeaders.delete('content-encoding');
+	responseHeaders.delete('content-length');
+	responseHeaders.delete('transfer-encoding');
+
+	return new Response(await res.arrayBuffer(), {
+		status: res.status,
+		statusText: res.statusText,
+		headers: responseHeaders
 	});
 };

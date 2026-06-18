@@ -85,27 +85,31 @@ namespace SharpbinV3.Server.Services
 
         public async Task<List<ReportResponseDto>> GetReports(ReportQuery query)
         {
-            return await BuildReportQuery(query)
+            var pagedReports = BuildReportQuery(query)
                 .OrderByDescending(r => r.CreatedAt)
                 .Skip((query.Page - 1) * query.PageSize)
-                .Take(query.PageSize)
+                .Take(query.PageSize);
+
+            return await pagedReports
+                .GroupJoin(_db.Users, r => r.ReporterUUID, reporter => reporter.UUID, (report, reporters) => new { report, reporters })
+                .SelectMany(r => r.reporters.DefaultIfEmpty(), (r, reporter) => new { r.report, reporter })
                 .Select(r => new ReportResponseDto
                 {
-                    ReportID = r.ReportID,
-                    Type = r.Type,
-                    Status = r.Status,
-                    Description = r.Description,
-                    CreatedAt = r.CreatedAt,
-                    UpdatedAt = r.UpdatedAt,
-                    ReporterUUID = r.ReporterUUID,
-                    ReporterUsername = _db.Users.Where(u => u.UUID == r.ReporterUUID).Select(u => u.Username).FirstOrDefault(),
-                    ReporterDisplayName = _db.Users.Where(u => u.UUID == r.ReporterUUID).Select(u => u.DisplayName).FirstOrDefault(),
-                    TargetType = r.TargetType,
-                    PasteId = r.Paste != null ? r.Paste.ID : null,
-                    PasteTitle = r.Paste != null ? r.Paste.Title : null,
-                    UserUUID = r.UserUUID,
-                    TargetUsername = r.User != null ? r.User.Username : null,
-                    TargetDisplayName = r.User != null ? r.User.DisplayName : null,
+                    ReportID = r.report.ReportID,
+                    Type = r.report.Type,
+                    Status = r.report.Status,
+                    Description = r.report.Description,
+                    CreatedAt = r.report.CreatedAt,
+                    UpdatedAt = r.report.UpdatedAt,
+                    ReporterUUID = r.report.ReporterUUID,
+                    ReporterUsername = r.reporter != null ? r.reporter.Username : null,
+                    ReporterDisplayName = r.reporter != null ? r.reporter.DisplayName : null,
+                    TargetType = r.report.TargetType,
+                    PasteId = r.report.Paste != null ? r.report.Paste.ID : null,
+                    PasteTitle = r.report.Paste != null ? r.report.Paste.Title : null,
+                    UserUUID = r.report.UserUUID,
+                    TargetUsername = r.report.User != null ? r.report.User.Username : null,
+                    TargetDisplayName = r.report.User != null ? r.report.User.DisplayName : null,
                 })
                 .ToListAsync();
         }
