@@ -657,7 +657,7 @@
 				</div>
 			{/if}
 		</div>
-		{#if !isOwner && !$user?.isBanned && $user}
+		{#if !isOwner && !$user?.isBanned && $user && (!hasRole(data.user.roles, roles.Admin) || !hasRole(data.user.roles, roles.Moderator))}
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div

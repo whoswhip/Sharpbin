@@ -360,6 +360,8 @@ namespace SharpbinV3.Server.Controllers
                 return NotFound(new { success = false, message = "User not found." });
             if (reportedUser.UUID == reporter.UUID)
                 return BadRequest(new { success = false, message = "You cannot report yourself." });
+            if (reportedUser.Roles.HasFlag(Role.Admin) || reportedUser.Roles.HasFlag(Role.Moderator))
+                return BadRequest(new { success = false, message = "You cannot report staff members." });
             Enum.TryParse<ReportType>(request.ReportType, true, out var reportType);
             if (!Enum.IsDefined(reportType))
                 return BadRequest(new { success = false, message = "Invalid report type." });
