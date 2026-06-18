@@ -258,7 +258,11 @@ namespace SharpbinV3.Server.Controllers
             if (!Enum.IsDefined(reportType))
                 return BadRequest(new { success = false, message = "Invalid report type." });
 
-            if (!await _verificationService.VerifyAsync(new VerificationContext { Token = request.VerificationToken, Ip = HttpContext.GetRequestIP() }))
+            if (
+                !await _verificationService.VerifyAsync(
+                    new VerificationContext { Token = request.VerificationToken, Ip = HttpContext.GetRequestIP() }
+                )
+            )
                 return BadRequest(new { success = false, message = "Verification failed." });
 
             Report report = await _reportService.CreateReport(user.UUID, ReportTargetType.Paste, paste.PID, reportType, request.Description);
@@ -366,7 +370,11 @@ namespace SharpbinV3.Server.Controllers
             if (!Enum.IsDefined(reportType))
                 return BadRequest(new { success = false, message = "Invalid report type." });
 
-            if (!await _verificationService.VerifyAsync(new VerificationContext { Token = request.VerificationToken, Ip = HttpContext.GetRequestIP() }))
+            if (
+                !await _verificationService.VerifyAsync(
+                    new VerificationContext { Token = request.VerificationToken, Ip = HttpContext.GetRequestIP() }
+                )
+            )
                 return Unauthorized(new { success = false, message = "Invalid verification token." });
 
             Report report = await _reportService.CreateReport(reporter.UUID, ReportTargetType.User, uuid, reportType, request.Description);

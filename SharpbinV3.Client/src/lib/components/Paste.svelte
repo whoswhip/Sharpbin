@@ -143,7 +143,7 @@
 					>
 						<History class="h-4 w-4" />
 						<span>
-							 {#if paste.editedAt > Date.now() - 86_400_000}
+							{#if paste.editedAt > Date.now() - 86_400_000}
 								Edited {dateToRelativeString(new Date(paste.editedAt), true, false, now)}
 							{:else}
 								Edited on {new Date(paste.editedAt).toLocaleDateString()}
