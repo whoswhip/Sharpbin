@@ -209,7 +209,7 @@ namespace SharpbinV3.Server
                             httpContext.GetRequestIP(),
                             _ => new TokenBucketRateLimiterOptions
                             {
-                                TokenLimit = 5,
+                                TokenLimit = 8,
                                 QueueLimit = 0,
                                 TokensPerPeriod = 1,
                                 ReplenishmentPeriod = TimeSpan.FromSeconds(30),
@@ -226,7 +226,7 @@ namespace SharpbinV3.Server
                             httpContext.GetRequestIP(),
                             _ => new TokenBucketRateLimiterOptions
                             {
-                                TokenLimit = 3,
+                                TokenLimit = 5,
                                 QueueLimit = 0,
                                 TokensPerPeriod = 1,
                                 ReplenishmentPeriod = TimeSpan.FromMinutes(1),
@@ -289,7 +289,8 @@ namespace SharpbinV3.Server
             var app = builder.Build();
             app.UseRateLimiter();
 
-            app.MapOpenApi();
+            if (app.Environment.IsDevelopment())
+                app.MapOpenApi();
 
             app.UseHttpsRedirection();
             app.UseCors();
@@ -305,21 +306,6 @@ namespace SharpbinV3.Server
             {
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 db.Database.Migrate();
-
-                // this is temporary since the migration doesnt seem to work properly
-                db.Database.ExecuteSql(
-                    $"""
-                    CREATE TRIGGER IF NOT EXISTS Users_UID_AutoIncrement
-                    AFTER INSERT ON Users
-                    BEGIN
-                        UPDATE Users
-                        SET UID = (
-                            SELECT IFNULL(MAX(UID), 0) + 1 FROM Users
-                        )
-                        WHERE rowid = NEW.rowid AND NEW.UID IS NULL;
-                    END;
-                    """
-                );
             }
 
             app.MapHealthChecks("/health");
@@ -386,7 +372,7 @@ namespace SharpbinV3.Server
             if (!string.IsNullOrEmpty(overridepath))
                 return new DirectoryInfo(overridepath);
 
-            var basePath = env.IsDevelopment() ? Environment.CurrentDirectory : Environment.SpecialFolder.ApplicationData.ToString();
+            var basePath = env.IsDevelopment() ? Environment.CurrentDirectory : Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
             var path = Path.Combine(basePath, "SharpbinV3", "DataProtectionKeys");
 
