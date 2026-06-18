@@ -113,48 +113,53 @@ namespace SharpbinV3.Server.Controllers
                 return BadRequest(ModelState);
 
             var jwtUser = HttpContext.GetJwtUser()!;
-            var reqUser = await _userService.GetByUUID(uuid);
-            if (reqUser == null)
+            var actorUser = await _userService.GetByUUID(jwtUser.UUID);
+            if (actorUser == null)
+                return Unauthorized(new { success = false, message = "User not authenticated." });
+
+            var targetUser = await _userService.GetByUUID(uuid);
+            if (targetUser == null)
                 return NotFound(new { success = false, message = "User not found." });
 
-            var user = await _userService.GetByUUID(uuid);
-            if (user == null)
-                return NotFound(new { success = false, message = "User not found." });
+            var actorIsAdmin = actorUser.Roles.HasFlag(Role.Admin);
+            var isSelfUpdate = targetUser.UUID == actorUser.UUID;
 
             if (
-                (user.Roles.HasFlag(Role.Admin) && !reqUser.Roles.HasFlag(Role.Admin))
-                || (!reqUser.Roles.HasFlag(Role.Admin) && user.UUID != reqUser.UUID)
+                (targetUser.Roles.HasFlag(Role.Admin) && !actorIsAdmin)
+                || (!actorIsAdmin && !isSelfUpdate)
             )
                 return StatusCode(403, new { success = false, message = "You do not have permission to modify this user." });
 
+            if ((updatedUser.Roles.HasValue || updatedUser.IsBanned.HasValue) && !actorIsAdmin)
+                return StatusCode(403, new { success = false, message = "You do not have permission to modify this user." });
+
             bool isSensitiveUpdate =
-                (updatedUser.Roles.HasValue && updatedUser.Roles.Value != user.Roles) // updating roles
-                || (updatedUser.IsBanned.HasValue && updatedUser.IsBanned.Value != user.IsBanned) // updating ban status
+                (updatedUser.Roles.HasValue && updatedUser.Roles.Value != targetUser.Roles) // updating roles
+                || (updatedUser.IsBanned.HasValue && updatedUser.IsBanned.Value != targetUser.IsBanned) // updating ban status
                 || (
-                    updatedUser.Email != null && updatedUser.Email != user.Email // updating email
+                    updatedUser.Email != null && updatedUser.Email != targetUser.Email // updating email
                 );
 
-            if (reqUser.Roles.HasFlag(Role.Admin) && !jwtUser.TotpEnabled && _authSettings.Admins_Require_2FA && isSensitiveUpdate)
+            if (actorIsAdmin && !jwtUser.TotpEnabled && _authSettings.Admins_Require_2FA && isSensitiveUpdate)
                 return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
 
             if (isSensitiveUpdate && jwtUser.TotpEnabled)
             {
                 if (
                     string.IsNullOrEmpty(updatedUser.TotpCode)
-                    || !await _totp.VerifyAsync(new VerificationContext { UserUUID = reqUser.UUID, Code = updatedUser.TotpCode })
+                    || !await _totp.VerifyAsync(new VerificationContext { UserUUID = actorUser.UUID, Code = updatedUser.TotpCode })
                 )
                 {
                     return Unauthorized(new { message = "Invalid TOTP code." });
                 }
             }
 
-            if (user.Roles.HasFlag(Role.Admin) && !reqUser.Roles.HasFlag(Role.Admin))
-                return StatusCode(403, new { success = false, message = "You do not have permission to modify this user." });
             if (
                 updatedUser.Roles.HasValue
-                && user.Roles.HasFlag(Role.Admin)
+                && targetUser.Roles.HasFlag(Role.Admin)
                 && !updatedUser.Roles.Value.HasFlag(Role.Admin)
-                && reqUser.UID > user.UID
+                && !isSelfUpdate
+                && actorUser.UID > targetUser.UID
             )
             // prevents demoting of other older admins by newer admins
             // allows self demotion in case of compromisation
@@ -162,16 +167,16 @@ namespace SharpbinV3.Server.Controllers
                 return StatusCode(403, new { success = false, message = "You cannot remove the admin role from this user." });
             }
 
-            user.DisplayName = updatedUser.DisplayName ?? user.DisplayName;
-            if (reqUser.Roles.HasFlag(Role.Admin) || user.UUID == reqUser.UUID)
+            targetUser.DisplayName = updatedUser.DisplayName ?? targetUser.DisplayName;
+            if (actorIsAdmin || isSelfUpdate)
             {
-                user.Email = updatedUser.Email ?? user.Email;
-                user.Visibility = updatedUser.Visibility ?? user.Visibility;
+                targetUser.Email = updatedUser.Email ?? targetUser.Email;
+                targetUser.Visibility = updatedUser.Visibility ?? targetUser.Visibility;
             }
-            if (reqUser.Roles.HasFlag(Role.Admin))
+            if (actorIsAdmin)
             {
-                user.Roles = updatedUser.Roles ?? user.Roles;
-                user.IsBanned = updatedUser.IsBanned ?? user.IsBanned;
+                targetUser.Roles = updatedUser.Roles ?? targetUser.Roles;
+                targetUser.IsBanned = updatedUser.IsBanned ?? targetUser.IsBanned;
             }
 
             await _db.SaveChangesAsync();
