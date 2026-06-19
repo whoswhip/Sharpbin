@@ -190,12 +190,12 @@ namespace SharpbinV3.Server
                     "Sliding",
                     httpContext =>
                         RateLimitPartition.GetSlidingWindowLimiter(
-                            httpContext.GetRequestIP(),
+                            GetRateLimitPartitionKey(httpContext),
                             _ => new SlidingWindowRateLimiterOptions
                             {
                                 Window = TimeSpan.FromSeconds(10),
-                                PermitLimit = 10,
-                                QueueLimit = 2,
+                                PermitLimit = 15,
+                                QueueLimit = 5,
                                 SegmentsPerWindow = 5,
                                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                             }
@@ -206,13 +206,13 @@ namespace SharpbinV3.Server
                     "Strict",
                     httpContext =>
                         RateLimitPartition.GetTokenBucketLimiter(
-                            httpContext.GetRequestIP(),
+                            GetRateLimitPartitionKey(httpContext),
                             _ => new TokenBucketRateLimiterOptions
                             {
-                                TokenLimit = 8,
+                                TokenLimit = 15,
                                 QueueLimit = 0,
                                 TokensPerPeriod = 1,
-                                ReplenishmentPeriod = TimeSpan.FromSeconds(30),
+                                ReplenishmentPeriod = TimeSpan.FromSeconds(10),
                                 AutoReplenishment = true,
                                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                             }
@@ -223,7 +223,7 @@ namespace SharpbinV3.Server
                     "Sensitive",
                     httpContext =>
                         RateLimitPartition.GetTokenBucketLimiter(
-                            httpContext.GetRequestIP(),
+                            GetRateLimitPartitionKey(httpContext),
                             _ => new TokenBucketRateLimiterOptions
                             {
                                 TokenLimit = 5,
@@ -240,13 +240,11 @@ namespace SharpbinV3.Server
 
                 options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
                 {
-                    var remoteIp = httpContext.GetRequestIP();
-
                     return RateLimitPartition.GetFixedWindowLimiter(
-                        remoteIp,
+                        GetRateLimitPartitionKey(httpContext),
                         _ => new FixedWindowRateLimiterOptions
                         {
-                            PermitLimit = 120,
+                            PermitLimit = 180,
                             Window = TimeSpan.FromMinutes(1),
                             QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                             QueueLimit = 0,
@@ -257,6 +255,9 @@ namespace SharpbinV3.Server
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
                 options.OnRejected = async (context, cancellationToken) =>
                 {
+                    if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+                        context.HttpContext.Response.Headers.RetryAfter = Math.Ceiling(retryAfter.TotalSeconds).ToString();
+
                     await context.HttpContext.Response.WriteAsJsonAsync(
                         new { success = false, Message = "Too many requests. Please try again later." },
                         cancellationToken: cancellationToken
@@ -287,7 +288,6 @@ namespace SharpbinV3.Server
                 .SetApplicationName("SharpbinV3");
 
             var app = builder.Build();
-            app.UseRateLimiter();
 
             if (app.Environment.IsDevelopment())
                 app.MapOpenApi();
@@ -296,6 +296,7 @@ namespace SharpbinV3.Server
             app.UseCors();
 
             app.UseAuthentication();
+            app.UseRateLimiter();
             app.UseAuthorization();
 
             app.UseOutputCache();
@@ -377,6 +378,19 @@ namespace SharpbinV3.Server
             var path = Path.Combine(basePath, "SharpbinV3", "DataProtectionKeys");
 
             return new DirectoryInfo(path);
+        }
+
+        static string GetRateLimitPartitionKey(HttpContext httpContext)
+        {
+            var apiKey = httpContext.GetApiKeyFromContext();
+            if (apiKey != null)
+                return $"api-key:{apiKey.UUID}";
+
+            var user = httpContext.GetJwtUser();
+            if (user != null)
+                return $"user:{user.UUID}";
+
+            return $"ip:{httpContext.GetRequestIP()}";
         }
     }
 }
