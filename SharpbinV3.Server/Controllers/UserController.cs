@@ -285,6 +285,11 @@ namespace SharpbinV3.Server.Controllers
             {
                 if (user.Visibility == Visibility.Private && !requesterIsStaff)
                     return NotFound();
+
+                if (requesterIsStaff)
+                    pasteQuery = pasteQuery.Where(p => p.Visibility != Visibility.Private);
+                else if (user.Visibility == Visibility.Unlisted)
+                    pasteQuery = pasteQuery.Where(p => p.Visibility != Visibility.Private);
                 else if (user.Visibility != Visibility.Unlisted)
                     pasteQuery = pasteQuery.Where(p => p.Visibility == Visibility.Public);
             }
@@ -314,6 +319,8 @@ namespace SharpbinV3.Server.Controllers
                     Visibility = p.Visibility,
                     EditedAt = p.EditedAt,
                     ExpiresAt = p.ExpiresAt,
+                    Likes = p.Interactions.Count(i => i.Type == Interaction.Positive),
+                    Dislikes = p.Interactions.Count(i => i.Type == Interaction.Negative),
                 })
                 .ToListAsync();
 

@@ -206,7 +206,32 @@ namespace SharpbinV3.Server.Services
             if (publicOnly)
                 query = query.Where(p => p.Visibility == 0);
 
-            return await query.OrderByDescending(p => p.PID).Skip(offset).Take(count).Include(p => p.User).ToListAsync();
+            var pastes = await query.OrderByDescending(p => p.PID).Skip(offset).Take(count).Include(p => p.User).ToListAsync();
+
+            if (pastes.Count == 0)
+                return pastes;
+
+            var pasteIds = pastes.Select(p => p.PID).ToArray();
+            var interactionCounts = (
+                await _db
+                    .PasteInteractions.Where(pi => pasteIds.Contains(pi.PasteID))
+                    .GroupBy(pi => new { pi.PasteID, pi.Type })
+                    .Select(g => new
+                    {
+                        g.Key.PasteID,
+                        g.Key.Type,
+                        Count = g.Count(),
+                    })
+                    .ToListAsync()
+            ).ToDictionary(counts => (counts.PasteID, counts.Type), counts => counts.Count);
+
+            foreach (var paste in pastes)
+            {
+                paste.PositiveInteractionCount = interactionCounts.GetValueOrDefault((paste.PID, Interaction.Positive));
+                paste.NegativeInteractionCount = interactionCounts.GetValueOrDefault((paste.PID, Interaction.Negative));
+            }
+
+            return pastes;
         }
 
         public async Task<PasteInteraction?> GetUserInteraction(Paste paste, Guid userUUID)

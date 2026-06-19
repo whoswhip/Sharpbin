@@ -12,7 +12,8 @@
 		Lock,
 		EyeOff,
 		Globe,
-		HatGlasses
+		HatGlasses,
+		ThumbsUp
 	} from '@lucide/svelte';
 	import { syntaxes } from '$lib/consts';
 	import type { Paste } from '$lib/types/paste';
@@ -27,6 +28,8 @@
 	let { paste, now, showUser = true, compact = false }: Props = $props();
 
 	let syntax = $derived(syntaxes[paste.syntax] ?? syntaxes['plaintext']);
+	let netLikes = $derived(paste.likes - paste.dislikes);
+	let netLikeText = $derived(`${formatNumber(netLikes)} Like${netLikes === 1 ? '' : 's'}`);
 </script>
 
 {#if compact}
@@ -83,10 +86,18 @@
 						{/if}
 					</div>
 				{/if}
-				<div class="flex items-center gap-2">
-					<Eye class="h-4 w-4" />
-
-					{formatNumber(paste.views)} View{paste.views !== 1 ? 's' : ''}
+				<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+					<span class="flex items-center gap-2">
+						<Eye class="h-4 w-4" />
+						{formatNumber(paste.views)} View{paste.views !== 1 ? 's' : ''}
+					</span>
+					<span
+						class="flex items-center gap-2"
+						use:tooltip={`${formatNumber(paste.likes)} likes, ${formatNumber(paste.dislikes)} dislikes`}
+					>
+						<ThumbsUp class="h-4 w-4" />
+						{netLikeText}
+					</span>
 				</div>
 			</div>
 			<div>
@@ -175,13 +186,20 @@
 					</div>
 				{/if}
 			</div>
-			<div>
-				<div class="flex items-center gap-2 text-sm text-neutral-400">
+			<div class="grid grid-cols-[auto_auto] gap-x-4 gap-y-1 text-sm text-neutral-400">
+				<div class="flex items-center gap-2">
 					<Eye class="h-4 w-4" />
 					<span>{formatNumber(paste.views)} View{paste.views !== 1 ? 's' : ''}</span>
 				</div>
 				<div
-					class="mt-1 flex items-center gap-2 text-sm text-neutral-400"
+					class="flex items-center gap-2"
+					use:tooltip={`${formatNumber(paste.likes)} likes, ${formatNumber(paste.dislikes)} dislikes`}
+				>
+					<ThumbsUp class="h-4 w-4" />
+					<span>{netLikeText}</span>
+				</div>
+				<div
+					class="flex items-center gap-2"
 					use:tooltip={paste.isCompressed
 						? `Compressed Size: ${formatBytes(paste.storedSize)}`
 						: ''}
@@ -189,7 +207,7 @@
 					<FileBox class="h-4 w-4" />
 					<span>{formatBytes(paste.originalSize)}</span>
 				</div>
-				<div class="mt-1 flex items-center gap-2 text-sm text-neutral-400">
+				<div class="flex items-center gap-2">
 					<Code class="h-4 w-4" />
 					<span>{syntax.name}</span>
 				</div>

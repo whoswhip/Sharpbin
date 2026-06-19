@@ -397,6 +397,8 @@ namespace SharpbinV3.Server.Controllers
                     Visibility = p.Visibility,
                     ExpiresAt = p.ExpiresAt,
                     EditedAt = p.EditedAt,
+                    Likes = p.PositiveInteractionCount,
+                    Dislikes = p.NegativeInteractionCount,
                     Author =
                         p.User != null && p.User.Visibility == 0
                             ? new UserSimpleDto
