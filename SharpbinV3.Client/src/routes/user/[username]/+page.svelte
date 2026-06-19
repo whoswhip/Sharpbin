@@ -14,6 +14,7 @@
 		Ban,
 		AtSign,
 		Pencil,
+		KeyRound,
 		Trash2,
 		Clock,
 		Hash,
@@ -30,7 +31,7 @@
 		dateToRelativeString,
 		extractError
 	} from '$lib/utils/misc';
-	import { getToken, hasRole, roles } from '$lib/utils/auth';
+	import { clearTokens, getToken, hasRole, roles } from '$lib/utils/auth';
 	import { openModal } from '$lib/stores/modal';
 	import { user } from '$lib/stores/user';
 	import { onMount } from 'svelte';
@@ -64,6 +65,30 @@
 	let interval: ReturnType<typeof setInterval> | null = null;
 	let isEditingDisplayName = $state(false);
 	let editDisplayNameValue = $state('');
+	let isEditingEmail = $state(false);
+	let editEmailValue = $state('');
+	let emailActionLoading = $state(false);
+	let emailMessage = $state('');
+	let emailError = $state('');
+	let passwordCurrentValue = $state('');
+	let passwordNewValue = $state('');
+	let passwordConfirmValue = $state('');
+	let passwordFocused = $state(false);
+	let passwordChecks = $state({
+		minLength: false,
+		maxLength: false,
+		upper: false,
+		lower: false,
+		number: false
+	});
+	let passwordValid = $state(false);
+	let passwordActionLoading = $state(false);
+	let passwordMessage = $state('');
+	let passwordError = $state('');
+	let passwordResetLinkValue = $state('');
+	let passwordResetLinkLoading = $state(false);
+	let passwordResetLinkMessage = $state('');
+	let passwordResetLinkError = $state('');
 
 	let apiKeys: { uuid: string; name: string; createdAt: string; lastUsedAt: string | null }[] =
 		$state([]);
@@ -76,6 +101,12 @@
 
 	let reportsSubmitted = $derived(data.reportsSubmitted);
 	let reportsTarget = $derived(data.reportsTarget);
+	let adminsRequire2FA = $derived(
+		Boolean(
+			(data as unknown as { authOptions?: { admins_require_2fa?: boolean } }).authOptions
+				?.admins_require_2fa
+		)
+	);
 
 	let activeTab: 'pastes' | 'reportsSubmitted' | 'reportsTarget' | 'settings' = $state('pastes');
 	let activeSubTab:
@@ -184,7 +215,7 @@
 		message?: string;
 	};
 
-	type SecurityAction = 'UpdateRoles' | 'DeleteUser';
+	type SecurityAction = 'UpdateRoles' | 'DeleteUser' | 'GeneratePasswordResetLink';
 
 	async function fetchActionSecurityRequirements(action: SecurityAction) {
 		const token = getToken();
@@ -248,6 +279,24 @@
 		).trim();
 	}
 
+	function validatePassword(pw: string) {
+		passwordChecks.minLength = pw.length >= 8;
+		passwordChecks.maxLength = pw.length <= 128;
+		passwordChecks.upper = /[A-Z]/.test(pw);
+		passwordChecks.lower = /[a-z]/.test(pw);
+		passwordChecks.number = /[0-9]/.test(pw);
+		passwordValid =
+			passwordChecks.minLength &&
+			passwordChecks.maxLength &&
+			passwordChecks.upper &&
+			passwordChecks.lower &&
+			passwordChecks.number;
+	}
+
+	$effect(() => {
+		validatePassword(passwordNewValue);
+	});
+
 	async function fetchPage(pageNum: number) {
 		if (pageNum < 1 || pageNum > (pagination.totalPages || 1) || loading) return;
 		loading = true;
@@ -305,11 +354,182 @@
 		modalError = '';
 	}
 
+	async function changeEmail() {
+		const email = editEmailValue.trim();
+		if (!email) return;
+		let totpcode = '';
+		if (totpEnabled) {
+			totpcode = await promptTotpCode('TOTP required to change email', 'Continue');
+			if (!totpcode) return;
+		}
+		emailActionLoading = true;
+		emailMessage = '';
+		emailError = '';
+		const token = getToken();
+		try {
+			const res = await fetch('/api/auth/email/change', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				body: JSON.stringify({
+					email,
+					...(totpcode ? { totpcode } : {})
+				})
+			});
+			const json = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				emailError = extractError(json) || 'Failed to send verification email.';
+				return;
+			}
+			emailMessage = json.message || 'Verification email sent.';
+			isEditingEmail = false;
+			editEmailValue = '';
+		} catch {
+			emailError = 'Network error';
+		} finally {
+			emailActionLoading = false;
+		}
+	}
+
+	async function changePassword() {
+		passwordMessage = '';
+		passwordError = '';
+		const currentPassword = passwordCurrentValue;
+		const newPassword = passwordNewValue;
+		const confirmPassword = passwordConfirmValue;
+		if (!currentPassword || !newPassword || !confirmPassword) {
+			passwordError = 'Current password, new password, and confirmation are required.';
+			return;
+		}
+		if (newPassword !== confirmPassword) {
+			passwordError = 'New passwords do not match.';
+			return;
+		}
+		if (!passwordValid) {
+			passwordError =
+				'Password should have at least 8 characters, no more than 128 characters, including uppercase, lowercase, and digits.';
+			return;
+		}
+		let totpcode = '';
+		if (totpEnabled || adminsRequire2FA) {
+			if (adminsRequire2FA && !totpEnabled) {
+				passwordError = '2FA is required to perform this action.';
+				return;
+			}
+			totpcode = await promptTotpCode('TOTP required to change password', 'Continue');
+			if (!totpcode) return;
+		}
+		passwordActionLoading = true;
+		const token = getToken();
+		try {
+			const res = await fetch('/api/auth/password/change', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				body: JSON.stringify({
+					currentPassword,
+					newPassword,
+					...(totpcode ? { totpCode: totpcode } : {})
+				})
+			});
+			const json = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				passwordError = extractError(json) || 'Failed to change password.';
+				return;
+			}
+			clearTokens();
+			window.location.href = '/login';
+		} catch {
+			passwordError = 'Network error';
+		} finally {
+			passwordActionLoading = false;
+		}
+	}
+
+	async function generatePasswordResetLink() {
+		passwordResetLinkMessage = '';
+		passwordResetLinkError = '';
+		const token = getToken();
+		if (!token || !data.user?.uuid) return;
+
+		try {
+			const requirements = await fetchActionSecurityRequirements('GeneratePasswordResetLink');
+			if (requirements.blocked) {
+				passwordResetLinkError =
+					requirements.message || 'You cannot perform this action right now.';
+				return;
+			}
+			let totpcode = '';
+			if (requirements.requiresTotp) {
+				totpcode = await promptTotpCode('TOTP required to generate reset link', 'Continue');
+				if (!totpcode) return;
+			}
+
+			passwordResetLinkLoading = true;
+			const res = await fetch(`/api/auth/password/admin-reset-link/${data.user.uuid}`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				body: JSON.stringify({
+					...(totpcode ? { totpCode: totpcode } : {})
+				})
+			});
+			const json = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				passwordResetLinkError = extractError(json) || 'Failed to generate password reset link.';
+				return;
+			}
+			passwordResetLinkValue = json.resetLink || '';
+			passwordResetLinkMessage = json.message || 'Password reset link generated.';
+		} catch {
+			passwordResetLinkError = 'Network error';
+		} finally {
+			passwordResetLinkLoading = false;
+		}
+	}
+
+	async function resendVerificationEmail() {
+		emailActionLoading = true;
+		emailMessage = '';
+		emailError = '';
+		const token = getToken();
+		try {
+			const res = await fetch('/api/auth/email/resend-verification', {
+				method: 'POST',
+				headers: { Authorization: `Bearer ${token}` }
+			});
+			const json = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				emailError = extractError(json) || 'Failed to resend verification email.';
+				return;
+			}
+			emailMessage = json.message || 'Verification email sent.';
+		} catch {
+			emailError = 'Network error';
+		} finally {
+			emailActionLoading = false;
+		}
+	}
+
+	function startEditEmail() {
+		editEmailValue = data.user?.email || '';
+		isEditingEmail = true;
+		emailMessage = '';
+		emailError = '';
+	}
+
 	async function handleDeleteAccount() {
 		loading = true;
 		modalError = '';
 		const token = getToken();
 		let totpcode = '';
+		let verificationToken = '';
 		if (totpEnabled) {
 			totpcode = String(
 				await openModal<string>({
@@ -325,6 +545,42 @@
 				loading = false;
 				return;
 			}
+		} else if (isOwner && data.user?.emailVerified && data.user?.email) {
+			const requestRes = await fetch(`/api/user/uuid/${data.user?.uuid}/delete-verification`, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${token}`
+				}
+			});
+			if (!requestRes.ok) {
+				const err = await requestRes.json().catch(() => ({}));
+				loading = false;
+				modalError = extractError(err) || 'Failed to send account deletion verification email.';
+				await openModal({
+					mode: 'confirm',
+					title: 'Error',
+					message: modalError,
+					confirmButtonText: 'OK',
+					cancelValue: true
+				});
+				return;
+			}
+
+			verificationToken = String(
+				await openModal<string>({
+					mode: 'prompt',
+					title: 'Verify Account Deletion',
+					message: 'Enter the account deletion code sent to your verified email.',
+					placeholder: 'Deletion code',
+					inputType: 'text',
+					confirmButtonText: 'Delete Account',
+					cancelValue: ''
+				})
+			).trim();
+			if (!verificationToken) {
+				loading = false;
+				return;
+			}
 		}
 		const res = await fetch(`/api/user/uuid/${data.user?.uuid}`, {
 			method: 'DELETE',
@@ -332,7 +588,12 @@
 				Authorization: `Bearer ${token}`,
 				'Content-Type': 'application/json'
 			},
-			body: totpEnabled && totpcode ? JSON.stringify({ totpcode }) : undefined
+			body:
+				totpEnabled && totpcode
+					? JSON.stringify({ totpcode })
+					: verificationToken
+						? JSON.stringify({ token: verificationToken })
+						: undefined
 		});
 		loading = false;
 		if (!res.ok) {
@@ -346,6 +607,10 @@
 				cancelValue: true
 			});
 			return;
+		}
+		if (isOwner) {
+			clearTokens();
+			user.set(null);
 		}
 		window.location.href = '/';
 	}
@@ -847,6 +1112,117 @@
 								{/if}
 							</div>
 						</div>
+						{#if isOwner}
+							<div class="col-span-2">
+								<h2 class="text-xl font-semibold text-neutral-100">Email</h2>
+								<p class="mb-1 text-sm text-neutral-400">
+									Used for account verification and security notifications.
+								</p>
+
+								{#if emailError}
+									<div
+										class="mb-3 rounded border border-red-900/50 bg-red-900/10 p-3 text-sm text-red-200"
+									>
+										{emailError}
+									</div>
+								{/if}
+								{#if emailMessage}
+									<div
+										class="mb-3 rounded border border-green-900/50 bg-green-900/10 p-3 text-sm text-green-200"
+									>
+										{emailMessage}
+									</div>
+								{/if}
+
+								<div class="rounded bg-neutral-800/50 p-3">
+									{#if isEditingEmail}
+										<div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+											<input
+												type="email"
+												bind:value={editEmailValue}
+												placeholder="you@example.com"
+												class="w-full border-b border-neutral-600 bg-transparent px-2 py-1 font-mono text-neutral-300 outline-none focus:border-neutral-400"
+												autocomplete="email"
+												onkeydown={(e) => {
+													if (e.key === 'Enter') changeEmail();
+													else if (e.key === 'Escape') {
+														isEditingEmail = false;
+														editEmailValue = '';
+													}
+												}}
+											/>
+											<div class="flex shrink-0 gap-2">
+												<button
+													onclick={changeEmail}
+													disabled={emailActionLoading || !editEmailValue.trim()}
+													class="flex items-center gap-1 rounded bg-green-900/50 px-3 py-2 text-xs font-medium text-green-400 transition-colors hover:bg-green-900 disabled:opacity-50"
+												>
+													{#if emailActionLoading}
+														<LoaderCircle class="h-4 w-4 animate-spin" />
+													{:else}
+														<Check class="h-4 w-4" />
+													{/if}
+													Send verification
+												</button>
+												<button
+													onclick={() => {
+														isEditingEmail = false;
+														editEmailValue = '';
+													}}
+													class="flex items-center gap-1 rounded bg-neutral-700 px-3 py-2 text-xs font-medium text-neutral-300 transition-colors hover:bg-neutral-600"
+												>
+													<X class="h-4 w-4" />
+													Cancel
+												</button>
+											</div>
+										</div>
+									{:else}
+										<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+											<div class="flex min-w-0 flex-col gap-1">
+												<span class="font-mono break-all text-neutral-300">
+													{data.user?.email || 'No email set'}
+												</span>
+												<span
+													class="text-sm {data.user?.emailVerified
+														? 'text-green-400'
+														: 'text-amber-400'}"
+												>
+													{data.user?.email
+														? data.user?.emailVerified
+															? 'Verified'
+															: 'Not verified'
+														: 'Add an email to enable verification'}
+												</span>
+											</div>
+											<div class="flex flex-wrap gap-2">
+												{#if data.user?.email && !data.user?.emailVerified}
+													<button
+														onclick={resendVerificationEmail}
+														disabled={emailActionLoading}
+														class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600 disabled:opacity-50"
+													>
+														{#if emailActionLoading}
+															<LoaderCircle class="h-4 w-4 animate-spin" />
+														{:else}
+															<Check class="h-4 w-4" />
+														{/if}
+														Resend
+													</button>
+												{/if}
+												<button
+													onclick={startEditEmail}
+													disabled={emailActionLoading}
+													class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600 disabled:opacity-50"
+												>
+													<Pencil class="h-4 w-4" />
+													{data.user?.email ? 'Change' : 'Add'}
+												</button>
+											</div>
+										</div>
+									{/if}
+								</div>
+							</div>
+						{/if}
 					{:else if isOwner && activeSubTab === 'settings:security'}
 						<div class="col-span-2">
 							<div class="space-y-4">
@@ -863,6 +1239,138 @@
 									>
 										{totpEnabled ? 'Manage' : 'Enable'}
 									</button>
+								</div>
+								<div class="rounded bg-neutral-800/50 p-4">
+									<div class="mb-3 flex flex-col gap-1">
+										<span class="font-medium text-neutral-200">Change Password</span>
+										<span class="text-sm text-neutral-500">
+											Use your current password and choose a new one.
+										</span>
+									</div>
+
+									{#if passwordError}
+										<div
+											class="mb-3 rounded border border-red-900/50 bg-red-900/10 p-3 text-sm text-red-200"
+										>
+											{passwordError}
+										</div>
+									{/if}
+									{#if passwordMessage}
+										<div
+											class="mb-3 rounded border border-green-900/50 bg-green-900/10 p-3 text-sm text-green-200"
+										>
+											{passwordMessage}
+										</div>
+									{/if}
+
+									<div class="grid gap-3">
+										<input
+											type="password"
+											bind:value={passwordCurrentValue}
+											placeholder="Current password"
+											autocomplete="current-password"
+											class="w-full rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-neutral-200 transition-colors outline-none focus:border-neutral-500"
+										/>
+										<input
+											type="password"
+											bind:value={passwordNewValue}
+											placeholder="New password"
+											autocomplete="new-password"
+											onfocus={() => (passwordFocused = true)}
+											onblur={() => (passwordFocused = false)}
+											class="w-full rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-neutral-200 transition-colors outline-none focus:border-neutral-500"
+										/>
+										{#if passwordFocused}
+											<ul
+												transition:fade
+												class="space-y-2 rounded border border-neutral-700 bg-neutral-800 p-3 text-sm"
+											>
+												<li
+													class="flex items-center gap-2 {passwordChecks.minLength
+														? 'text-green-400'
+														: 'text-red-400'}"
+												>
+													{#if passwordChecks.minLength}
+														<Check class="h-4 w-4" />
+													{:else}
+														<X class="h-4 w-4" />
+													{/if}
+													At least 8 characters
+												</li>
+												<li
+													class="flex items-center gap-2 {passwordChecks.maxLength
+														? 'text-green-400'
+														: 'text-red-400'}"
+												>
+													{#if passwordChecks.maxLength}
+														<Check class="h-4 w-4" />
+													{:else}
+														<X class="h-4 w-4" />
+													{/if}
+													No more than 128 characters
+												</li>
+												<li
+													class="flex items-center gap-2 {passwordChecks.upper
+														? 'text-green-400'
+														: 'text-red-400'}"
+												>
+													{#if passwordChecks.upper}
+														<Check class="h-4 w-4" />
+													{:else}
+														<X class="h-4 w-4" />
+													{/if}
+													At least one uppercase letter
+												</li>
+												<li
+													class="flex items-center gap-2 {passwordChecks.lower
+														? 'text-green-400'
+														: 'text-red-400'}"
+												>
+													{#if passwordChecks.lower}
+														<Check class="h-4 w-4" />
+													{:else}
+														<X class="h-4 w-4" />
+													{/if}
+													At least one lowercase letter
+												</li>
+												<li
+													class="flex items-center gap-2 {passwordChecks.number
+														? 'text-green-400'
+														: 'text-red-400'}"
+												>
+													{#if passwordChecks.number}
+														<Check class="h-4 w-4" />
+													{:else}
+														<X class="h-4 w-4" />
+													{/if}
+													At least one number
+												</li>
+											</ul>
+										{/if}
+										<input
+											type="password"
+											bind:value={passwordConfirmValue}
+											placeholder="Confirm new password"
+											autocomplete="new-password"
+											class="w-full rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-neutral-200 transition-colors outline-none focus:border-neutral-500"
+										/>
+										<div class="flex items-center justify-end">
+											<button
+												onclick={changePassword}
+												disabled={passwordActionLoading ||
+													!passwordValid ||
+													passwordNewValue !== passwordConfirmValue}
+												class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600 disabled:opacity-50"
+											>
+												{#if passwordActionLoading}
+													<LoaderCircle class="h-4 w-4 animate-spin" />
+												{:else}
+													<KeyRound class="h-4 w-4" />
+												{/if}
+												Change Password
+											</button>
+										</div>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -910,6 +1418,62 @@
 
 										Edit
 									</button>
+								</div>
+								<div class="rounded bg-neutral-800/50 p-4">
+									<div class="flex justify-between gap-1">
+										<div class="flex flex-col">
+											<span class="font-medium text-neutral-200">Password Reset Link</span>
+											<span class="text-sm text-neutral-500">
+												Send the user a reset link or copy one for manual delivery.
+											</span>
+										</div>
+										<div class="flex items-center justify-end">
+											<button
+												onclick={generatePasswordResetLink}
+												disabled={passwordResetLinkLoading}
+												class="flex items-center gap-2 rounded bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600 disabled:opacity-50"
+											>
+												{#if passwordResetLinkLoading}
+													<LoaderCircle class="h-4 w-4 animate-spin" />
+												{:else}
+													<KeyRound class="h-4 w-4" />
+												{/if}
+												Generate Reset Link
+											</button>
+										</div>
+									</div>
+
+									{#if passwordResetLinkError}
+										<div
+											class="mt-3 rounded border border-red-900/50 bg-red-900/10 p-3 text-sm text-red-200"
+										>
+											{passwordResetLinkError}
+										</div>
+									{/if}
+									{#if passwordResetLinkMessage}
+										<div
+											class="mt-3 rounded border border-green-900/50 bg-green-900/10 p-3 text-sm text-green-200"
+										>
+											{passwordResetLinkMessage}
+										</div>
+									{/if}
+
+									{#if passwordResetLinkValue}
+										<div class="mt-3 flex items-center gap-2 rounded bg-neutral-900/70 p-2">
+											<code class="flex-1 font-mono text-sm break-all text-green-300"
+												>{passwordResetLinkValue}</code
+											>
+											<button
+												class="p-1 text-neutral-400 hover:text-white"
+												onclick={() => {
+													navigator.clipboard.writeText(passwordResetLinkValue);
+												}}
+												use:tooltip={'Copy reset link'}
+											>
+												<Copy class="h-4 w-4" />
+											</button>
+										</div>
+									{/if}
 								</div>
 							</div>
 						</div>

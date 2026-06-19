@@ -98,7 +98,7 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	{#if data.options?.cf_turnstile_site_key && (page.url.pathname === '/login' || page.url.pathname === '/register' || page.url.pathname === '/')}
+	{#if data.options?.cf_turnstile_site_key && (page.url.pathname === '/login' || page.url.pathname === '/register' || page.url.pathname === '/' || page.url.pathname === '/forgot-password')}
 		<script
 			src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=turnstileLoaded"
 			async

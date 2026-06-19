@@ -34,5 +34,19 @@ namespace SharpbinV3.Server
 
             return Convert.ToHexString(hashBytes);
         }
+
+        public static long TimeSpanToMilliseconds(TimeSpan value) => (long)Math.Ceiling(value.TotalMilliseconds);
+
+        public static string FormatDuration(TimeSpan value)
+        {
+            if (value.TotalHours >= 1)
+            {
+                var hours = (int)Math.Ceiling(value.TotalHours);
+                return $"{hours} hour{(hours == 1 ? "" : "s")}";
+            }
+
+            var minutes = Math.Max(1, (int)Math.Ceiling(value.TotalMinutes));
+            return $"{minutes} minute{(minutes == 1 ? "" : "s")}";
+        }
     }
 }

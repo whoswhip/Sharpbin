@@ -22,6 +22,7 @@ namespace SharpbinV3.Server.Controllers
     [Route("api/[controller]")]
     public class UserController(
         UserService userService,
+        AuthService authService,
         AppDbContext db,
         TotpVerificationProvider totp,
         VerificationService verificationService,
@@ -30,6 +31,7 @@ namespace SharpbinV3.Server.Controllers
     ) : ControllerBase
     {
         private readonly UserService _userService = userService;
+        private readonly AuthService _authService = authService;
         private readonly AppDbContext _db = db;
         private readonly TotpVerificationProvider _totp = totp;
         private readonly VerificationService _verificationService = verificationService;
@@ -130,12 +132,12 @@ namespace SharpbinV3.Server.Controllers
             if ((updatedUser.Roles.HasValue || updatedUser.IsBanned.HasValue) && !actorIsAdmin)
                 return StatusCode(403, new { success = false, message = "You do not have permission to modify this user." });
 
+            if (updatedUser.Email != null)
+                return BadRequest(new { success = false, message = "Use the email change endpoint to update email addresses." });
+
             bool isSensitiveUpdate =
                 (updatedUser.Roles.HasValue && updatedUser.Roles.Value != targetUser.Roles) // updating roles
-                || (updatedUser.IsBanned.HasValue && updatedUser.IsBanned.Value != targetUser.IsBanned) // updating ban status
-                || (
-                    updatedUser.Email != null && updatedUser.Email != targetUser.Email // updating email
-                );
+                || (updatedUser.IsBanned.HasValue && updatedUser.IsBanned.Value != targetUser.IsBanned); // updating ban status
 
             if (actorIsAdmin && !jwtUser.TotpEnabled && _authSettings.Admins_Require_2FA && isSensitiveUpdate)
                 return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
@@ -167,7 +169,6 @@ namespace SharpbinV3.Server.Controllers
             targetUser.DisplayName = updatedUser.DisplayName ?? targetUser.DisplayName;
             if (actorIsAdmin || isSelfUpdate)
             {
-                targetUser.Email = updatedUser.Email ?? targetUser.Email;
                 targetUser.Visibility = updatedUser.Visibility ?? targetUser.Visibility;
             }
             if (actorIsAdmin)
@@ -193,6 +194,8 @@ namespace SharpbinV3.Server.Controllers
 
             if (!jwtUser.Roles.HasFlag(Role.Admin) && user.UUID != jwtUser.UUID)
                 return StatusCode(403, new { success = false, message = "You do not have permission to delete this user." });
+
+            var isSelfDelete = user.UUID == jwtUser.UUID;
             if (jwtUser.Roles.HasFlag(Role.Admin) && !jwtUser.TotpEnabled && _authSettings.Admins_Require_2FA)
                 return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
             if (user.Roles.HasFlag(Role.Admin))
@@ -208,20 +211,68 @@ namespace SharpbinV3.Server.Controllers
                     return Unauthorized(new { message = "Invalid TOTP code." });
                 }
             }
-            else
+            else if (isSelfDelete && user.EmailVerified && !string.IsNullOrWhiteSpace(user.Email))
             {
-                if (
-                    string.IsNullOrEmpty(dto.Token)
-                    || !await _verificationService.VerifyAsync(new VerificationContext { Token = dto.Token, Ip = HttpContext.GetRequestIP() })
-                )
+                if (string.IsNullOrEmpty(dto.Token) || !await _authService.VerifyAccountDeletionToken(user, dto.Token))
                 {
-                    return Unauthorized(new { message = "Invalid verification token." });
+                    return Unauthorized(new { message = "Invalid account deletion verification token." });
                 }
             }
 
+            var deletedEmail = user.EmailVerified ? user.Email : null;
+            var deletedUsername = user.Username;
             _db.Users.Remove(user);
             await _db.SaveChangesAsync();
+
+            if (!string.IsNullOrWhiteSpace(deletedEmail))
+                await _authService.SendAccountDeletedNotification(deletedEmail, deletedUsername);
+
             return Ok(new { message = "User deleted successfully." });
+        }
+
+        [HttpPost("uuid/{uuid}/delete-verification")]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
+        [EnableRateLimiting("Sensitive")]
+        public async Task<IActionResult> RequestDeleteVerification(Guid uuid)
+        {
+            var jwtUser = HttpContext.GetJwtUser()!;
+            if (jwtUser.UUID != uuid)
+                return StatusCode(403, new { success = false, message = "You do not have permission to delete this user." });
+
+            var user = await _userService.GetByUUID(uuid);
+            if (user == null)
+                return NotFound(new { success = false, message = "User not found." });
+
+            if (user.Roles.HasFlag(Role.Admin))
+                return StatusCode(403, new { success = false, message = "You cannot delete an admin user." });
+
+            if (jwtUser.TotpEnabled)
+                return BadRequest(new { success = false, message = "Use TOTP to delete this account." });
+
+            if (!user.EmailVerified || string.IsNullOrWhiteSpace(user.Email))
+                return BadRequest(new { success = false, message = "A verified email address is required for email deletion verification." });
+
+            var result = await _authService.RequestAccountDeletionVerification(user);
+            if (!result.success)
+            {
+                if (result.retryAfter.HasValue)
+                {
+                    Response.Headers.RetryAfter = Math.Ceiling(result.retryAfter.Value / 1000d).ToString();
+                    return StatusCode(
+                        StatusCodes.Status429TooManyRequests,
+                        new
+                        {
+                            success = false,
+                            message = result.message,
+                            retryAfter = result.retryAfter,
+                        }
+                    );
+                }
+
+                return BadRequest(new { success = false, message = result.message });
+            }
+
+            return Ok(new { success = true, message = result.message });
         }
 
         private async Task<IActionResult> BuildUserResponse(User user, int page = 1)

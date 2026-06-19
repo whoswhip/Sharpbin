@@ -43,6 +43,10 @@ namespace SharpbinV3.Server.Data
                 .HasIndex(r => r.TokenHash)
                 .IsUnique();
 
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique()
+                .HasFilter("\"Email\" IS NOT NULL");
 
             modelBuilder.Entity<UserTotp>()
                 .HasOne(t => t.User)

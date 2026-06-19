@@ -7,6 +7,7 @@ export interface User {
 	username: string;
 	displayName: string | null;
 	email: string | null;
+	emailVerified: boolean;
 	lastLogin: number | null;
 	roles: number; // bitfield; 5 = User | Admin
 	isBanned: boolean;

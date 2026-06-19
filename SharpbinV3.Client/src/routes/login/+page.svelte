@@ -159,5 +159,11 @@
 				class="text-neutral-200 transition-colors duration-200 hover:text-white">Register</a
 			>
 		</p>
+		<p class="mt-2 text-center text-sm text-neutral-400">
+			<a
+				href={resolve('/forgot-password')}
+				class="text-neutral-200 transition-colors duration-200 hover:text-white">Forgot password?</a
+			>
+		</p>
 	</div>
 </main>

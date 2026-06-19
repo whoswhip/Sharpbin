@@ -14,7 +14,11 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=5173
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts && apk add --no-cache wget
+RUN apk add --no-cache wget libstdc++ \
+    && apk add --no-cache --virtual .build-deps python3 make g++ \
+    && npm ci --omit=dev \
+    && npm cache clean --force \
+    && apk del .build-deps
 COPY --from=build --chown=node:node /app/build ./build
 RUN chown -R node:node /app
 EXPOSE 5173

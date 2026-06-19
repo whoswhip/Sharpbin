@@ -52,9 +52,11 @@ namespace SharpbinV3.Server.Controllers
             var existingUser = await _userService.GetByUsername(request.Username);
             if (existingUser != null)
                 return Conflict(new { success = false, message = "Username already exists." });
-            if (!string.IsNullOrEmpty(request.Email))
+
+            var normalizedEmail = UserService.NormalizeEmail(request.Email);
+            if (normalizedEmail != null)
             {
-                var existingEmailUser = await _userService.GetByEmail(request.Email);
+                var existingEmailUser = await _userService.GetByEmail(normalizedEmail);
                 if (existingEmailUser != null)
                     return Conflict(new { success = false, message = "Email already in use." });
             }
@@ -64,12 +66,15 @@ namespace SharpbinV3.Server.Controllers
             User user;
             try
             {
-                user = await _authService.CreateUser(request.Username, request.Password, request.Email, request.DisplayName);
+                user = await _authService.CreateUser(request.Username, request.Password, normalizedEmail, request.DisplayName);
             }
             catch (DbUpdateException)
             {
                 if (await _userService.GetByUsername(request.Username) != null)
                     return Conflict(new { success = false, message = "Username already exists." });
+
+                if (normalizedEmail != null && await _userService.GetByEmail(normalizedEmail) != null)
+                    return Conflict(new { success = false, message = "Email already in use." });
 
                 throw;
             }
@@ -178,6 +183,7 @@ namespace SharpbinV3.Server.Controllers
                 {
                     cf_turnstile_site_key = string.IsNullOrEmpty(authSettings.CF_Turnstile_SiteKey) ? null : authSettings.CF_Turnstile_SiteKey,
                     registration_enabled = authSettings.Registration_Enabled,
+                    admins_require_2fa = authSettings.Admins_Require_2FA,
                 }
             );
         }
@@ -348,6 +354,248 @@ namespace SharpbinV3.Server.Controllers
                 return Ok(new { success = true, message });
             else
                 return BadRequest(new { success = false, message });
+        }
+
+        [HttpPost]
+        [EnableRateLimiting("Strict")]
+        [Route("password/forgot")]
+        public async Task<IActionResult> RequestPasswordReset([FromBody] PasswordResetRequestDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (!await _verification.VerifyAsync(new VerificationContext { Token = request.Token, Ip = HttpContext.GetRequestIP() }))
+                return BadRequest(new { success = false, message = "Verification failed." });
+
+            var result = await _authService.RequestPasswordResetForEmail(request.Email);
+            if (!result.success)
+                return Ok(new { success = true, message = "If an account exists for that email, a reset link has been sent." });
+
+            return Ok(new { success = true, message = result.message });
+        }
+
+        [HttpGet]
+        [Route("password/reset-info")]
+        public async Task<IActionResult> GetPasswordResetInfo([FromQuery] string token)
+        {
+            var info = await _authService.GetPasswordResetTokenInfo(token);
+            if (!info.success || info.user == null)
+                return BadRequest(new { success = false, message = info.message });
+            if (info.blocked)
+                return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
+
+            return Ok(
+                new
+                {
+                    success = true,
+                    username = info.username,
+                    requiresTotp = info.requiresTotp,
+                }
+            );
+        }
+
+        [HttpPost]
+        [Route("password/reset")]
+        [EnableRateLimiting("Sensitive")]
+        public async Task<IActionResult> ResetPassword([FromBody] PasswordResetDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var result = await _authService.ResetPasswordWithToken(request.Token, request.NewPassword, request.TotpCode);
+            if (!result.success)
+            {
+                if (result.message == "2FA is required to perform this action.")
+                    return StatusCode(403, new { success = false, message = result.message });
+                return BadRequest(new { success = false, message = result.message });
+            }
+
+            return Ok(new { success = true, message = result.message });
+        }
+
+        [HttpPost]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
+        [Route("password/change")]
+        [EnableRateLimiting("Sensitive")]
+        public async Task<IActionResult> ChangePassword([FromBody] PasswordChangeDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _authService.GetUserFromHttpContext(HttpContext);
+            if (user == null)
+                return BadRequest(new { success = false, message = "User not found." });
+
+            var result = await _authService.ChangeOwnPassword(user, request.CurrentPassword, request.NewPassword, request.TotpCode);
+            if (!result.success)
+            {
+                if (result.message == "2FA is required to perform this action.")
+                    return StatusCode(403, new { success = false, message = result.message });
+                return BadRequest(new { success = false, message = result.message });
+            }
+
+            return Ok(new { success = true, message = result.message });
+        }
+
+        [HttpPost]
+        [Authorize(Policy = "JwtOnlyAndNotBanned")]
+        [Route("password/admin-reset-link/{uuid}")]
+        [EnableRateLimiting("Sensitive")]
+        public async Task<IActionResult> AdminGeneratePasswordResetLink(Guid uuid, [FromBody] AdminPasswordResetLinkDto request)
+        {
+            var jwtUser = HttpContext.GetJwtUser()!;
+            if (!jwtUser.Roles.HasFlag(Role.Admin))
+                return StatusCode(403, new { success = false, message = "You do not have permission to perform this action." });
+
+            var targetUser = await _userService.GetByUUID(uuid);
+            if (targetUser == null)
+                return NotFound(new { success = false, message = "User not found." });
+
+            if (jwtUser.TotpEnabled)
+            {
+                if (
+                    string.IsNullOrWhiteSpace(request.TotpCode)
+                    || !await _totp.VerifyAsync(new VerificationContext { UserUUID = jwtUser.UUID, Code = request.TotpCode })
+                )
+                {
+                    return Unauthorized(new { success = false, message = "Invalid TOTP code." });
+                }
+            }
+            else if (options.Value.Admins_Require_2FA)
+            {
+                return StatusCode(403, new { success = false, message = "2FA is required to perform this action." });
+            }
+
+            var result = await _authService.GeneratePasswordResetLink(targetUser, sendEmail: !string.IsNullOrWhiteSpace(targetUser.Email));
+            if (!result.success)
+            {
+                if (result.retryAfter.HasValue)
+                {
+                    Response.Headers.RetryAfter = Math.Ceiling(result.retryAfter.Value / 1000d).ToString();
+                    return StatusCode(
+                        StatusCodes.Status429TooManyRequests,
+                        new
+                        {
+                            success = false,
+                            message = result.message,
+                            retryAfter = result.retryAfter,
+                        }
+                    );
+                }
+
+                return BadRequest(
+                    new
+                    {
+                        success = false,
+                        message = result.message,
+                        retryAfter = result.retryAfter,
+                    }
+                );
+            }
+
+            return Ok(
+                new
+                {
+                    success = true,
+                    message = result.message,
+                    resetLink = result.resetLink,
+                }
+            );
+        }
+
+        [HttpPost]
+        [Authorize(Policy = "JwtOnly")]
+        [EnableRateLimiting("Sensitive")]
+        [Route("email/resend-verification")]
+        public async Task<IActionResult> ResendEmailVerification()
+        {
+            var user = await _authService.GetUserFromHttpContext(HttpContext);
+            if (user == null)
+                return BadRequest(new { success = false, message = "User not found." });
+
+            var result = await _authService.ResendEmailVerification(user);
+            if (!result.success)
+            {
+                if (result.retryAfter.HasValue)
+                {
+                    Response.Headers.RetryAfter = Math.Ceiling(result.retryAfter.Value / 1000d).ToString();
+                    return StatusCode(
+                        StatusCodes.Status429TooManyRequests,
+                        new
+                        {
+                            success = false,
+                            message = result.message,
+                            retryAfter = result.retryAfter,
+                        }
+                    );
+                }
+
+                return BadRequest(
+                    new
+                    {
+                        success = false,
+                        message = result.message,
+                        retryAfter = result.retryAfter,
+                    }
+                );
+            }
+
+            return Ok(new { success = true, message = result.message });
+        }
+
+        [HttpPost]
+        [Authorize(Policy = "JwtOnly")]
+        [EnableRateLimiting("Sensitive")]
+        [Route("email/change")]
+        public async Task<IActionResult> ChangeEmail([FromBody] ChangeEmailDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _authService.GetUserFromHttpContext(HttpContext);
+            if (user == null)
+                return BadRequest(new { success = false, message = "User not found." });
+
+            var totpEnabled = await _db.UserTotps.AnyAsync(t => t.UserUUID == user.UUID);
+            if (totpEnabled)
+            {
+                if (
+                    string.IsNullOrWhiteSpace(request.TotpCode)
+                    || !await _totp.VerifyAsync(new VerificationContext { UserUUID = user.UUID, Code = request.TotpCode })
+                )
+                {
+                    return Unauthorized(new { success = false, message = "Invalid TOTP code." });
+                }
+            }
+
+            var result = await _authService.RequestEmailChange(user, request.Email);
+            if (!result.success)
+            {
+                if (result.retryAfter.HasValue)
+                {
+                    Response.Headers.RetryAfter = Math.Ceiling(result.retryAfter.Value / 1000d).ToString();
+                    return StatusCode(
+                        StatusCodes.Status429TooManyRequests,
+                        new
+                        {
+                            success = false,
+                            message = result.message,
+                            retryAfter = result.retryAfter,
+                        }
+                    );
+                }
+
+                return BadRequest(
+                    new
+                    {
+                        success = false,
+                        message = result.message,
+                        retryAfter = result.retryAfter,
+                    }
+                );
+            }
+
+            return Ok(new { success = true, message = result.message });
         }
     }
 }
