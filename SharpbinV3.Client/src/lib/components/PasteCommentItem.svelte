@@ -5,7 +5,7 @@
 	import { escapeHtml } from '$lib/utils/html';
 	import { user } from '$lib/stores/user';
 	import PasteCommentItem from '$lib/components/PasteCommentItem.svelte';
-	import { ThumbsUp, ThumbsDown, Trash2, Shredder } from '@lucide/svelte';
+	import { ThumbsUp, ThumbsDown, Trash2, Shredder, Reply, Quote } from '@lucide/svelte';
 	import { resolve } from '$app/paths';
 	import RichTextEditor from './RichTextEditor.svelte';
 	import { hasRole, roles } from '$lib/utils/auth';
@@ -93,9 +93,9 @@
 	}
 </script>
 
-<div class="p-3">
+<div class="rounded border border-transparent p-3">
 	<div class="mb-2 flex items-center justify-between gap-3 text-xs text-neutral-400">
-		<div class="flex min-w-0 items-center gap-2 text-lg">
+		<div class="flex min-w-0 items-center gap-2 text-sm">
 			{#if node.author}
 				{#if node.author.isBanned}
 					<span class="text-red-500">BANNED</span>
@@ -113,7 +113,7 @@
 			{/if}
 			{#if node.updatedAt}
 				<span
-					class="text-sm text-neutral-500"
+					class="text-xs text-neutral-400"
 					use:tooltip={`Edited on ${new Date(node.updatedAt * 1000).toLocaleString()} • ${dateToRelativeString(new Date(node.updatedAt * 1000), true, true, now, 3)}`}
 					>edited</span
 				>
@@ -127,7 +127,7 @@
 	</div>
 
 	<div class="text-sm leading-relaxed text-neutral-200">
-		<div class="wrap-break-word" class:italic={isDeleted} class:text-neutral-800={isDeleted}>
+		<div class="wrap-break-word" class:italic={isDeleted} class:text-neutral-500={isDeleted}>
 			{#if expanded || !isLongComment}
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 				{@html parsedHtml}
@@ -151,54 +151,53 @@
 		{/if}
 	</div>
 
-	<div class="mt-3 flex flex-wrap items-center gap-2">
+	<div class="mt-3 flex flex-wrap items-center gap-1.5">
 		<button
 			type="button"
-			class="h-7 min-w-12 rounded border px-2 py-1 text-xs {node.userReaction !== 1
-				? 'hover:bg-neutral-800 active:bg-neutral-700'
-				: 'hover:bg-green-800 active:bg-green-700'} disabled:cursor-not-allowed disabled:hover:bg-transparent"
+			class="flex h-7 min-w-10 items-center justify-center gap-1 rounded px-2 text-xs {node.userReaction !==
+			1
+				? 'text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 active:bg-neutral-600'
+				: 'bg-green-950 text-green-200 hover:bg-green-900 active:bg-green-800'} disabled:cursor-not-allowed disabled:hover:bg-transparent"
 			class:border-green-700={node.userReaction === 1}
-			class:bg-green-900={node.userReaction === 1}
-			class:text-green-200={node.userReaction === 1}
-			class:border-neutral-700={node.userReaction !== 1}
-			class:text-neutral-300={node.userReaction !== 1}
 			onclick={() => onReact(node.id, 1, node.userReaction)}
 			disabled={reactingIds[node.id] || !$user}
+			aria-label="Like comment"
+			title="Like"
 		>
-			<ThumbsUp class="mr-1 inline h-3.5 w-3.5" />
+			<ThumbsUp class="h-3.5 w-3.5" />
 			{node.likes}
 		</button>
 		<button
 			type="button"
-			class="h-7 min-w-12 rounded border px-2 py-1 text-xs {node.userReaction !== 2
-				? 'hover:bg-neutral-800 active:bg-neutral-700'
-				: 'hover:bg-red-800 active:bg-red-700'} disabled:cursor-not-allowed disabled:hover:bg-transparent"
+			class="flex h-7 min-w-10 items-center justify-center gap-1 rounded px-2 text-xs {node.userReaction !==
+			2
+				? 'text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 active:bg-neutral-600'
+				: 'bg-red-950 text-red-200 hover:bg-red-900 active:bg-red-800'} disabled:cursor-not-allowed disabled:hover:bg-transparent"
 			class:border-red-700={node.userReaction === 2}
-			class:bg-red-900={node.userReaction === 2}
-			class:text-red-200={node.userReaction === 2}
-			class:border-neutral-700={node.userReaction !== 2}
-			class:text-neutral-300={node.userReaction !== 2}
 			onclick={() => onReact(node.id, 2, node.userReaction)}
 			disabled={reactingIds[node.id] || !$user}
+			aria-label="Dislike comment"
+			title="Dislike"
 		>
-			<ThumbsDown class="mr-1 inline h-3.5 w-3.5" />
+			<ThumbsDown class="h-3.5 w-3.5" />
 			{node.dislikes}
 		</button>
 		{#if $user}
 			{#if !replyOpen}
 				<button
 					type="button"
-					class="h-7 min-w-12 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 active:bg-neutral-700"
+					class="flex h-7 items-center gap-1 rounded px-2 text-xs text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 active:bg-neutral-600"
 					onclick={() => {
 						openReply(node.content ? `> ${node.content.replace(/\n/g, '\n> ')}\n\n` : '');
 					}}
 				>
+					<Quote class="h-3.5 w-3.5" />
 					Quote
 				</button>
 			{/if}
 			<button
 				type="button"
-				class="h-7 min-w-12 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 active:bg-neutral-700"
+				class="flex h-7 items-center gap-1 rounded px-2 text-xs text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 active:bg-neutral-600"
 				onclick={() => {
 					if (replyOpen) {
 						replyOpen = false;
@@ -209,26 +208,31 @@
 					openReply('');
 				}}
 			>
+				<Reply class="h-3.5 w-3.5" />
 				{replyOpen ? 'Cancel' : 'Reply'}
 			</button>
 			{#if node.author?.uuid === $user.uuid || hasRole($user.roles, 4) || hasRole($user.roles, 2)}
-				<div class="ml-auto">
+				<div class="ml-auto flex items-center gap-1">
 					<button
 						type="button"
-						class="h-7 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 active:bg-neutral-700"
+						class="flex h-7 w-7 items-center justify-center rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 active:bg-neutral-600"
 						onclick={() => handleDelete(false)}
 						disabled={deleting}
+						aria-label="Delete comment"
+						title="Delete"
 					>
-						<Trash2 class="inline h-3.5 w-3.5" />
+						<Trash2 class="h-3.5 w-3.5" />
 					</button>
 					{#if hasRole($user.roles, roles.Moderator) || hasRole($user.roles, roles.Admin)}
 						<button
 							type="button"
-							class="h-7 rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 active:bg-neutral-700"
+							class="flex h-7 w-7 items-center justify-center rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 active:bg-neutral-600"
 							onclick={() => handleDelete(true)}
 							disabled={deleting}
+							aria-label="Hard delete comment"
+							title="Hard delete"
 						>
-							<Shredder class="inline h-3.5 w-3.5" />
+							<Shredder class="h-3.5 w-3.5" />
 						</button>
 					{/if}
 				</div>
@@ -245,6 +249,9 @@
 			onSubmit={submitReply}
 			disabled={replySubmitting}
 			submitting={replySubmitting}
+			submitLabel="Reply"
+			submittingLabel="Replying..."
+			compact
 		/>
 		{#if replyError}
 			<p class="mt-2 text-xs text-red-400">{replyError}</p>
@@ -252,7 +259,7 @@
 	{/if}
 
 	{#if node.children.length > 0}
-		<div class="mt-3 border-l border-neutral-800 pl-3">
+		<div class="mt-3 border-l border-neutral-700 pl-3">
 			{#if depth >= 3 && !showDeepReplies}
 				<button
 					type="button"

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Bold, Italic, CodeXml, Quote } from '@lucide/svelte';
+	import { Bold, Italic, CodeXml, Quote, Send, Eye, Pencil } from '@lucide/svelte';
 	import { parseCommentMarkdown } from '$lib/utils/markdown';
 
 	interface Props {
@@ -8,6 +8,7 @@
 		placeholder?: string;
 		disabled?: boolean;
 		submitting?: boolean;
+		compact?: boolean;
 		submitLabel?: string;
 		submittingLabel?: string;
 		onSubmit?: (value: string) => void | Promise<void>;
@@ -19,6 +20,7 @@
 		placeholder = 'Write a comment...',
 		disabled = false,
 		submitting = false,
+		compact = false,
 		submitLabel = 'Post comment',
 		submittingLabel = 'Posting...',
 		onSubmit
@@ -30,6 +32,7 @@
 	const isDisabled = $derived(disabled || submitting);
 	const canSubmit = $derived(!isDisabled && value.trim().length > 0);
 	const parsedHtml = $derived(parseCommentMarkdown(value));
+	const editorMinHeight = $derived(compact ? 'min-h-20' : 'min-h-24');
 
 	function focusEditor() {
 		editor?.focus();
@@ -133,11 +136,13 @@
 	}
 </script>
 
-<div class="mb-4 flex flex-col rounded {className}">
+<div
+	class="mb-4 overflow-hidden rounded border border-neutral-700 bg-neutral-900 shadow-sm {className}"
+>
 	{#if mode === 'raw'}
 		<textarea
 			bind:this={editor}
-			class="min-h-24 w-full rounded-t border border-b-0 border-neutral-700 bg-neutral-900 p-2 font-mono text-sm text-neutral-100 outline-none"
+			class="{editorMinHeight} w-full resize-y border-0 bg-neutral-900 p-3 font-mono text-sm text-neutral-100 placeholder:text-neutral-400 focus:bg-neutral-800/60"
 			{placeholder}
 			maxlength={5000}
 			disabled={isDisabled}
@@ -145,11 +150,9 @@
 			onkeydown={handleKeydown}
 		></textarea>
 	{:else}
-		<div
-			class="min-h-24 w-full rounded-t border border-b-0 border-neutral-700 bg-neutral-900 p-2 text-sm text-neutral-100"
-		>
+		<div class="{editorMinHeight} w-full overflow-auto bg-neutral-900 p-3 text-sm text-neutral-100">
 			{#if value.trim().length === 0}
-				<div class="text-neutral-500">{placeholder}</div>
+				<div class="text-neutral-400">{placeholder}</div>
 			{:else}
 				<div class="text-sm leading-relaxed wrap-break-word text-neutral-200">
 					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -159,57 +162,71 @@
 		</div>
 	{/if}
 	<div
-		class="flex w-full flex-col gap-2 rounded-b border border-neutral-700 bg-neutral-800 p-2 md:flex-row md:gap-0"
+		class="flex w-full flex-col gap-2 border-t border-neutral-700 bg-neutral-800 p-2 md:flex-row md:items-center md:gap-0"
 	>
 		<div class="flex items-center gap-1">
 			<button
 				type="button"
-				class="rounded px-2 py-1 text-sm text-neutral-300 hover:text-neutral-100 disabled:cursor-not-allowed disabled:text-neutral-600"
+				class="flex h-8 w-8 items-center justify-center rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 disabled:cursor-not-allowed disabled:text-neutral-500"
 				onclick={addBold}
 				disabled={isDisabled || mode === 'preview'}
+				aria-label="Bold"
+				title="Bold"
 			>
 				<Bold class="h-4 w-4" />
 			</button>
 			<button
 				type="button"
-				class="rounded px-2 py-1 text-sm text-neutral-300 hover:text-neutral-100 disabled:cursor-not-allowed disabled:text-neutral-600"
+				class="flex h-8 w-8 items-center justify-center rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 disabled:cursor-not-allowed disabled:text-neutral-500"
 				onclick={addItalic}
 				disabled={isDisabled || mode === 'preview'}
+				aria-label="Italic"
+				title="Italic"
 			>
 				<Italic class="h-4 w-4" />
 			</button>
 			<button
 				type="button"
-				class="rounded px-2 py-1 text-sm text-neutral-300 hover:text-neutral-100 disabled:cursor-not-allowed disabled:text-neutral-600"
+				class="flex h-8 w-8 items-center justify-center rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 disabled:cursor-not-allowed disabled:text-neutral-500"
 				onclick={addQuote}
 				disabled={isDisabled || mode === 'preview'}
+				aria-label="Quote"
+				title="Quote"
 			>
 				<Quote class="h-4 w-4" />
 			</button>
 			<button
 				type="button"
-				class="rounded px-2 py-1 text-sm text-neutral-300 hover:text-neutral-100 disabled:cursor-not-allowed disabled:text-neutral-600"
+				class="flex h-8 w-8 items-center justify-center rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 disabled:cursor-not-allowed disabled:text-neutral-500"
 				onclick={addCode}
 				disabled={isDisabled || mode === 'preview'}
+				aria-label="Inline code"
+				title="Inline code"
 			>
-				<CodeXml class="h-5 w-5" />
+				<CodeXml class="h-4 w-4" />
 			</button>
 		</div>
-		<div class="flex flex-col items-center gap-2 md:ml-auto md:flex-row">
+		<div class="flex flex-col items-stretch gap-2 md:ml-auto md:flex-row md:items-center">
 			<button
 				type="button"
-				class="ml-auto w-full rounded border border-neutral-600 px-3 py-1 text-sm text-neutral-200 hover:border-neutral-500 hover:text-neutral-100 md:w-auto"
+				class="flex h-8 w-full items-center justify-center gap-2 rounded px-3 text-sm text-neutral-200 hover:bg-neutral-700 hover:text-neutral-100 disabled:cursor-not-allowed disabled:text-neutral-500 md:w-auto"
 				onclick={toggleMode}
 				disabled={isDisabled}
 			>
+				{#if mode === 'preview'}
+					<Pencil class="h-4 w-4" />
+				{:else}
+					<Eye class="h-4 w-4" />
+				{/if}
 				{mode === 'preview' ? 'Raw' : 'Preview'}
 			</button>
 			<button
 				type="button"
-				class="w-full rounded border border-neutral-600 px-3 py-1 text-sm text-neutral-100 hover:bg-neutral-600 disabled:cursor-not-allowed disabled:border-neutral-700 disabled:text-neutral-500 md:ml-2 md:w-auto"
+				class="flex h-8 w-full items-center justify-center gap-2 rounded border border-neutral-600 bg-neutral-700 px-3 text-sm font-medium text-neutral-100 hover:border-neutral-500 hover:bg-neutral-600 disabled:cursor-not-allowed disabled:border-neutral-700 disabled:bg-neutral-800 disabled:text-neutral-500 md:w-auto"
 				onclick={submit}
 				disabled={!canSubmit}
 			>
+				<Send class="h-4 w-4" />
 				{submitting ? submittingLabel : submitLabel}
 			</button>
 		</div>

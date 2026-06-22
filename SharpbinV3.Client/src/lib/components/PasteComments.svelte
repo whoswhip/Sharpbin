@@ -12,6 +12,7 @@
 	import { SvelteMap } from 'svelte/reactivity';
 	import RichTextEditor from './RichTextEditor.svelte';
 	import { openModal } from '$lib/stores/modal';
+	import { RefreshCw } from '@lucide/svelte';
 
 	interface Props {
 		pasteId: string;
@@ -236,29 +237,41 @@
 	}
 </script>
 
-<section id="comments-section" class="mt-6 rounded border border-neutral-800 p-4">
+<section id="comments-section" class="mt-6 rounded border border-neutral-700 bg-neutral-900 p-4">
 	<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-		<h2 class="text-xl font-semibold text-neutral-100">Comments ({comments.length})</h2>
+		<div class="flex items-center gap-2">
+			<h2 class="text-lg font-semibold text-neutral-100">Comments</h2>
+			<span
+				class="rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-xs text-neutral-300"
+			>
+				{comments.length}
+			</span>
+		</div>
 		<button
 			type="button"
-			class="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:text-neutral-100"
+			class="flex h-8 items-center gap-2 rounded px-2 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 disabled:cursor-not-allowed disabled:text-neutral-500"
 			onclick={refreshComments}
 			disabled={loading}
+			aria-label="Refresh comments"
 		>
-			{loading ? 'Refreshing...' : 'Refresh'}
+			<RefreshCw class="h-3.5 w-3.5 {loading ? 'animate-spin' : ''}" />
+			{loading ? 'Refreshing' : 'Refresh'}
 		</button>
 	</div>
 
 	{#if $user}
-		<RichTextEditor
-			bind:value={newComment}
-			placeholder="Write a comment..."
-			onSubmit={submitTopLevelComment}
-			disabled={posting}
-			submitting={posting}
-		/>
+		<div class="mb-5">
+			<RichTextEditor
+				bind:value={newComment}
+				placeholder="Add a comment..."
+				onSubmit={submitTopLevelComment}
+				disabled={posting}
+				submitting={posting}
+				compact
+			/>
+		</div>
 	{:else}
-		<div class="mb-4 rounded border border-neutral-800 p-3 text-sm text-neutral-400">
+		<div class="mb-4 rounded border border-neutral-700 bg-neutral-800 p-3 text-sm text-neutral-300">
 			Sign in to post comments and reactions.
 		</div>
 	{/if}
@@ -270,15 +283,15 @@
 	{/if}
 
 	{#if loading && comments.length === 0}
-		<div class="rounded border border-neutral-800 p-3 text-sm text-neutral-400">
+		<div class="rounded border border-neutral-700 bg-neutral-800 p-3 text-sm text-neutral-300">
 			Loading comments...
 		</div>
 	{:else if threadedComments.length === 0}
-		<div class="rounded border border-neutral-800 p-3 text-sm text-neutral-400">
+		<div class="rounded border border-neutral-700 bg-neutral-800 p-3 text-sm text-neutral-300">
 			No comments yet.
 		</div>
 	{:else}
-		<div class="space-y-3">
+		<div class="space-y-2">
 			{#each threadedComments as node (node.id)}
 				<PasteCommentItem
 					{node}
