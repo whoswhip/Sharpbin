@@ -899,10 +899,13 @@
 
 							const url = URL.createObjectURL(blob);
 							const a = document.createElement('a');
+							const filename = data.paste?.title
+								? `${data.paste.title.slice(0, 100)}${extension ? `.${extension}` : ''}`
+								: `paste_${data.paste?.id}${extension ? `.${extension}` : ''}`;
+
 							a.href = url;
-							a.download = data.paste?.title
-								? `${data.paste.title.slice(0, 100)}.${extension}`
-								: `paste_${data.paste?.id}.${extension}`;
+							a.download = filename;
+
 							document.body.appendChild(a);
 							a.click();
 							document.body.removeChild(a);
