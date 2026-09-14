@@ -100,6 +100,9 @@
 	let highlightRequestId = 0;
 	let ignoreExternalMediaWarning = false;
 	let iconsOnly = $state(false);
+	const canonicalUrl = $derived(
+		data.paste ? new URL(`/${data.paste.id}`, data.url).href : undefined
+	);
 
 	let scrollY = $state(0);
 
@@ -590,14 +593,14 @@
 			name="robots"
 			content={data.paste.visibility === 0 ? 'index, follow' : 'noindex, nofollow'}
 		/>
-		<link rel="canonical" href={data.url} />
+		<link rel="canonical" href={canonicalUrl} />
 		{#if data.paste.author}
 			<meta name="author" content={data.paste.author.username} />
 		{/if}
 		<meta property="og:title" content={data.paste.title || 'Untitled Paste'} />
 		<meta property="og:description" content={pasteDescription} />
 		<meta property="og:type" content="article" />
-		<meta property="og:url" content={data.url} />
+		<meta property="og:url" content={canonicalUrl} />
 		<meta property="og:site_name" content="Sharpbin" />
 		{#if pasteImageUrl}
 			<meta property="og:image" content={pasteImageUrl} />
