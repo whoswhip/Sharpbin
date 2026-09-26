@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:20-alpine as build
+FROM node:24-alpine as build
 ARG GIT_COMMIT_HASH
 ENV GIT_COMMIT_HASH=${GIT_COMMIT_HASH}
 WORKDIR /app
@@ -8,7 +8,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:20-alpine as runner
+FROM node:24-alpine as runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
