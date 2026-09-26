@@ -13,14 +13,16 @@ This is the backend API for SharpbinV3, built with ASP.NET Core and Entity Frame
 
 The server configuration is managed in `appsettings.json`. For development, ensure you have set the following in `appsettings.Development.json` or as environment variables:
 
-- `ConnectionStrings__DefaultConnection`: SQLite connection string (e.g., `Data Source=/app/data/sharpbin.db`).
-- `JwtSettings__Secret`: A secure string used for signing JWT tokens.
-- `PasteSettings__View_HMAC_Secret`: Required to securely hash viewer identifiers
-- `PasteSettings__View_Internal_API_Key`: Enforces views to be counted/recorded only by the frontend, if set it needs to be the same for both backend and frontend.
+- `ConnectionStrings__DefaultConnection`: SQLite connection string (e.g., `Data Source=sharpbin.db` locally). Compose sets `Data Source=/app/data/sharpbin.db` directly.
+- `JwtSettings__Secret`: A random secret of 32–128 characters used for signing JWT tokens.
+- `PasteSettings__View_HMAC_Secret`: A required random secret of 32–128 characters used to hash viewer identifiers.
+- `PasteSettings__View_Internal_API_Key`: A shared key of 32–128 characters used to authorize view recording. Match the production frontend's `VIEW_INTERNAL_API_KEY`.
+
+The development frontend uses a fixed internal key matching the checked-in `appsettings.Development.json`. Changing only the backend key will break development view recording. Use generated secrets for deployment; see the [root configuration guide](../README.md#configuration).
 
 ### Database Migrations
 
-Apply the database migrations to initialize the SQLite database:
+The backend applies database migrations automatically on startup. To apply them manually before starting it:
 
 ```bash
 dotnet ef database update
