@@ -6,13 +6,13 @@ services:
     image: sharpbin-backend
     container_name: sharpbin-backend
     env_file:
-      - "backend.env"
+      - ".env"
     environment:
-      DATA_PROTECTION_KEY_PATH: /app/data/keys
-      ConnectionStrings__DefaultConnection: "Data Source=/app/data/sharpbin.db"
+      DATA_PROTECTION_KEY_PATH: ${DATA_PROTECTION_KEY_PATH:-/app/data/keys}
+      ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection:-Data Source=/app/data/sharpbin.db}
+      PasteSettings__View_Internal_API_Key: ${PasteSettings__View_Internal_API_Key:?Set PasteSettings__View_Internal_API_Key in .env}
     volumes:
       - sharpbin-data:/app/data
-      - ./SharpbinV3.Server/appsettings.json:/app/appsettings.json
     networks:
       - sharpbin-net
     healthcheck:
@@ -28,13 +28,13 @@ services:
       context: ./SharpbinV3.Client
       dockerfile: Dockerfile
       args:
-        GIT_COMMIT_HASH: ${GIT_COMMIT_HASH}
+        GIT_COMMIT_HASH: ${GIT_COMMIT_HASH:-unknown}
     image: sharpbin-frontend
     container_name: sharpbin-frontend
-    env_file:
-      - "frontend.env"
     environment:
-      VITE_API_URL: http://backend:8080
+      VITE_API_URL: ${VITE_API_URL:-http://backend:8080}
+      ORIGIN: ${ORIGIN:?Set ORIGIN in .env}
+      VIEW_INTERNAL_API_KEY: ${PasteSettings__View_Internal_API_Key:?Set PasteSettings__View_Internal_API_Key in .env}
 
     ports:
       - "5173:5173"

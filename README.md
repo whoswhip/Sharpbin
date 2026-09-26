@@ -26,7 +26,7 @@ The easiest way to run SharpbinV3 is using Docker Compose.
 git clone https://github.com/whoswhip/Sharpbin.git
 ```
 
-3. In the repository root, copy `backend.env.example` to `backend.env` and `frontend.env.example` to `frontend.env`.
+3. In the repository root, copy `.env.example` to `.env`.
 4. Replace the secret placeholders and configure your domain and Turnstile keys. Set `ORIGIN` to the public frontend URL, including the scheme. For local Docker testing, use `ORIGIN=http://localhost:5173`, `Domain=localhost:5173`, `Https=false`, and `AllowedCorsOrigins__0=http://localhost:5173`.
 5. Run the following command in the root directory:
 
@@ -36,9 +36,11 @@ docker compose up -d --build
 
 ### Configuration
 
-Configure the backend in `backend.env` and the frontend in `frontend.env` when using Docker Compose. The backend also loads `appsettings.json`, with environment variables taking precedence.
+Configure Sharpbin in the root `.env` file when using Docker Compose. The backend loads this file as environment variables. Compose passes only the backend URL, public origin, and shared view-recording key to the frontend.
 
-Compose explicitly sets `ConnectionStrings__DefaultConnection`, `DATA_PROTECTION_KEY_PATH`, and the frontend's `VITE_API_URL`. These override values from the environment files; change `docker-compose.yml` to override them.
+The backend image includes `appsettings.json` with application defaults. Environment variables have priority, so you do not need to edit or mount that file for normal setup. Additional backend settings, including `EmailSettings__Host` and other SMTP settings, can be added to `.env` using their existing names.
+
+Compose defaults the database to `/app/data/sharpbin.db`, Data Protection keys to `/app/data/keys`, and `VITE_API_URL` to `http://backend:8080`. To override them, add `ConnectionStrings__DefaultConnection`, `DATA_PROTECTION_KEY_PATH`, or `VITE_API_URL` to `.env`. Keep database and key paths under `/app/data` to use the existing persistent volume.
 
 The example secrets are placeholders, not secure defaults. Generate a separate secret for JWT signing, API-key hashing, and view hashing, plus one shared internal API key. This command generates a 64-character random hex value; run it once for each secret:
 
@@ -52,7 +54,17 @@ or use openSSL:
 openssl rand -hex 32
 ```
 
-Set the same shared value in `PasteSettings__View_Internal_API_Key` in `backend.env` and `VIEW_INTERNAL_API_KEY` in `frontend.env`. Keep generated secrets across restarts and updates. Changing the API-key HMAC secret invalidates existing API keys.
+Set the shared key once as `PasteSettings__View_Internal_API_Key`. Compose supplies it to the frontend as `VIEW_INTERNAL_API_KEY`. Keep generated secrets across restarts and updates. Changing the API-key HMAC secret invalidates existing API keys.
+
+#### Migrating an Existing Installation
+
+1. Copy the values from `backend.env` into the root `.env` file. If `.env` already exists, merge the settings without replacing existing values blindly.
+2. Copy `ORIGIN` from `frontend.env`. If it was unset, use your public frontend URL, including the scheme.
+3. Keep `PasteSettings__View_Internal_API_Key` set to the existing shared key. The separate `VIEW_INTERNAL_API_KEY` entry is no longer needed for Compose.
+4. Move any custom `appsettings.json` values into `.env` using `__` for nested settings. For array settings, use numbered entries such as `AllowedCorsOrigins__0`. If you need to retain a custom JSON file, add a read-only mount for it in `compose.override.yaml`.
+5. Run `docker compose up -d --build`. The old `backend.env` and `frontend.env` files are no longer read by Compose.
+
+Keep the existing database volume, Data Protection keys, and secret values. Do not regenerate secrets during this migration.
 
 > When configuring via `appsettings.json` instead of for example `ConnectionStrings__DefaultConnection` it would be:
 
@@ -80,14 +92,14 @@ Set the same shared value in `PasteSettings__View_Internal_API_Key` in `backend.
 - `PasteSettings__EnablePasteCompression`:**true**: Enables/Disables server-side paste compression.
 - `PasteSettings__RequiresVerification`:**true**: Enables/Disables CAPTCHA verification when creating pastes.
 - `PasteSettings__View_HMAC_Secret`: A required random secret of 32–128 characters used to hash viewer identifiers.
-- `PasteSettings__View_Internal_API_Key`: A shared key of 32–128 characters used to authorize view recording. Match the frontend's `VIEW_INTERNAL_API_KEY`.
+- `PasteSettings__View_Internal_API_Key`: A shared key of 32–128 characters used to authorize view recording. Compose passes it to both services.
 
 #### Frontend (SharpbinV3.Client)
 
-- `VITE_API_URL`: The backend URL reachable from the frontend server. Defaults to `http://localhost:5050`; Compose overrides it with `http://backend:8080`. Browser requests use the frontend's `/api` proxy.
+- `VITE_API_URL`: The backend URL reachable from the frontend server. Defaults to `http://localhost:5050` when running directly and `http://backend:8080` in Compose. Browser requests use the frontend's `/api` proxy.
 - `ORIGIN`: The public frontend URL, including its scheme (e.g., `https://example.com`). Used by the production Node server; see [SvelteKit's Node adapter documentation](https://svelte.dev/docs/kit/adapter-node#ORIGIN-PROTOCOL_HEADER-HOST_HEADER-and-PORT_HEADER).
 - `VITE_ALLOWED_HOSTS`: A comma-separated list used only by Vite dev/preview (e.g., `localhost,sharpbin.cc`). Export it in the shell before starting Vite; the config reads `process.env` directly. It does not configure production host restrictions.
-- `VIEW_INTERNAL_API_KEY`: The production frontend's shared view-recording key. Falls back to `View_HMAC_Internal_API_Key` if unset. The frontend does not read `PasteSettings__View_Internal_API_Key`.
+- `VIEW_INTERNAL_API_KEY`: The production frontend's shared view-recording key. Compose sets it from `PasteSettings__View_Internal_API_Key`; do not duplicate it in the root `.env`. When running the frontend directly, set it yourself or use the existing `View_HMAC_Internal_API_Key` fallback.
 
 When `NODE_ENV=development`, the frontend uses a fixed development-only internal key matching the backend's checked-in development configuration and ignores both environment key names. See the [client README](SharpbinV3.Client/README.md) for development and standalone production setup.
 

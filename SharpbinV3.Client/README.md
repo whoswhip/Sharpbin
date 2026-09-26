@@ -38,13 +38,15 @@ The frontend will be available at http://localhost:5173.
 
 ### Running in Production
 
-Docker Compose loads `frontend.env` and runs the built Node server on port 5173. Set these runtime variables:
+Docker Compose reads the root `.env` file and runs the built Node server on port 5173. Configure these values there:
 
-- `VITE_API_URL`: Backend URL. Compose sets `http://backend:8080` directly, overriding `frontend.env`.
+- `VITE_API_URL`: Backend URL. Defaults to `http://backend:8080` in Compose.
 - `ORIGIN`: Public frontend URL, such as `https://example.com` or `http://localhost:5173` for local Docker testing.
-- `VIEW_INTERNAL_API_KEY`: Same generated value as the backend's `PasteSettings__View_Internal_API_Key`. If unset, the frontend reads `View_HMAC_Internal_API_Key`; it does not read the backend setting name.
+- `PasteSettings__View_Internal_API_Key`: Shared view-recording key. Compose passes it to the frontend as `VIEW_INTERNAL_API_KEY`, so you only set it once.
 
-For a standalone Node deployment, `.env` is not loaded automatically. Build the frontend, then load your environment file explicitly:
+For a standalone Node deployment, set `VITE_API_URL`, `ORIGIN`, and `VIEW_INTERNAL_API_KEY` in the client's own `.env` file. The key must match the backend's `PasteSettings__View_Internal_API_Key`. The frontend still supports `View_HMAC_Internal_API_Key` as a fallback; it does not read the backend setting name directly.
+
+The standalone server does not load `.env` automatically. Build the frontend, then load your environment file explicitly:
 
 ```bash
 npm run build

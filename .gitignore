@@ -326,3 +326,5 @@ Data
 .idea
 
 **/.env
+backend.env
+frontend.env
