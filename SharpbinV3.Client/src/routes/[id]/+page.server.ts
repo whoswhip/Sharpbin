@@ -1,8 +1,8 @@
 import type { PageServerLoad } from './$types';
-import type { Paste } from '$lib/types/paste';
-import type { PasteComment } from '$lib/types/comment';
-import { getServerToken } from '$lib/utils/auth';
-import { apiUrl, viewInternalApiKey } from '$lib/server/api';
+import type { Paste } from '#lib/types/paste';
+import type { PasteComment } from '#lib/types/comment';
+import { getServerToken } from '#lib/utils/auth';
+import { apiUrl, viewInternalApiKey } from '#lib/server/api';
 import { error } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ params, fetch, url, cookies, parent, request }) => {

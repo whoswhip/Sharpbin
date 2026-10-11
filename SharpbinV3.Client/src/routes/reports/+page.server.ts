@@ -1,15 +1,15 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { apiUrl } from '$lib/server/api';
+import { apiUrl } from '#lib/server/api';
 import {
 	getServerToken,
 	getUserFromToken,
 	clearServerTokens,
 	hasRole,
 	roles
-} from '$lib/utils/auth';
-import type { ReportListResponse } from '$lib/types/report';
-import { extractError } from '$lib/utils/misc';
+} from '#lib/utils/auth';
+import type { ReportListResponse } from '#lib/types/report';
+import { extractError } from '#lib/utils/misc';
 
 function normalizeTarget(value: string | null): 'all' | 'pastes' | 'users' {
 	if (value === 'pastes' || value === 'users') return value;

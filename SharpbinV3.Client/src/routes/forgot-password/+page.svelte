@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { extractError } from '$lib/utils/misc';
+	import { extractError } from '#lib/utils/misc';
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 

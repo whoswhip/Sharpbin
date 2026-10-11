@@ -1,7 +1,7 @@
 import { browser } from '$app/environment';
 import type { Cookies } from '@sveltejs/kit';
-import { user } from '$lib/stores/user';
-import type { JWTUser } from '$lib/types/user';
+import { user } from '#lib/stores/user';
+import type { JWTUser } from '#lib/types/user';
 
 export const roles = {
 	User: 1,

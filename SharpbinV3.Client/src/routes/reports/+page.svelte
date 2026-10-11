@@ -5,8 +5,8 @@
 	import type { PageData } from './$types';
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
-	import { reportStatusLabels, reportTargetLabels, reportTypeLabels } from '$lib/types/report';
-	import { tooltip } from '$lib/utils/misc';
+	import { reportStatusLabels, reportTargetLabels, reportTypeLabels } from '#lib/types/report';
+	import { tooltip } from '#lib/utils/misc';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
 	interface Props {

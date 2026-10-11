@@ -1,14 +1,14 @@
 <script lang="ts">
-	import type { CommentReaction, CommentTreeNode } from '$lib/types/comment';
-	import { dateToRelativeString, tooltip } from '$lib/utils/misc';
-	import { parseCommentMarkdown } from '$lib/utils/markdown';
-	import { escapeHtml } from '$lib/utils/html';
-	import { user } from '$lib/stores/user';
-	import PasteCommentItem from '$lib/components/PasteCommentItem.svelte';
+	import type { CommentReaction, CommentTreeNode } from '#lib/types/comment';
+	import { dateToRelativeString, tooltip } from '#lib/utils/misc';
+	import { parseCommentMarkdown } from '#lib/utils/markdown';
+	import { escapeHtml } from '#lib/utils/html';
+	import { user } from '#lib/stores/user';
+	import PasteCommentItem from '#lib/components/PasteCommentItem.svelte';
 	import { ThumbsUp, ThumbsDown, Trash2, Shredder, Reply, Quote } from '@lucide/svelte';
 	import { resolve } from '$app/paths';
 	import RichTextEditor from './RichTextEditor.svelte';
-	import { hasRole, roles } from '$lib/utils/auth';
+	import { hasRole, roles } from '#lib/utils/auth';
 
 	interface Props {
 		node: CommentTreeNode;

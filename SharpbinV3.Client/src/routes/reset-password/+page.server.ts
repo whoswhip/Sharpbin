@@ -1,5 +1,5 @@
-import { apiUrl } from '$lib/server/api';
-import { extractError } from '$lib/utils/misc';
+import { apiUrl } from '#lib/server/api';
+import { extractError } from '#lib/utils/misc';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { setTokens, startTokenRefreshInterval } from '$lib/utils/auth';
-	import { extractError } from '$lib/utils/misc';
+	import { setTokens, startTokenRefreshInterval } from '#lib/utils/auth';
+	import { extractError } from '#lib/utils/misc';
 	import { Check, X, Eye, EyeClosed } from '@lucide/svelte';
 	import { slide, fade } from 'svelte/transition';
 	import { resolve } from '$app/paths';

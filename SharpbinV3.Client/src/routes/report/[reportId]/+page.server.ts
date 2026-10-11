@@ -1,8 +1,8 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { apiUrl } from '$lib/server/api';
-import { getServerToken, clearServerTokens, roles, getUserFromToken } from '$lib/utils/auth';
-import type { Report } from '$lib/types/report';
+import { apiUrl } from '#lib/server/api';
+import { getServerToken, clearServerTokens, roles, getUserFromToken } from '#lib/utils/auth';
+import type { Report } from '#lib/types/report';
 
 export const load: PageServerLoad = async ({ fetch, cookies, params, url, request }) => {
 	const token = getServerToken(cookies);

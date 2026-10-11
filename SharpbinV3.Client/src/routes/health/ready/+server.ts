@@ -1,4 +1,4 @@
-import { apiUrl } from '$lib/server/api';
+import { apiUrl } from '#lib/server/api';
 import { json } from '@sveltejs/kit';
 
 export const GET = async () => {

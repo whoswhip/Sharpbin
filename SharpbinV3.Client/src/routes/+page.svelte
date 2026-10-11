@@ -1,20 +1,20 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { syntaxes, expiresOptions } from '$lib/consts';
-	import { user } from '$lib/stores/user';
-	import { getToken } from '$lib/utils/auth';
+	import { syntaxes, expiresOptions } from '#lib/consts';
+	import { user } from '#lib/stores/user';
+	import { getToken } from '#lib/utils/auth';
 	import { onMount } from 'svelte';
 	import { fly, fade } from 'svelte/transition';
-	import { encryptAES, estimateEncryptedSize } from '$lib/utils/encryption';
+	import { encryptAES, estimateEncryptedSize } from '#lib/utils/encryption';
 	import {
 		formatBytes,
 		formatNumber,
 		isBinaryData,
 		tooltip,
 		syntaxFromExtension
-	} from '$lib/utils/misc';
-	import { parseMarkdown } from '$lib/utils/markdown';
-	import Dropdown from '$lib/components/Dropdown.svelte';
+	} from '#lib/utils/misc';
+	import { parseMarkdown } from '#lib/utils/markdown';
+	import Dropdown from '#lib/components/Dropdown.svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { FileUp, X, Eye, EyeClosed, Dices } from '@lucide/svelte';
 

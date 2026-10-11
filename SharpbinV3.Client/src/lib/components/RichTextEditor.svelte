@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Bold, Italic, CodeXml, Quote, Send, Eye, Pencil } from '@lucide/svelte';
-	import { parseCommentMarkdown } from '$lib/utils/markdown';
+	import { parseCommentMarkdown } from '#lib/utils/markdown';
 
 	interface Props {
 		class?: string;

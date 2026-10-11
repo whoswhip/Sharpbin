@@ -6,7 +6,7 @@
 	import { goto, afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import type { PageData } from './$types';
-	import type { Pagination } from '$lib/types/pagination';
+	import type { Pagination } from '#lib/types/pagination';
 	import {
 		User,
 		CalendarDays,
@@ -30,13 +30,13 @@
 		tooltip,
 		dateToRelativeString,
 		extractError
-	} from '$lib/utils/misc';
-	import { clearTokens, getToken, hasRole, roles } from '$lib/utils/auth';
-	import { openModal } from '$lib/stores/modal';
-	import { user } from '$lib/stores/user';
+	} from '#lib/utils/misc';
+	import { clearTokens, getToken, hasRole, roles } from '#lib/utils/auth';
+	import { openModal } from '#lib/stores/modal';
+	import { user } from '#lib/stores/user';
 	import { onMount } from 'svelte';
-	import Paste from '$lib/components/Paste.svelte';
-	import { reportStatusLabels, reportTargetLabels, reportTypeLabels } from '$lib/types/report';
+	import Paste from '#lib/components/Paste.svelte';
+	import { reportStatusLabels, reportTargetLabels, reportTypeLabels } from '#lib/types/report';
 	import { fade } from 'svelte/transition';
 
 	interface Props {

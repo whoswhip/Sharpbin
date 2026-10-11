@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { extractError } from '$lib/utils/misc';
+	import { extractError } from '#lib/utils/misc';
 	import { Check, X } from '@lucide/svelte';
 	import { slide, fade } from 'svelte/transition';
 	import type { PageData } from './$types';

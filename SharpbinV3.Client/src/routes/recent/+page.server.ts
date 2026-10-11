@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
-import type { Paste } from '$lib/types/paste';
-import { extractError } from '$lib/utils/misc';
+import type { Paste } from '#lib/types/paste';
+import { extractError } from '#lib/utils/misc';
 import { error } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ fetch, request }) => {

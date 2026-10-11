@@ -1,10 +1,10 @@
 <script lang="ts">
 	import QRCode from 'qrcode';
-	import { getRefreshToken, getToken, setTokens } from '$lib/utils/auth';
-	import { parseTotpEnabled } from '$lib/utils/totp';
+	import { getRefreshToken, getToken, setTokens } from '#lib/utils/auth';
+	import { parseTotpEnabled } from '#lib/utils/totp';
 	import { tick } from 'svelte';
-	import { extractError } from '$lib/utils/misc';
-	import type { ModalItem, ModalMode } from '$lib/types/modal';
+	import { extractError } from '#lib/utils/misc';
+	import type { ModalItem, ModalMode } from '#lib/types/modal';
 
 	interface Props {
 		show?: boolean;

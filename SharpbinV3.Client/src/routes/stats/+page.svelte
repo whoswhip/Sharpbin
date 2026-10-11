@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { formatBytes, formatNumber, tooltip } from '$lib/utils/misc';
+	import { formatBytes, formatNumber, tooltip } from '#lib/utils/misc';
 	import { FileText, Users, Database, TrendingUp } from '@lucide/svelte';
 
 	interface Props {

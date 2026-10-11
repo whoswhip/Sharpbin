@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { user } from '$lib/stores/user';
+	import { user } from '#lib/stores/user';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { clearTokens, hasRole } from '$lib/utils/auth';
-	import logo from '$lib/assets/favicon.svg';
+	import { clearTokens, hasRole } from '#lib/utils/auth';
+	import logo from '#lib/assets/favicon.svg';
 	import type { PageData } from '../../routes/$types';
 	import { slide } from 'svelte/transition';
 	import { Menu, X } from '@lucide/svelte';

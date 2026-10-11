@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tooltip, dateToRelativeString, formatNumber, formatBytes } from '$lib/utils/misc';
+	import { tooltip, dateToRelativeString, formatNumber, formatBytes } from '#lib/utils/misc';
 	import { resolve } from '$app/paths';
 	import {
 		Eye,
@@ -15,8 +15,8 @@
 		HatGlasses,
 		ThumbsUp
 	} from '@lucide/svelte';
-	import { syntaxes } from '$lib/consts';
-	import type { Paste } from '$lib/types/paste';
+	import { syntaxes } from '#lib/consts';
+	import type { Paste } from '#lib/types/paste';
 
 	interface Props {
 		paste: Paste;

@@ -1,11 +1,11 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { apiUrl } from '$lib/server/api';
-import { getServerToken } from '$lib/utils/auth';
-import type { User } from '$lib/types/user';
-import type { Paste } from '$lib/types/paste';
-import type { Pagination } from '$lib/types/pagination';
-import type { Report, ReportListResponse } from '$lib/types/report';
+import { apiUrl } from '#lib/server/api';
+import { getServerToken } from '#lib/utils/auth';
+import type { User } from '#lib/types/user';
+import type { Paste } from '#lib/types/paste';
+import type { Pagination } from '#lib/types/pagination';
+import type { Report, ReportListResponse } from '#lib/types/report';
 
 function decodeJwtRoles(token?: string | null): number {
 	try {

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { setTokens, startTokenRefreshInterval } from '$lib/utils/auth';
-	import { extractError } from '$lib/utils/misc';
+	import { setTokens, startTokenRefreshInterval } from '#lib/utils/auth';
+	import { extractError } from '#lib/utils/misc';
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 

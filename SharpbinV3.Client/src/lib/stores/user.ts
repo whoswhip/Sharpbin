@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
-import type { AuthUser } from '$lib/types/user';
+import type { AuthUser } from '#lib/types/user';
 
 let initial: AuthUser | null = null;
 

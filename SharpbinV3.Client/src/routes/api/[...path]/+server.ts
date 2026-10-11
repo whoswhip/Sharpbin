@@ -1,4 +1,4 @@
-import { proxyBackendRequest } from '$lib/server/proxy';
+import { proxyBackendRequest } from '#lib/server/proxy';
 import type { RequestHandler } from './$types';
 
 const handle: RequestHandler = ({ params, request, url }) => {

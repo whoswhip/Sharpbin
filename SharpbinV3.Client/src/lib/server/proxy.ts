@@ -1,4 +1,4 @@
-import { apiUrl } from '$lib/server/api';
+import { apiUrl } from '#lib/server/api';
 
 const methodsWithoutBody = new Set(['GET', 'HEAD']);
 

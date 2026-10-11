@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import type { ModalOpenOptions, ModalState } from '$lib/types/modal';
+import type { ModalOpenOptions, ModalState } from '#lib/types/modal';
 
 const initialState: ModalState = {
 	show: false,

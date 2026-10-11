@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { onMount } from 'svelte';
-	import Paste from '$lib/components/Paste.svelte';
+	import Paste from '#lib/components/Paste.svelte';
 
 	interface Props {
 		data: PageData;

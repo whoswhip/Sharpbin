@@ -1,7 +1,7 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import { error, redirect } from '@sveltejs/kit';
-import { apiUrl } from '$lib/server/api';
-import { getServerToken } from '$lib/utils/auth';
+import { apiUrl } from '#lib/server/api';
+import { getServerToken } from '#lib/utils/auth';
 
 export const load = async ({ params, fetch, cookies }: RequestEvent) => {
 	const token = getServerToken(cookies);

@@ -1,4 +1,4 @@
-import { syntaxes } from '$lib/consts';
+import { syntaxes } from '#lib/consts';
 
 /**
  * @param bytes Bytes to format.

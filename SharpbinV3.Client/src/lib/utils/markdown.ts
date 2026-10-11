@@ -1,7 +1,7 @@
 import { marked } from 'marked';
 import createDOMPurify from 'dompurify';
 import type { WindowLike } from 'dompurify';
-import { trustedDomains } from '$lib/consts';
+import { trustedDomains } from '#lib/consts';
 import { escapeHtml } from './html';
 
 export const externalMediaWarningStorageKey = 'sharpbin:ignore-external-media-warning';

@@ -1,21 +1,21 @@
-import { syntaxes } from '$lib/consts';
-import { apiUrl } from '$lib/server/api';
+import { syntaxes } from '#lib/consts';
+import { apiUrl } from '#lib/server/api';
 import {
 	getCachedOgImage,
 	getCacheControlHeader,
 	getCacheTtlSeconds,
 	scheduleOgImageCachePurge,
 	storeCachedOgImage
-} from '$lib/server/og/cache';
-import OgPasteEmbed from '$lib/server/og/PasteEmbed.svelte';
-import type { PasteEmbedProps } from '$lib/server/og/pasteEmbed';
-import type { Paste } from '$lib/types/paste';
+} from '#lib/server/og/cache';
+import OgPasteEmbed from '#lib/server/og/PasteEmbed.svelte';
+import type { PasteEmbedProps } from '#lib/server/og/pasteEmbed';
+import type { Paste } from '#lib/types/paste';
 import {
 	dateToRelativeString,
 	extractDateFromUUIDv7,
 	formatBytes,
 	formatNumber
-} from '$lib/utils/misc';
+} from '#lib/utils/misc';
 import { Resvg } from '@resvg/resvg-js';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';

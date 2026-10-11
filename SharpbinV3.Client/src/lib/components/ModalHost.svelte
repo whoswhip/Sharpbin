@@ -1,6 +1,6 @@
 <script lang="ts">
-	import Modal from '$lib/components/Modal.svelte';
-	import { cancelModal, confirmModal, modal } from '$lib/stores/modal';
+	import Modal from '#lib/components/Modal.svelte';
+	import { cancelModal, confirmModal, modal } from '#lib/stores/modal';
 
 	let state = $derived($modal);
 </script>

@@ -36,24 +36,24 @@
 		dateToRelativeString,
 		tooltip,
 		isBinaryData
-	} from '$lib/utils/misc';
+	} from '#lib/utils/misc';
 	import {
 		getIgnoreExternalMediaWarning,
 		parseMarkdown,
 		setIgnoreExternalMediaWarning
-	} from '$lib/utils/markdown';
-	import { syntaxes, expiresOptions } from '$lib/consts';
+	} from '#lib/utils/markdown';
+	import { syntaxes, expiresOptions } from '#lib/consts';
 	import { resolve } from '$app/paths';
-	import { decryptAES, encryptAES } from '$lib/utils/encryption';
-	import { escapeHtml } from '$lib/utils/html';
+	import { decryptAES, encryptAES } from '#lib/utils/encryption';
+	import { escapeHtml } from '#lib/utils/html';
 	import { fade } from 'svelte/transition';
-	import { getToken, hasRole } from '$lib/utils/auth';
-	import { user } from '$lib/stores/user';
-	import Dropdown from '$lib/components/Dropdown.svelte';
-	import PasteComments from '$lib/components/PasteComments.svelte';
-	import { openModal } from '$lib/stores/modal';
-	import type { Paste, PasteReaction } from '$lib/types/paste';
-	import HighlightWorker from '$lib/workers/highlight.worker?worker';
+	import { getToken, hasRole } from '#lib/utils/auth';
+	import { user } from '#lib/stores/user';
+	import Dropdown from '#lib/components/Dropdown.svelte';
+	import PasteComments from '#lib/components/PasteComments.svelte';
+	import { openModal } from '#lib/stores/modal';
+	import type { Paste, PasteReaction } from '#lib/types/paste';
+	import HighlightWorker from '#lib/workers/highlight.worker?worker';
 	interface Props {
 		data: PageData;
 	}

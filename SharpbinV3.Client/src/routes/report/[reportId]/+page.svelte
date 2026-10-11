@@ -1,9 +1,9 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { resolve } from '$app/paths';
-	import { reportStatusLabels, reportTargetLabels, reportTypeLabels } from '$lib/types/report';
-	import { tooltip } from '$lib/utils/misc';
-	import { getToken } from '$lib/utils/auth';
+	import { reportStatusLabels, reportTargetLabels, reportTypeLabels } from '#lib/types/report';
+	import { tooltip } from '#lib/utils/misc';
+	import { getToken } from '#lib/utils/auth';
 
 	interface Props {
 		data: PageData;

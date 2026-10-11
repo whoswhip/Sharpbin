@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { getToken } from '$lib/utils/auth';
-	import { user } from '$lib/stores/user';
+	import { getToken } from '#lib/utils/auth';
+	import { user } from '#lib/stores/user';
 	import type {
 		CommentReaction,
 		CommentReactionResult,
 		PasteComment,
 		CommentTreeNode
-	} from '$lib/types/comment';
-	import PasteCommentItem from '$lib/components/PasteCommentItem.svelte';
+	} from '#lib/types/comment';
+	import PasteCommentItem from '#lib/components/PasteCommentItem.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import RichTextEditor from './RichTextEditor.svelte';
-	import { openModal } from '$lib/stores/modal';
+	import { openModal } from '#lib/stores/modal';
 	import { RefreshCw } from '@lucide/svelte';
 
 	interface Props {
