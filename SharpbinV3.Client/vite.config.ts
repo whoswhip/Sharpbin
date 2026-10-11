@@ -1,5 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
+import adapter from '@sveltejs/adapter-node';
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import { defineConfig } from 'vite';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -14,7 +16,7 @@ const allowedHosts = process.env.VITE_ALLOWED_HOSTS
 	: ['localhost'];
 
 export default defineConfig({
-	plugins: [tailwindcss(), sveltekit()],
+	plugins: [tailwindcss(), sveltekit({ adapter: adapter(), preprocess: vitePreprocess() })],
 	define: {
 		__APP_VERSION__: JSON.stringify(pkg.version),
 		COMMIT_HASH: JSON.stringify(process.env.GIT_COMMIT_HASH || 'unknown')
