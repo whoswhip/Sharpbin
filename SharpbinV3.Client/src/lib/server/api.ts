@@ -1,4 +1,4 @@
-import { env } from '$env/dynamic/private';
+import { env } from 'node:process';
 
 export const apiUrl = env.VITE_API_URL ?? 'http://localhost:5050';
 export const viewInternalApiKey =
