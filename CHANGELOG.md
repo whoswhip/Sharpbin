@@ -1,3 +1,56 @@
+## [3.1.0](https://github.com/whoswhip/Sharpbin/compare/v3.0.5...v3.1.0) (2026-10-18)
+
+
+### Bug Fixes
+
+* add docker entrypoint sccript ([045a193](https://github.com/whoswhip/Sharpbin/commit/045a1934d80277b75b34d7566ea283c57a7b1e83))
+* add tooltip to comment timestamp for better context ([c98e5e5](https://github.com/whoswhip/Sharpbin/commit/c98e5e53b02002ac0328947cdbabddaa60ebe877))
+* allow null display name when saving display name ([20473da](https://github.com/whoswhip/Sharpbin/commit/20473da0bacc891354ef75cd05b4fdb3443ae629))
+* always underline users in comments ([e239bf2](https://github.com/whoswhip/Sharpbin/commit/e239bf2ae5a4ca0f93cfc197d9658df459b87d10))
+* compact paste smaller; better edited display ([e8cd93e](https://github.com/whoswhip/Sharpbin/commit/e8cd93e7bdfc47e0c105935182c7062fd191cb57))
+* disable but show buttons for author or anon users ([77f6623](https://github.com/whoswhip/Sharpbin/commit/77f6623fcf6b9b50e26ce533cee7b83c26836051))
+* disable styles on comment reactions ([23f0c92](https://github.com/whoswhip/Sharpbin/commit/23f0c92aed9bd8235ad1cc6b62aa3c9bf8674370))
+* disabled:cursor-not-allowed on like buttons ([95a5c18](https://github.com/whoswhip/Sharpbin/commit/95a5c18dc57ad33701bbd6d9f5cfcf6a1cda6f49))
+* enforce 2fa only on certain update actions ([a55268a](https://github.com/whoswhip/Sharpbin/commit/a55268afdc171d3d7f074ee008be3434e14c0482))
+* enhance user update permissions and authentication checks ([6c810b0](https://github.com/whoswhip/Sharpbin/commit/6c810b07b738ca2cb0cfe87c264e26395254024b))
+* handle username conflict during user creation ([f5a7aab](https://github.com/whoswhip/Sharpbin/commit/f5a7aabf42a67969baf6e307b3178e89c75a4716))
+* improve paste description ([60796a8](https://github.com/whoswhip/Sharpbin/commit/60796a85fb3f287cc88d42dda7f9bc446d0d5f97))
+* include '.' before extension on paste download ([ee6a6d5](https://github.com/whoswhip/Sharpbin/commit/ee6a6d5e6d3f4d5ef2fb2c8f6032e695b228fcf9))
+* lower vulnerabilities + harden docker setup ([d16f1f8](https://github.com/whoswhip/Sharpbin/commit/d16f1f872fa34de460f9ee8903b4eefbe780c041))
+* make cursor-not-allowed !important ([9916930](https://github.com/whoswhip/Sharpbin/commit/99169305c7b496eef51cfb5493cd3c8548f366e7))
+* multiple vulnerabilities ([6a7b865](https://github.com/whoswhip/Sharpbin/commit/6a7b8653dc154366c85de32dccf242a071eebdf0))
+* normalize canonical URL to prevent duplicate content issues ([ad693b2](https://github.com/whoswhip/Sharpbin/commit/ad693b28ea701554fceede1f8e30e7990240281c))
+* normalize cononical ([d45f253](https://github.com/whoswhip/Sharpbin/commit/d45f253c000e834db584fed89ddb541c09f466c7))
+* only show report button if logged in ([40c6ac6](https://github.com/whoswhip/Sharpbin/commit/40c6ac663f95c40a154dc56598bdfe6e59f38703))
+* prevent admins and moderators from being reported ([f2c67ae](https://github.com/whoswhip/Sharpbin/commit/f2c67ae3677658efaf84811271f62c5043797460))
+* prevent authors from reacting to their pas6te ([3da7f99](https://github.com/whoswhip/Sharpbin/commit/3da7f99feba4aaaa02a6e9f0c7771a548e6530c3))
+* remove recipient information from warning log when email settings are incomplete ([b65d3f8](https://github.com/whoswhip/Sharpbin/commit/b65d3f8726f77f2b7260e97ba439bfea4e2ad908))
+* remove trailing '.' in filename ([b0e9f51](https://github.com/whoswhip/Sharpbin/commit/b0e9f5104c92a3cb6a8965d23460c86a64595d12))
+* show uncompressed size in stats ([61efbf8](https://github.com/whoswhip/Sharpbin/commit/61efbf8b0415fe159b5e777f737ee4e8b25beb02))
+* sizeStored -> StoredSize in typescript paste type ([6c65a52](https://github.com/whoswhip/Sharpbin/commit/6c65a52ee06c266eeeb5519e779eb49f73be33b7))
+* update robots.txt to specify allowed and disallowed paths for web crawlers ([ea634fd](https://github.com/whoswhip/Sharpbin/commit/ea634fd85135d2996e96f6a48ce2fbccbb75b7e2))
+* update TypeScript configuration to extend from $app/tsconfig and adjust include/exclude paths ([f2559ea](https://github.com/whoswhip/Sharpbin/commit/f2559eaad0ac79ac2ee18f3b9388ce62b11b5543))
+* use #lib instead of $lib ([8d06020](https://github.com/whoswhip/Sharpbin/commit/8d060204c890018f49147e681f94a6737ac1c4b1)), closes [#lib](https://github.com/whoswhip/Sharpbin/issues/lib)
+* use node env instead of sveltekit env ([0e3a6d9](https://github.com/whoswhip/Sharpbin/commit/0e3a6d97e395c605d419c2464c3b7fccbcdd5c6f))
+
+
+### Features
+
+* add /[@username](https://github.com/username) redirect to /user/username ([70e637b](https://github.com/whoswhip/Sharpbin/commit/70e637b281ae060e40ceb6e312591276d1c68540))
+* add bot detection to skip recording views for known bots ([41d4411](https://github.com/whoswhip/Sharpbin/commit/41d441135cdef6c22df34a512507ef7032009db9))
+* add sub tab to the settings tab ([e20a620](https://github.com/whoswhip/Sharpbin/commit/e20a6200dd3c1f0dfe26645c625cac448dc50d76))
+* allow staff members to see user's unlisted pastes; show dislikes in the paste lists ([6ed2974](https://github.com/whoswhip/Sharpbin/commit/6ed2974e42df9d10da755af6897b4eea4ee6d34a))
+* **auth:** enhance token management and synchronization with user data ([2864c81](https://github.com/whoswhip/Sharpbin/commit/2864c81f83ca49032a803f8ca2ccad19a1f8d9fe))
+* comments & paste/comment reactions; renames/refactors ([63b77be](https://github.com/whoswhip/Sharpbin/commit/63b77bece9b71d547d15403257da44e8597db97b))
+* **comments:** implement delete comment functionality with confirmation modal ([95ca811](https://github.com/whoswhip/Sharpbin/commit/95ca811d4295759b3fc161eff9ba81c7499be254))
+* **comments:** implement recursive comment deletion in HardDeleteComment method ([8d3caf5](https://github.com/whoswhip/Sharpbin/commit/8d3caf5375a8065281b917b1c24970580799a059))
+* enhance SEO for home, recent, and paste pages ([edffd54](https://github.com/whoswhip/Sharpbin/commit/edffd5490fae8274293982ded81c7971b614fd28))
+* improve rate limit partition keys + less strict limits ([6cadc0b](https://github.com/whoswhip/Sharpbin/commit/6cadc0b74d3b5cb340347b1fc8dbaf8f06318e5b))
+* **modal:** refactor modal types and integrate security action requirements ([f82d314](https://github.com/whoswhip/Sharpbin/commit/f82d314d80dcd8e70f197c254bb4e7ba2fee67f0))
+* password resets ([d4976ac](https://github.com/whoswhip/Sharpbin/commit/d4976ac9aac41cb7ad23070480862bf2cec89095))
+
+
+
 ## [3.0.5](https://github.com/whoswhip/Sharpbin/compare/v3.0.4...v3.0.5) (2026-03-31)
 
 
