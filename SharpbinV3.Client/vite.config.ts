@@ -17,9 +17,6 @@ const allowedHosts = process.env.VITE_ALLOWED_HOSTS
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit({ adapter: adapter(), preprocess: vitePreprocess() })],
-	resolve: {
-		alias: { '#lib': fileURLToPath(new URL('./src/lib', import.meta.url)) }
-	},
 	define: {
 		__APP_VERSION__: JSON.stringify(pkg.version),
 		COMMIT_HASH: JSON.stringify(process.env.GIT_COMMIT_HASH || 'unknown')
