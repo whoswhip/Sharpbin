@@ -237,15 +237,10 @@
 	}
 </script>
 
-<section id="comments-section" class="mt-6 rounded border border-neutral-700 bg-neutral-900 p-4">
+<section id="comments-section" class="w-[95%] max-w-7xl rounded border-2 border-neutral-800 bg-neutral-900 p-4 mt-4">
 	<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
 		<div class="flex items-center gap-2">
-			<h2 class="text-lg font-semibold text-neutral-100">Comments</h2>
-			<span
-				class="rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-xs text-neutral-300"
-			>
-				{comments.length}
-			</span>
+			<h2 class="text-lg font-semibold text-neutral-100">{comments.length} Comments</h2>
 		</div>
 		<button
 			type="button"

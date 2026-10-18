@@ -1110,13 +1110,13 @@
 					{@html pasteContent}
 				</div>
 			{/if}
-
-			<PasteComments pasteId={data.paste.id} initialComments={data.comments ?? []} />
 		{:else}
 			<h1 class="mb-4 text-center text-4xl font-bold">Paste not found</h1>
 			<h2 class="mt-2 text-center text-xl">The paste you are looking for does not exist.</h2>
 		{/if}
 	</div>
+
+	<PasteComments pasteId={data.paste.id} initialComments={data.comments ?? []} />
 
 	<style>
 		.hljs {
