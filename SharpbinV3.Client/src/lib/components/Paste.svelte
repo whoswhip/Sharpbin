@@ -34,7 +34,7 @@
 
 {#if compact}
 	<a
-		href={resolve(`/${paste.id}`)}
+		href={resolve(`/[id]`, { id: paste.id })}
 		class="flex flex-col gap-1 rounded border border-neutral-700 bg-neutral-800 px-4 py-3 transition-colors duration-200 hover:bg-neutral-700 focus:ring-2 focus:ring-neutral-600 focus:outline-none"
 	>
 		<div class="flex w-full flex-row justify-between">
@@ -119,7 +119,7 @@
 	</a>
 {:else}
 	<a
-		href={resolve(`/${paste.id}`)}
+		href={resolve(`/[id]`, { id: paste.id })}
 		class="flex flex-col gap-2 rounded border border-neutral-700 bg-neutral-800 px-5 py-4 transition-colors duration-200 hover:bg-neutral-700 focus:ring-2 focus:ring-neutral-600 focus:outline-none"
 	>
 		<span

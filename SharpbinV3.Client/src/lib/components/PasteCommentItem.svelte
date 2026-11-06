@@ -101,7 +101,7 @@
 					<span class="text-red-500">BANNED</span>
 				{/if}
 				<a
-					href={resolve(`/user/${node.author?.username}`)}
+					href={resolve(`/user/[username]`, { username: node.author?.username})}
 					class="flex items-center gap-2 underline"
 				>
 					<span

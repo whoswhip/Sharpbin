@@ -200,11 +200,11 @@
 						class="flex cursor-pointer flex-col gap-2 rounded border border-neutral-700 bg-neutral-800 px-5 py-4 transition-colors duration-200 hover:bg-neutral-700 focus:ring-2 focus:ring-neutral-600 focus:outline-none"
 						role="link"
 						tabindex="0"
-						onclick={() => goto(resolve(`/report/${report.reportID}`))}
+						onclick={() => goto(resolve(`/report/[reportId]`, { reportId: String(report.reportID)}))}
 						onkeydown={(e) => {
 							if (e.key === 'Enter' || e.key === ' ') {
 								e.preventDefault();
-								goto(resolve(`/report/${report.reportID}`));
+								goto(resolve(`/report/[reportId]`, { reportId: String(report.reportID)}));
 							}
 						}}
 					>
@@ -221,7 +221,7 @@
 							<span>{reportTargetLabels[report.targetType] ?? 'Unknown'}</span>
 							{#if report.pasteId}
 								<a
-									href={resolve(`/${report.pasteId}`)}
+									href={resolve(`/[id]`, { id: report.pasteId})}
 									class="text-neutral-300 hover:text-white"
 									onclick={stopPropagation(bubble('click'))}
 								>
@@ -231,7 +231,7 @@
 							{#if report.userUUID}
 								{#if report.targetUsername}
 									<a
-										href={resolve(`/user/${report.targetUsername}`)}
+										href={resolve(`/user/[username]`, {username: report.targetUsername})}
 										class="text-neutral-300 hover:text-white"
 										use:tooltip={report.userUUID}
 										onclick={stopPropagation(bubble('click'))}
@@ -244,7 +244,7 @@
 							{/if}
 							{#if report.reporterUsername}
 								<a
-									href={resolve(`/user/${report.reporterUsername}`)}
+									href={resolve(`/user/[username]`, { username: report.reporterUsername})}
 									class="text-neutral-300 hover:text-white"
 									use:tooltip={report.reporterUUID}
 									onclick={stopPropagation(bubble('click'))}

@@ -75,7 +75,7 @@
 					{#if report.reporterUsername}
 						<a
 							class="text-neutral-200 hover:text-white hover:underline"
-							href={resolve(`/user/${report.reporterUsername}`)}
+							href={resolve(`/user/[username]`, { username: report.reporterUsername})}
 							use:tooltip={report.reporterUUID}
 						>
 							{report.reporterDisplayName || report.reporterUsername}
@@ -89,7 +89,7 @@
 						Target Paste:
 						<a
 							class="text-neutral-200 hover:text-white hover:underline"
-							href={resolve(`/${report.pasteId}`)}
+							href={resolve(`/[id]`, { id: report.pasteId})}
 						>
 							{report.pasteTitle !== '' ? report.pasteTitle : report.pasteId}
 						</a>
@@ -101,7 +101,7 @@
 						{#if report.targetUsername}
 							<a
 								class="text-neutral-200 hover:text-white hover:underline"
-								href={resolve(`/user/${report.targetUsername}`)}
+								href={resolve(`/user/[username]`, { username: report.targetUsername})}
 								use:tooltip={report.userUUID}
 							>
 								{report.targetDisplayName || report.targetUsername}
