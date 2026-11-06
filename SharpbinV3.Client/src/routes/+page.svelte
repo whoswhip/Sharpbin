@@ -5,7 +5,7 @@
 	import { getToken } from '#lib/utils/auth';
 	import { onMount } from 'svelte';
 	import { fly, fade } from 'svelte/transition';
-	import { encryptAES, estimateEncryptedSize } from '#lib/utils/encryption';
+	import { encryptAES, estimateEncryptedSize, encodePasswordFragment } from '#lib/utils/encryption';
 	import {
 		formatBytes,
 		formatNumber,
@@ -162,7 +162,12 @@
 
 		let body = content;
 		if (selectedVisibility === 2) {
-			body = await encryptAES(content, password);
+			try {
+				body = await encryptAES(content, password);
+			} catch (cause) {
+				error = cause instanceof Error ? cause.message : 'Encryption failed.';
+				return;
+			}
 		}
 
 		if (
@@ -196,7 +201,7 @@
 		if (response.ok) {
 			const result = await response.json();
 			if (selectedVisibility === 2) {
-				const passwordBase64 = btoa(password);
+				const passwordBase64 = encodePasswordFragment(password);
 				window.location.href = `/${result.id}#${passwordBase64}`;
 				return;
 			}

@@ -44,7 +44,7 @@
 	} from '#lib/utils/markdown';
 	import { syntaxes, expiresOptions } from '#lib/consts';
 	import { resolve } from '$app/paths';
-	import { decryptAES, encryptAES } from '#lib/utils/encryption';
+	import { decryptAES, encryptAES, decodePasswordFragment } from '#lib/utils/encryption';
 	import { escapeHtml } from '#lib/utils/html';
 	import { fade } from 'svelte/transition';
 	import { getToken, hasRole } from '#lib/utils/auth';
@@ -359,8 +359,8 @@
 				});
 				editMetadata = data.paste ? { ...data.paste } : null;
 			}
-		} catch {
-			editError = 'An error occurred while updating.';
+		} catch (cause) {
+			editError = cause instanceof Error ? cause.message : 'An error occurred while updating.';
 		} finally {
 			editLoading = false;
 			editing = false;
@@ -517,8 +517,20 @@
 				contentRendered = false;
 				decryptStatus = 'Preparing decryption...';
 				const urlHash = window.location.hash.slice(1);
+				let passwordFromUrl: string | null = null;
 				if (urlHash) {
-					const passwordFromUrl = atob(urlHash);
+					history.replaceState(
+						history.state,
+						'',
+						window.location.pathname + window.location.search
+					);
+					try {
+						passwordFromUrl = decodePasswordFragment(urlHash);
+					} catch {
+						/* empty */
+					}
+				}
+				if (passwordFromUrl !== null) {
 					decryptStatus = 'Deriving key...';
 					decryptedContent = await decryptAES(data.content, passwordFromUrl);
 					if (decryptedContent === null) {
@@ -528,11 +540,10 @@
 							decryptStatus = 'Deriving key...';
 							decryptedContent = await decryptAES(data.content, password);
 							if (decryptedContent === null) {
-								decryptError = 'Incorrect password. Please try again.';
-								decryptStatus = 'Decryption failed.';
+								decryptError = 'Wrong password or damaged encrypted paste.';
+								decryptStatus = decryptError;
 							} else {
 								await renderPaste();
-								history.replaceState(null, '', window.location.pathname + window.location.search);
 							}
 						} else {
 							decryptStatus = 'Decryption canceled.';
@@ -548,8 +559,8 @@
 					decryptStatus = 'Deriving key...';
 					decryptedContent = await decryptAES(data.content, password);
 					if (decryptedContent === null) {
-						decryptError = 'Incorrect password. Please try again.';
-						decryptStatus = 'Decryption failed.';
+						decryptError = 'Wrong password or damaged encrypted paste.';
+						decryptStatus = decryptError;
 					} else {
 						await renderPaste();
 					}
@@ -560,7 +571,12 @@
 				decryptStatus = 'Rendering content...';
 				await renderPaste();
 			}
-		} catch {
+		} catch (cause) {
+			if (data?.paste?.visibility === 2) {
+				decryptStatus = cause instanceof Error ? cause.message : 'Unable to decrypt this paste.';
+				contentRendered = false;
+				return;
+			}
 			decryptStatus = 'Rendering content...';
 			await renderPaste();
 		}
@@ -655,7 +671,7 @@
 					{#if data.paste.author}
 						<User class="inline-block h-4 w-4 text-neutral-400" />
 						<a
-							href={resolve(`/user/${data.paste.author.username}`)}
+							href={resolve(`/user/[username]`, { username: data.paste.author.username })}
 							class="text-neutral-400 transition-colors duration-300 hover:text-neutral-500"
 							>{data.paste.author.username}</a
 						>
@@ -938,7 +954,7 @@
 					</button>
 
 					<a
-						href={resolve(`/raw/${data.paste.id}`)}
+						href={resolve(`/raw/[id]`, { id: data.paste.id })}
 						class="flex cursor-pointer items-center rounded-md bg-neutral-700 px-2 py-0.5 text-sm hover:bg-neutral-600"
 					>
 						<File class="{iconsOnly ? '' : 'mr-1'} h-5 w-5 text-neutral-400" />

@@ -237,7 +237,10 @@
 	}
 </script>
 
-<section id="comments-section" class="w-[95%] max-w-7xl rounded border-2 border-neutral-800 bg-neutral-900 p-4 mt-4">
+<section
+	id="comments-section"
+	class="mt-4 w-[95%] max-w-7xl rounded border-2 border-neutral-800 bg-neutral-900 p-4"
+>
 	<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
 		<div class="flex items-center gap-2">
 			<h2 class="text-lg font-semibold text-neutral-100">{comments.length} Comments</h2>
